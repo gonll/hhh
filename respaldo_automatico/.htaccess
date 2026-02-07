@@ -1,0 +1,3 @@
+# Denegar acceso directo a los respaldos automáticos
+Order Deny,Allow
+Deny from all

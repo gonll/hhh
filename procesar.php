@@ -19,7 +19,13 @@ $sql = "INSERT INTO usuarios (apellido, dni, cuit, domicilio, email, celular, co
         VALUES ('$apellido', '$dni', '$cuit', '$domicilio', '$email', '$celular', $consorcio_sql)";
 
 if (mysqli_query($conexion, $sql)) {
-    header("Location: index.php");
+    $volver = isset($_POST['volver']) ? trim($_POST['volver']) : '';
+    if ($volver !== '' && preg_match('/^[a-zA-Z0-9_\.\-]+\.php(\?[^#]*)?$/', $volver)) {
+        header("Location: $volver");
+    } else {
+        header("Location: index.php");
+    }
+    exit;
 } else {
     echo "Error: " . mysqli_error($conexion);
 }

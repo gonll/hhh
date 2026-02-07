@@ -22,7 +22,9 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
 </head>
 <body>
     <div class="caja">
+        <?php $volver = isset($_GET['volver']) ? trim($_GET['volver']) : 'index.php'; $volver_enc = htmlspecialchars($volver); ?>
         <form action="procesar.php" method="POST" onsubmit="return validarNombre()">
+            <?php if ($volver !== 'index.php') { ?><input type="hidden" name="volver" value="<?= htmlspecialchars($volver) ?>"><?php } ?>
             <h2 style="margin-top:0;">NUEVO USUARIO</h2>
             <div id="alertaConsorcio" style="display:none; background:#d1ecf1; color:#0c5460; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px; border:1px solid #bee5eb;">
                 ℹ️ El nombre "Consorcio" está reservado para usuarios consorcio.
@@ -38,7 +40,7 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
             <input type="email" name="email" placeholder="EMAIL" style="text-transform:lowercase;">
             <input type="text" name="celular" placeholder="CELULAR">
             <button type="submit">GUARDAR REGISTRO</button>
-            <a href="index.php" class="volver">← VOLVER AL PANEL</a>
+            <a href="<?= $volver === 'index.php' ? 'index.php' : htmlspecialchars($volver) ?>" class="volver">← VOLVER</a>
         </form>
     </div>
     <script>

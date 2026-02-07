@@ -1,7 +1,7 @@
 <?php
 if (empty($_SESSION['acceso_id'])) return;
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
-// Nivel 3: 10 minutos. Nivel 1 y 2: 4 horas.
+// Nivel 3 y 4: 10 minutos. Nivel 1 y 2 (Partes): 4 horas.
 $minutosInactividad = ($nivelAcceso >= 3) ? 10 : (4 * 60);
 $inactividadMs = $minutosInactividad * 60 * 1000;
 ?>

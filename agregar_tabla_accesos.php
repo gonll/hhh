@@ -1,7 +1,7 @@
 <?php
 /**
- * Ejecutar UNA vez: crea la tabla accesos y opcionalmente el primer usuario nivel 3.
- * Luego podés borrar o no ejecutar de nuevo este archivo.
+ * Ejecutar UNA vez: crea la tabla accesos y opcionalmente el primer usuario nivel 3 (Máximo).
+ * Niveles: 1=Restringido, 2=Partes (solo PDT), 3=Máximo.
  */
 include 'db.php';
 
@@ -23,7 +23,7 @@ if (mysqli_query($conexion, $sql_tabla)) {
     exit;
 }
 
-// Solo si no hay ningún usuario, crear el primero (nivel 3)
+// Solo si no hay ningún usuario, crear el primero (nivel 3 = Máximo)
 $r = mysqli_query($conexion, "SELECT id FROM accesos LIMIT 1");
 if (mysqli_num_rows($r) == 0) {
     $usuario = 'admin';
@@ -33,7 +33,7 @@ if (mysqli_num_rows($r) == 0) {
     $hash_esc = mysqli_real_escape_string($conexion, $hash);
     $ins = "INSERT INTO accesos (usuario, clave, nivel_acceso) VALUES ('$usuario_esc', '$hash_esc', 3)";
     if (mysqli_query($conexion, $ins)) {
-        echo "Primer usuario creado: $usuario (nivel 3). Cambiá la clave desde 'Gestionar accesos' una vez dentro.";
+        echo "Primer usuario creado: $usuario (nivel 3 - Máximo). Cambiá la clave desde 'Gestionar accesos' una vez dentro.";
     } else {
         echo "Error creando primer usuario: " . mysqli_error($conexion);
     }

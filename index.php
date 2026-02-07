@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+include 'respaldar_automatico.php'; // Respaldo automático diario
+$archivo_respaldo = hacerRespaldoAutomatico(); // Ejecutar respaldo si no se hizo hoy (retorna nombre de archivo si se hizo nuevo)
 if ((int)date('j') > 10) include 'actualizar_ipc_desde_api.php';
 include 'liquidar_alquileres_mes.php'; // Liquidar alquileres del mes si aún no se cargaron (desde día 1)
 // Consulta para listar usuarios, poniendo a "CAJA" (ID 1) primero
@@ -13,6 +15,21 @@ $res_check = mysqli_query($conexion, "SELECT id FROM indices WHERE fecha = '$mes
 $falta_indice = (mysqli_num_rows($res_check) == 0);
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
 $soloLectura = ($nivelAcceso < 2);
+// Nivel 0: solo puede Partes desde cel
+if ($nivelAcceso === 0) {
+    header('Location: partes_desde_cel.php');
+    exit;
+}
+// Usuarios para modal Ant/cel (nivel 3): todos excepto CAJA (id 1)
+$usuarios_anticipo = [];
+if ($nivelAcceso === 3) {
+    $r_ant = mysqli_query($conexion, "SELECT id, apellido FROM usuarios WHERE id != 1 ORDER BY apellido ASC");
+    if ($r_ant) {
+        while ($u = mysqli_fetch_assoc($r_ant)) {
+            $usuarios_anticipo[] = $u;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -51,10 +68,55 @@ $soloLectura = ($nivelAcceso < 2);
         }
         .btn-contrato { background: #007bff; } 
         .btn-indice { background: #f39c12; }
+        .btn-admin-prop { background: #17a2b8; }
         
         /* Cabecera Central y Reloj */
         .cabecera-detalle { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         #reloj-sistema { font-size: 1rem; color: #aaa; font-weight: 300; min-width: 150px; text-align: right; }
+        .btn-ant-cel { background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-ant-cel:hover { background: #138496; }
+        /* Modal Ant/cel responsive - pantalla completa en cel con 3 secciones */
+        .modal-ant-cel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; align-items: center; justify-content: center; padding: 10px; box-sizing: border-box; }
+        .modal-ant-cel-overlay.activo { display: flex; }
+        .modal-ant-cel { background: white; border-radius: 8px; padding: 20px; max-width: 400px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
+        .modal-ant-cel h3 { margin: 0 0 15px 0; font-size: 1rem; color: #007bff; }
+        .modal-ant-cel label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px; }
+        .modal-ant-cel input, .modal-ant-cel select { width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 12px; }
+        .modal-ant-cel .form-g { margin-bottom: 12px; }
+        .modal-ant-cel .ant-cabecera { padding-bottom: 12px; }
+        .modal-ant-cel .ant-seccion { border-bottom: 2px solid #dee2e6; padding: 16px 0; }
+        .modal-ant-cel .ant-seccion:last-of-type { border-bottom: none; }
+        .modal-ant-cel .ant-seccion-titulo { font-size: 13px; font-weight: bold; color: #333; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+        .ant-fila-fecha-monto { display: flex; gap: 12px; align-items: flex-end; }
+        .ant-fila-fecha-monto .form-g { flex: 1; margin-bottom: 0; min-width: 0; }
+        @media (max-width: 400px) { .ant-fila-fecha-monto { flex-direction: column; align-items: stretch; } .ant-fila-fecha-monto .form-g { margin-bottom: 12px; } .ant-fila-fecha-monto .form-g:last-child { margin-bottom: 0; } }
+        .modal-ant-cel .botones, .modal-ant-cel .ant-botones { display: flex; gap: 12px; margin-top: 15px; flex-shrink: 0; }
+        .modal-ant-cel .botones button, .modal-ant-cel .ant-botones button { padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; flex: 1; }
+        .modal-ant-cel .btn-cerrar { background: #6c757d; color: white; }
+        .modal-ant-cel .btn-guardar-ant { background: #28a745; color: white; }
+        @media (max-width: 768px) {
+            .modal-ant-cel-overlay.activo { padding: 0; align-items: stretch; }
+            .modal-ant-cel { max-width: none; width: 100%; height: 100%; min-height: 100vh; min-height: 100dvh; border-radius: 0; padding: 0; display: flex; flex-direction: column; }
+            .modal-ant-cel .ant-cabecera { padding: 16px; border-bottom: 2px solid #007bff; background: #f8f9fa; flex-shrink: 0; }
+            .modal-ant-cel .ant-cabecera h3 { margin: 0; font-size: 1.1rem; }
+            .modal-ant-cel .ant-cabecera p { margin: 6px 0 0 0; font-size: 11px; color: #666; }
+            .modal-ant-cel .ant-cuerpo { flex: 1; display: flex; flex-direction: column; overflow: auto; }
+            .modal-ant-cel .ant-seccion { padding: 20px 16px; border-bottom: 3px solid #dee2e6; min-height: 0; }
+            .modal-ant-cel .ant-seccion-titulo { font-size: 14px; margin-bottom: 12px; }
+            .modal-ant-cel input, .modal-ant-cel select { font-size: 16px; min-height: 44px; padding: 10px 12px; }
+            .modal-ant-cel .ant-botones { margin-top: auto; padding: 16px; border-top: 3px solid #dee2e6; background: #f8f9fa; flex-shrink: 0; display: flex; gap: 12px; }
+            .modal-ant-cel .ant-botones button { padding: 14px 20px; font-size: 16px; min-height: 48px; }
+        }
+        @media (max-width: 480px) { .modal-ant-cel .ant-botones button { padding: 14px; font-size: 15px; } }
+        .buscador-ant-wrap { position: relative; }
+        .buscador-ant-wrap input[type="text"] { padding-right: 36px; }
+        .buscador-ant-wrap .ico-lupa { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #6c757d; font-size: 1rem; }
+        .buscador-ant-resultados { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ced4da; border-top: none; max-height: 180px; overflow-y: auto; z-index: 100; display: none; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .buscador-ant-resultados .item-ant { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .buscador-ant-resultados .item-ant:hover { background: #e7f3ff; }
+        .buscador-ant-resultados .item-ant:last-child { border-bottom: none; }
+        .form-g.fecha-ant-wrap { position: relative; }
+        #ant_fecha_cal { display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; border: 1px solid #007bff; border-radius: 4px; box-sizing: border-box; font-size: inherit; }
 
         .scroll-usuarios { flex-grow: 1; overflow-y: auto; border: 1px solid #eee; margin-top: 5px; }
         .scroll-grid { height: 75%; overflow-y: auto; border: 1px solid #ddd; margin-top: 5px; background: #fff; }
@@ -130,11 +192,18 @@ $soloLectura = ($nivelAcceso < 2);
         <?php if (isset($_GET['msg']) && ($_GET['msg'] === 'solo_lectura' || $_GET['msg'] === 'sin_permiso')): ?>
             <p style="font-size:10px; color:#856404; background:#fff3cd; padding:6px; border-radius:4px; margin:0 0 6px;">Su nivel solo permite consulta (sin altas, bajas ni modificaciones).</p>
         <?php endif; ?>
+        <?php if (isset($_GET['mail_enviado']) && $_GET['mail_enviado'] == '1'): ?>
+            <p id="mensajeMailEnviado" style="font-size:10px; color:#155724; background:#d4edda; padding:6px; border-radius:4px; margin:0 0 6px;">✓ Mail enviado correctamente a Herrera Hugo.</p>
+        <?php endif; ?>
+        <?php if (isset($_GET['mail_error'])): ?>
+            <p id="mensajeMailError" style="font-size:10px; color:#721c24; background:#f8d7da; padding:6px; border-radius:4px; margin:0 0 6px;">✗ Error al enviar mail: <?= htmlspecialchars($_GET['mail_error']) ?></p>
+        <?php endif; ?>
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:4px;">
             <span style="font-size:9px; color:#666;"><?= htmlspecialchars($_SESSION['acceso_usuario'] ?? '') ?> (nivel <?= (int)($_SESSION['acceso_nivel'] ?? 0) ?>)</span>
             <div>
                 <?php if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
                     <a href="gestionar_accesos.php" style="color:#007bff; font-size:9px; margin-right:6px;">Accesos</a>
+                    <a href="respaldar_bd.php" style="color:#28a745; font-size:9px; margin-right:6px;">Respaldar</a>
                 <?php endif; ?>
                 <a href="logout.php" style="color:#dc3545; font-size:9px;">Salir</a>
             </div>
@@ -164,7 +233,12 @@ $soloLectura = ($nivelAcceso < 2);
         </div>
         
         <?php if (!$soloLectura): ?>
-            <a href="propiedades.php" class="btn-abm-prop">⚙️ Admin. Propiedades</a>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <a href="gestionar_finca.php" class="btn-abm-prop" style="flex: 1;">Finca</a>
+                <a href="gestionar_azucares.php" class="btn-abm-prop" style="flex: 1;">Azucar</a>
+                <a href="#" class="btn-abm-prop" onclick="return false;" style="flex: 1;">Arriendos</a>
+            </div>
+            <a href="propiedades.php" class="btn-abm-prop btn-admin-prop">⚙️ Admin. Propiedades</a>
             <a href="contrato_alquiler.php" class="btn-abm-prop btn-contrato">📜 Contrato de Alquiler</a>
             <a href="abm_indices.php" class="btn-abm-prop btn-indice">📈 ABM INDICE IPC</a>
         <?php endif; ?>
@@ -178,7 +252,12 @@ $soloLectura = ($nivelAcceso < 2);
         <button id="btnWord" class="btn-word-recibo" onclick="generarWord()">📄 RECIBO WORD</button>
         
         <div class="cabecera-detalle">
-            <h2 id="tituloMovimientos" style="font-size:1rem; color:#007bff; margin:0;">DETALLE DE CUENTA</h2>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <h2 id="tituloMovimientos" style="font-size:1rem; color:#007bff; margin:0;">DETALLE DE CUENTA</h2>
+                <?php if ($nivelAcceso === 3): ?>
+                <button type="button" class="btn-ant-cel" onclick="abrirModalAntCel()">Ant/cel</button>
+                <?php endif; ?>
+            </div>
             <div id="reloj-sistema"></div>
         </div>
         
@@ -246,10 +325,9 @@ $soloLectura = ($nivelAcceso < 2);
             </div>
             <div id="panelBotonesExtra" style="display:none;">
                 <div class="grid-botones-extra">
-                    <button type="button" id="btnCobroExpTransf" class="btn-caja btn-extra" style="background:#28a745; color:white;" onclick="abrirModalCobroExp(false)">Cobro Exp/transferencia</button>
-                    <button type="button" id="btnCobroExpEfvo" class="btn-caja btn-extra" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba;" onclick="abrirModalCobroExp(true)">Cobro expensas efvo</button>
+                    <button type="button" id="btnCobroExpTransf" class="btn-caja btn-extra" style="background:#28a745; color:white; display:none;" onclick="abrirModalCobroExp(false)">Cobro Exp/transferencia</button>
+                    <button type="button" id="btnCobroExpEfvo" class="btn-caja btn-extra" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; display:none;" onclick="abrirModalCobroExp(true)">Cobro expensas efvo</button>
                     <button type="button" id="btnSueldoExtras" class="btn-caja btn-extra" style="background:#D4A5A5; color:white;" onclick="cargarSueldoExtras()">Sueldo/Extras</button>
-                    <button type="button" id="btnVacio" class="btn-caja btn-extra" style="background:#6c757d;" onclick="void(0)">—</button>
                 </div>
             </div>
         </div>
@@ -307,6 +385,59 @@ $soloLectura = ($nivelAcceso < 2);
             </div>
         </div>
     </div>
+
+    <?php if ($nivelAcceso === 3): ?>
+    <script>
+    var usuariosAnticipoLista = <?= json_encode(array_map(function($u) { return ['id' => (int)$u['id'], 'apellido' => $u['apellido']]; }, $usuarios_anticipo)) ?>;
+    </script>
+    <div id="modalAntCel" class="modal-ant-cel-overlay" onclick="if(event.target===this) cerrarModalAntCel()">
+        <div class="modal-ant-cel" onclick="event.stopPropagation()">
+            <div class="ant-cabecera">
+                <h3>Anticipo (Ant/cel)</h3>
+                <p>Retiro como anticipo. Sin movimiento de caja. Comprobante y referencia: ANTICIPO.</p>
+            </div>
+            <div class="ant-cuerpo">
+                <div class="ant-seccion">
+                    <div class="ant-seccion-titulo">1. Búsqueda de usuario</div>
+                    <div class="form-g">
+                        <div id="buscadorAntWrap" class="buscador-ant-wrap">
+                            <input type="text" id="ant_buscador" placeholder="Buscar usuario..." autocomplete="off">
+                            <span class="ico-lupa" aria-hidden="true">🔍</span>
+                            <input type="hidden" id="ant_usuario" value="">
+                            <div id="ant_resultados" class="buscador-ant-resultados"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ant-seccion">
+                    <div class="ant-seccion-titulo">2. Fecha y monto</div>
+                    <div class="ant-fila-fecha-monto">
+                        <div class="form-g fecha-ant-wrap">
+                            <label>Fecha</label>
+                            <input type="text" id="ant_fecha" placeholder="dd/mm/aaaa" maxlength="10" value="<?= date('d/m/Y') ?>" title="Doble clic: calendario." onfocus="cursorInicioAntFecha()" ondblclick="abrirCalendarioAntFecha(event)">
+                            <input type="date" id="ant_fecha_cal">
+                        </div>
+                        <div class="form-g">
+                            <label>Monto (retiro)</label>
+                            <input type="number" id="ant_monto" step="0.01" min="0.01" placeholder="Ej: 50000" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="ant-seccion">
+                    <div class="ant-seccion-titulo">3. Concepto</div>
+                    <div class="form-g">
+                        <label>Concepto</label>
+                        <input type="text" id="ant_concepto" value="Anticipo">
+                    </div>
+                    <div id="ant_msg" style="font-size:11px; margin-bottom:8px; display:none;"></div>
+                </div>
+            </div>
+            <div class="ant-botones">
+                <button type="button" class="btn-guardar-ant" onclick="guardarAnticipo()">Guardar</button>
+                <button type="button" class="btn-cerrar" onclick="cerrarModalAntCel()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
 <script>
 let uSel = null; 
@@ -366,7 +497,6 @@ function cargarMovimientos(fila, id) {
     var btnCobroExpTransf = document.getElementById("btnCobroExpTransf");
     var btnCobroExpEfvo = document.getElementById("btnCobroExpEfvo");
     var btnSueldoExtras = document.getElementById("btnSueldoExtras");
-    var btnVacio = document.getElementById("btnVacio");
     
     if (panelCons) panelCons.style.display = esConsorcioUsuario ? "block" : "none";
     if (panelExtra) panelExtra.style.display = esConsorcioUsuario ? "none" : "grid";
@@ -377,11 +507,26 @@ function cargarMovimientos(fila, id) {
         document.getElementById("btnWord").style.display = "block";
     }
     
-    // Ocultar botones de cobro expensas y sueldos cuando es cuenta Caja
-    if (btnCobroExpTransf) btnCobroExpTransf.style.display = esCajaUsuario ? "none" : "block";
-    if (btnCobroExpEfvo) btnCobroExpEfvo.style.display = esCajaUsuario ? "none" : "block";
-    if (btnSueldoExtras) btnSueldoExtras.style.display = esCajaUsuario ? "none" : "block";
-    if (btnVacio) btnVacio.style.display = esCajaUsuario ? "none" : "block";
+    // Cobro Exp/transferencia y Cobro expensas efvo: solo si es propietario o inquilino. Sueldo/Extras: solo si NO es propietario ni inquilino (y no Caja).
+    if (esCajaUsuario) {
+        if (btnCobroExpTransf) btnCobroExpTransf.style.display = "none";
+        if (btnCobroExpEfvo) btnCobroExpEfvo.style.display = "none";
+        if (btnSueldoExtras) btnSueldoExtras.style.display = "none";
+    } else {
+        fetch('obtener_propiedades_propietario.php?id=' + id)
+            .then(function(r) { return r.json(); })
+            .then(function(props) {
+                var esPropOInq = props && props.length > 0;
+                if (btnCobroExpTransf) btnCobroExpTransf.style.display = esPropOInq ? "block" : "none";
+                if (btnCobroExpEfvo) btnCobroExpEfvo.style.display = esPropOInq ? "block" : "none";
+                if (btnSueldoExtras) btnSueldoExtras.style.display = esPropOInq ? "none" : "block";
+            })
+            .catch(function() {
+                if (btnCobroExpTransf) btnCobroExpTransf.style.display = "none";
+                if (btnCobroExpEfvo) btnCobroExpEfvo.style.display = "none";
+                if (btnSueldoExtras) btnSueldoExtras.style.display = "block";
+            });
+    }
     if (!esConsorcioUsuario) {
         if (resumenLinea) {
             document.getElementById("resumenLiqOrdinarias").textContent = "0,00";
@@ -516,6 +661,121 @@ function abrirModalLiquidarExpensas() {
 
 function cerrarModalLiqExp() {
     document.getElementById('modalLiqExp').classList.remove('visible');
+}
+
+function abrirModalAntCel() {
+    var el = document.getElementById('modalAntCel');
+    if (el) {
+        el.classList.add('activo');
+        var hoy = new Date();
+        var dd = String(hoy.getDate()).padStart(2, '0');
+        var mm = String(hoy.getMonth() + 1).padStart(2, '0');
+        var aaaa = hoy.getFullYear();
+        var fechaHoy = dd + '/' + mm + '/' + aaaa;
+        document.getElementById('ant_concepto').value = 'Anticipo';
+        document.getElementById('ant_monto').value = '';
+        document.getElementById('ant_buscador').value = '';
+        document.getElementById('ant_usuario').value = '';
+        document.getElementById('ant_resultados').style.display = 'none';
+        document.getElementById('ant_msg').style.display = 'none';
+        document.getElementById('ant_fecha').value = fechaHoy;
+        setTimeout(function() { document.getElementById('ant_buscador').focus(); }, 100);
+    }
+}
+function cerrarModalAntCel() {
+    var el = document.getElementById('modalAntCel');
+    if (el) el.classList.remove('activo');
+}
+(function() {
+    var buscador = document.getElementById('ant_buscador');
+    var resultados = document.getElementById('ant_resultados');
+    var hiddenId = document.getElementById('ant_usuario');
+    if (!buscador || !resultados) return;
+    function filtrarAnt() {
+        var q = (buscador.value || '').toUpperCase().trim();
+        var lista = typeof usuariosAnticipoLista !== 'undefined' ? usuariosAnticipoLista : [];
+        var filtrados = q ? lista.filter(function(u) { return (u.apellido || '').toUpperCase().indexOf(q) >= 0; }) : lista;
+        resultados.innerHTML = filtrados.slice(0, 50).map(function(u) {
+            return '<div class="item-ant" data-id="' + u.id + '" data-nombre="' + (u.apellido || '').replace(/"/g, '&quot;') + '">' + (u.apellido || '') + '</div>';
+        }).join('');
+        resultados.style.display = filtrados.length > 0 ? 'block' : 'none';
+    }
+    buscador.addEventListener('input', filtrarAnt);
+    buscador.addEventListener('focus', filtrarAnt);
+    resultados.addEventListener('click', function(e) {
+        if (e.target.classList.contains('item-ant')) {
+            hiddenId.value = e.target.getAttribute('data-id');
+            buscador.value = e.target.getAttribute('data-nombre') || '';
+            resultados.style.display = 'none';
+        }
+    });
+    document.addEventListener('click', function(e) {
+        var wrap = document.getElementById('buscadorAntWrap');
+        if (wrap && resultados && !wrap.contains(e.target)) resultados.style.display = 'none';
+    });
+})();
+function antFechaAISO() {
+    var v = (document.getElementById('ant_fecha').value || '').trim();
+    if (!v) return '';
+    var partes = v.split(/[\/\-\.]/);
+    if (partes.length !== 3) return v;
+    var d = partes[0].padStart(2, '0'), mes = partes[1].padStart(2, '0'), anio = partes[2];
+    if (anio.length === 2) anio = '20' + anio;
+    return anio + '-' + mes + '-' + d;
+}
+function guardarAnticipo() {
+    var usuarioId = document.getElementById('ant_usuario').value;
+    var fechaISO = antFechaAISO();
+    var concepto = document.getElementById('ant_concepto').value.trim() || 'Anticipo';
+    var monto = parseFloat(document.getElementById('ant_monto').value);
+    var msgEl = document.getElementById('ant_msg');
+    if (!usuarioId) {
+        msgEl.textContent = 'Seleccioná un usuario.';
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#dc3545';
+        return;
+    }
+    if (!monto || monto <= 0) {
+        msgEl.textContent = 'Ingresá un monto mayor a 0.';
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#dc3545';
+        return;
+    }
+    if (!fechaISO) {
+        msgEl.textContent = 'Ingresá la fecha (dd/mm/aaaa).';
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#dc3545';
+        return;
+    }
+    msgEl.style.display = 'none';
+    var p = new URLSearchParams({
+        id: usuarioId,
+        fecha: fechaISO,
+        concepto: concepto,
+        compro: 'ANTICIPO',
+        refer: 'ANTICIPO',
+        monto: -Math.abs(monto)
+    });
+    fetch('guardar_movimiento.php', { method: 'POST', body: p })
+        .then(function(r) { return r.text(); })
+        .then(function(txt) {
+            if (txt.trim() === 'OK' || txt.trim() === 'OK_CAJA') {
+                cerrarModalAntCel();
+                if (uSel === usuarioId) {
+                    var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
+                    if (fila) cargarMovimientos(fila, usuarioId);
+                }
+            } else {
+                msgEl.textContent = 'Error: ' + txt;
+                msgEl.style.display = 'block';
+                msgEl.style.color = '#dc3545';
+            }
+        })
+        .catch(function() {
+            msgEl.textContent = 'Error de red.';
+            msgEl.style.display = 'block';
+            msgEl.style.color = '#dc3545';
+        });
 }
 
 function abrirImprimirExpensas() {
@@ -686,6 +946,55 @@ function abrirCalendarioFecha(e) {
     inpCal.addEventListener('blur', onBlur);
 }
 
+function cursorInicioAntFecha() {
+    var inp = document.getElementById('ant_fecha');
+    if (inp) {
+        setTimeout(function() {
+            var val = inp.value || '';
+            var len = val.length;
+            var hastaDia = len >= 2 ? 2 : len;
+            inp.setSelectionRange(0, hastaDia);
+            inp.selectionStart = 0;
+            inp.selectionEnd = hastaDia;
+        }, 0);
+    }
+}
+function abrirCalendarioAntFecha(e) {
+    e.preventDefault();
+    var inpTexto = document.getElementById('ant_fecha');
+    var inpCal = document.getElementById('ant_fecha_cal');
+    if (!inpTexto || !inpCal) return;
+    var v = (inpTexto.value || '').trim().split(/[\/\-\.]/);
+    if (v.length === 3) {
+        var d = v[0].padStart(2, '0'), m = v[1].padStart(2, '0'), a = v[2];
+        if (a.length === 2) a = '20' + a;
+        inpCal.value = a + '-' + m + '-' + d;
+    } else {
+        var hoy = new Date();
+        inpCal.value = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+    }
+    inpTexto.style.visibility = 'hidden';
+    inpCal.style.display = 'block';
+    inpCal.focus();
+    if (inpCal.showPicker) inpCal.showPicker();
+    function cerrarCal() {
+        var val = inpCal.value;
+        if (val) {
+            var p = val.split('-');
+            inpTexto.value = p[2] + '/' + p[1] + '/' + p[0];
+        }
+        inpCal.style.display = 'none';
+        inpTexto.style.visibility = '';
+        inpTexto.focus();
+        inpCal.removeEventListener('change', onCambio);
+        inpCal.removeEventListener('blur', onBlur);
+    }
+    function onCambio() { cerrarCal(); }
+    function onBlur() { setTimeout(cerrarCal, 150); }
+    inpCal.addEventListener('change', onCambio);
+    inpCal.addEventListener('blur', onBlur);
+}
+
 function cargarExpensa(botonEl) {
     if (!uSel) {
         alert("Seleccione un usuario primero.");
@@ -810,6 +1119,46 @@ function guardar() {
         document.getElementById("ins_monto").value = "";
     });
 }
+
+<?php if ($archivo_respaldo !== null && $archivo_respaldo !== false): ?>
+// Descargar automáticamente el respaldo recién creado
+(function() {
+    var archivo = <?= json_encode($archivo_respaldo) ?>;
+    var url = 'descargar_respaldo_auto.php?archivo=' + encodeURIComponent(archivo);
+    var link = document.createElement('a');
+    link.href = url;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+})();
+<?php endif; ?>
+
+// Ocultar mensajes de mail después de 30 segundos
+(function() {
+    var mensajeEnviado = document.getElementById('mensajeMailEnviado');
+    var mensajeError = document.getElementById('mensajeMailError');
+    
+    if (mensajeEnviado) {
+        setTimeout(function() {
+            mensajeEnviado.style.transition = 'opacity 0.5s';
+            mensajeEnviado.style.opacity = '0';
+            setTimeout(function() {
+                mensajeEnviado.remove();
+            }, 500);
+        }, 30000); // 30 segundos
+    }
+    
+    if (mensajeError) {
+        setTimeout(function() {
+            mensajeError.style.transition = 'opacity 0.5s';
+            mensajeError.style.opacity = '0';
+            setTimeout(function() {
+                mensajeError.remove();
+            }, 500);
+        }, 30000); // 30 segundos
+    }
+})();
 </script>
 <?php include 'timeout_sesion_inc.php'; ?>
 </body>

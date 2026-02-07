@@ -2,7 +2,7 @@
 include 'db.php';
 include 'verificar_sesion.php';
 include 'helpers_contrato.php';
-
+aen cuenta caja en 
 if (!isset($_GET['id'])) {
     die("ID no recibido");
 }

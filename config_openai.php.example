@@ -1,0 +1,4 @@
+<?php
+// Copiá este archivo como config_openai.php y poné tu API key de OpenAI.
+// O definí la variable de entorno OPENAI_API_KEY en el servidor.
+$openai_api_key = 'sk-...';

@@ -54,6 +54,7 @@ $primera_vez = !$tabla_existe || !$hay_accesos;
                 <option value="3" selected>3 - Máximo (administrador)</option>
                 <option value="2">2 - Estándar</option>
                 <option value="1">1 - Restringido</option>
+                <option value="0">0 - Partes desde cel</option>
             </select>
             <button type="submit">CREAR Y ENTRAR</button>
         </form>

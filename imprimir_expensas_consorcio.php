@@ -281,28 +281,39 @@ $anio_actual = date('Y');
     <div class="container">
         <h1>EXPENSAS - <?= htmlspecialchars(strtoupper($row_u['apellido'])) ?></h1>
         
+        <?php if (isset($_GET['mail_resultado'])): ?>
+            <div style="background: <?= isset($_GET['mail_errores']) ? '#fff3cd' : '#d4edda' ?>; color: <?= isset($_GET['mail_errores']) ? '#856404' : '#155724' ?>; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">
+                <strong><?= isset($_GET['mail_errores']) ? '⚠️' : '✓' ?></strong> <?= htmlspecialchars($_GET['mail_resultado']) ?>
+                <?php if (isset($_GET['mail_errores'])): ?>
+                    <div style="margin-top: 8px; font-size: 11px;">
+                        <strong>Detalles:</strong><br>
+                        <?= nl2br(htmlspecialchars($_GET['mail_errores'])) ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+        
         <div class="controles no-print">
             <button onclick="imprimirTodas()">🖨️ Imprimir Todas</button>
+            <button onclick="enviarExpensasPorMail()">📧 Enviar por mail</button>
             <button onclick="window.close()">Cerrar</button>
         </div>
         
         <?php foreach ($expensas as $idx => $expensa): ?>
         <div class="expensa-container" id="expensa-<?= $idx ?>">
             <div class="expensa-header">
-                <div class="expensa-title">EXPENSA - <?= htmlspecialchars($expensa['propiedad']) ?></div>
+                <div class="expensa-title">EXPENSA - <?= htmlspecialchars($expensa['propiedad']) ?> - Porcentaje: <?= number_format($expensa['porcentaje'], 2, ',', '.') ?>%</div>
                 <div class="expensa-info">Mes Liquidado: <?= $ultimo_mes_liq ? htmlspecialchars($ultimo_mes_liq) : 'Desde inicio' ?></div>
                 <div class="expensa-info">Fecha: <?= $fecha_actual ?></div>
             </div>
             
             <div class="expensa-section">
-                <h3>PROPIETARIO</h3>
-                <p><strong><?= htmlspecialchars($expensa['propietario']) ?></strong></p>
+                <h3>PROPIETARIO: <strong><?= htmlspecialchars($expensa['propietario']) ?></strong></h3>
             </div>
             
             <?php if ($expensa['inquilino']): ?>
             <div class="expensa-section">
-                <h3>INQUILINO</h3>
-                <p><strong><?= htmlspecialchars($expensa['inquilino']) ?></strong></p>
+                <h3>INQUILINO: <strong><?= htmlspecialchars($expensa['inquilino']) ?></strong></h3>
             </div>
             <?php endif; ?>
             
@@ -361,8 +372,7 @@ $anio_actual = date('Y');
             </div>
             
             <div class="expensa-section">
-                <h3>PORCENTAJE Y MONTO A PAGAR</h3>
-                <p><strong>Porcentaje:</strong> <?= number_format($expensa['porcentaje'], 2, ',', '.') ?>%</p>
+                <h3>MONTO A PAGAR</h3>
                 <div class="total-box">
                     <strong>MONTO A PAGAR: $ <?= number_format($expensa['monto'], 2, ',', '.') ?></strong>
                 </div>
@@ -450,6 +460,14 @@ $anio_actual = date('Y');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }
+
+    function enviarExpensasPorMail() {
+        if (!confirm('¿Enviar las expensas por mail a propietarios e inquilinos?')) {
+            return;
+        }
+        var consorcioId = <?= $consorcio_id ?>;
+        window.location.href = 'enviar_expensas_mail.php?id=' + consorcioId;
+    }
     
     window.imprimirExpensa = imprimirExpensa;
     window.seguirExpensa = seguirExpensa;
@@ -483,6 +501,14 @@ $anio_actual = date('Y');
         }, 1000);
         
         return false;
+    }
+
+    function enviarExpensasPorMail() {
+        if (!confirm('¿Enviar las expensas por mail a propietarios e inquilinos?')) {
+            return;
+        }
+        var consorcioId = <?= $consorcio_id ?>;
+        window.location.href = 'enviar_expensas_mail.php?id=' + consorcioId;
     }
     </script>
 </body>

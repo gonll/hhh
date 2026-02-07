@@ -11,4 +11,4 @@
  */
 $MAIL_SMTP_USER = 'herrerayllobeta@gmail.com';
 $MAIL_SMTP_PASS = 'ewiltvmrmzfwuwrs';  // Contraseña de aplicación de Gmail (sin espacios)
-$MAIL_FROM_NAME = 'Sistema HHH';
+$MAIL_FROM_NAME = 'Administracion Herrera Y Llobeta SRL';

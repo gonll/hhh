@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear'])) {
     $usuario = trim($_POST['usuario'] ?? '');
     $clave   = $_POST['clave'] ?? '';
     $nivel   = (int)($_POST['nivel_acceso'] ?? 2);
-    if ($nivel < 1 || $nivel > 3) $nivel = 2;
+    if ($nivel < 0 || $nivel > 3) $nivel = 2;
     if ($usuario !== '' && $clave !== '') {
         $hash = password_hash($clave, PASSWORD_DEFAULT);
         $usuario_esc = mysqli_real_escape_string($conexion, $usuario);
@@ -77,6 +77,7 @@ $lista = mysqli_query($conexion, "SELECT id, usuario, nivel_acceso, fecha_creaci
             <div>
                 <label>Nivel</label>
                 <select name="nivel_acceso">
+                    <option value="0">0 - Partes desde cel</option>
                     <option value="1">1 - Restringido</option>
                     <option value="2" selected>2 - Estándar</option>
                     <option value="3">3 - Máximo</option>
@@ -97,10 +98,15 @@ $lista = mysqli_query($conexion, "SELECT id, usuario, nivel_acceso, fecha_creaci
             <tr><th>Usuario</th><th>Nivel</th><th>Fecha creación</th></tr>
         </thead>
         <tbody>
-            <?php while ($r = mysqli_fetch_assoc($lista)): ?>
+            <?php
+            $nombres_nivel = [0 => 'Partes desde cel', 1 => 'Restringido', 2 => 'Estándar', 3 => 'Máximo'];
+            while ($r = mysqli_fetch_assoc($lista)):
+                $n = (int)$r['nivel_acceso'];
+                $nombre_nivel = $nombres_nivel[$n] ?? $n;
+            ?>
                 <tr>
                     <td><?= htmlspecialchars($r['usuario']) ?></td>
-                    <td><?= (int)$r['nivel_acceso'] ?></td>
+                    <td><?= $n ?> - <?= htmlspecialchars($nombre_nivel) ?></td>
                     <td><?= date('d/m/Y H:i', strtotime($r['fecha_creacion'])) ?></td>
                 </tr>
             <?php endwhile; ?>

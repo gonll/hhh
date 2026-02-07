@@ -1,5 +1,5 @@
 <?php
-include 'db.php';
+en el formulario estas tres inultima el texto cobrado justificado achicar ese diinclude 'db.php';
 include 'verificar_sesion.php';
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=solo_lectura');

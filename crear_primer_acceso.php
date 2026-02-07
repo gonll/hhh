@@ -26,7 +26,7 @@ if (!mysqli_query($conexion, $sql_tabla)) {
 $usuario = trim($_POST['usuario']);
 $clave   = $_POST['clave'];
 $nivel   = (int)($_POST['nivel_acceso'] ?? 3);
-if ($nivel < 1 || $nivel > 3) $nivel = 3;
+if ($nivel < 0 || $nivel > 3) $nivel = 3;
 
 $hash = password_hash($clave, PASSWORD_DEFAULT);
 $usuario_esc = mysqli_real_escape_string($conexion, $usuario);
