@@ -49,8 +49,9 @@ if ($nivelAcceso === 3) {
     <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; align-items: flex-start; }
-        
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: stretch; }
+        .deploy-navbar { flex: 0 0 auto; margin-bottom: 8px; }
+        .contenedor-principal { display: flex; align-items: flex-start; flex: 1; min-width: 0; }
         /* Contenedor Lateral Izquierdo */
         .contenedor-usuarios { 
             background: white; padding: 10px; border-radius: 8px; 
@@ -199,7 +200,11 @@ if ($nivelAcceso === 3) {
     </style>
 </head>
 <body>
+    <?php if (defined('ENVIRONMENT') && ENVIRONMENT === 'dev'): ?>
+    <nav class="deploy-navbar"><?php include 'controlDeploy.php'; ?></nav>
+    <?php endif; ?>
 
+    <div class="contenedor-principal">
     <div class="contenedor-usuarios">
         <?php if (isset($_GET['msg']) && ($_GET['msg'] === 'solo_lectura' || $_GET['msg'] === 'sin_permiso')): ?>
             <p style="font-size:10px; color:#856404; background:#fff3cd; padding:6px; border-radius:4px; margin:0 0 6px;">Su nivel solo permite consulta (sin altas, bajas ni modificaciones).</p>
@@ -364,6 +369,8 @@ if ($nivelAcceso === 3) {
         </div>
         <?php endif; ?>
     </div>
+
+    </div><!-- .contenedor-principal -->
 
     <div id="modalCobroExp" class="modal-overlay" onclick="if(event.target===this) cerrarModalCobroExp()">
         <div class="modal-cobro" onclick="event.stopPropagation()">

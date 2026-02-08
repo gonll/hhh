@@ -1,6 +1,10 @@
 <?php
 $env = parse_ini_file(__DIR__ . '/.env');
 
+if (!defined('ENVIRONMENT')) {
+    define('ENVIRONMENT', $env['ENVIRONMENT'] ?? 'production');
+}
+
 $conexion = mysqli_connect(
     $env['DB_HOST'],
     $env['DB_USER'],
