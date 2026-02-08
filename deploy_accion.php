@@ -18,9 +18,36 @@ if ($action === 'subir_codigo') {
     $cmd = 'cd ' . escapeshellarg($dir) . ' && git add . && git commit -m ' . escapeshellarg('auto commit') . ' --allow-empty && git pull && git push 2>&1';
     $output = [];
     exec($cmd, $output, $code);
-    $msg = $code === 0 ? 'ok' : 'error';
-    $extra = $code !== 0 ? '&msg=' . urlencode(implode("\n", $output)) : '';
-    header('Location: index.php?deploy=' . $msg . $extra);
+    if ($code !== 0) {
+        header('Location: index.php?deploy=error&msg=' . urlencode(implode("\n", $output)));
+        exit;
+    }
+    
+    $uuid = trim($env['DEPLOY_UUID'] ?? '');
+    $urlGit = trim($env['DEPLOY_URL_GIT'] ?? '');
+    if ($urlGit === '' && !empty($env['DEPLOY_URL'])) {
+        $urlGit = str_replace('sync_db.php', 'sync_git.php', trim($env['DEPLOY_URL']));
+    }
+    if ($urlGit !== '' && $uuid !== '') {
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => 'Content-Type: application/x-www-form-urlencoded',
+                'content' => 'uuid=' . rawurlencode($uuid),
+            ],
+        ]);
+        $resp = @file_get_contents($urlGit, false, $ctx);
+        $syncOk = ($resp !== false);
+        if ($syncOk) {
+            $json = @json_decode($resp, true);
+            $syncOk = isset($json['ok']) && $json['ok'] === true;
+        }
+        if (!$syncOk) {
+            header('Location: index.php?deploy=error&msg=' . urlencode('Push ok, pero falló pull en el servidor'));
+            exit;
+        }
+    }
+    header('Location: index.php?deploy=ok');
     exit;
 }
 
