@@ -234,6 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mensaje_stock = $id_borrar > 0 ? 'Error al eliminar.' : 'ID inválido.';
         }
     } elseif (isset($_POST['alta_stock'])) {
+        $es_ajax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || !empty($_POST['alta_ajax']);
         $editar_id = (int)($_POST['id'] ?? 0);
         $fecha = isset($_POST['fecha']) ? trim($_POST['fecha']) : '';
         $linea = (int)($_POST['linea'] ?? 1);
@@ -242,8 +243,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $orden = (int)($_POST['orden'] ?? 0);
         $deposito = mysqli_real_escape_string($conexion, strtoupper(trim($_POST['deposito'] ?? '')));
         $cantidad = (int)($_POST['cantidad'] ?? 0);
+        $articulo_raw = trim($_POST['articulo'] ?? '');
+        $deposito_raw = trim($_POST['deposito'] ?? '');
+
         if ($orden < 1 || $cantidad < 1) {
             $mensaje_stock = 'Orden y Cantidad deben ser mayor a 0 (no se acepta 0 como dato válido).';
+            if ($es_ajax && $editar_id === 0) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['ok' => false, 'mensaje' => $mensaje_stock]);
+                exit;
+            }
         } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
             if ($editar_id > 0) {
                 $sql_up = "UPDATE stock SET fecha = '$fecha', linea = $linea, articulo = '$articulo', orden = $orden, cantidad = $cantidad, deposito = " . ($deposito === '' ? "NULL" : "'$deposito'") . " WHERE id = $editar_id";
@@ -258,14 +267,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sql_ins = "INSERT INTO stock (fecha, linea, articulo, orden, cantidad, deposito) VALUES ('$fecha', $linea, '$articulo', $orden, $cantidad, " . ($deposito === '' ? "NULL" : "'$deposito'") . ")";
                 if (mysqli_query($conexion, $sql_ins)) {
                     $mensaje_stock = 'Registro agregado.';
+                    if ($es_ajax) {
+                        header('Content-Type: application/json; charset=utf-8');
+                        echo json_encode([
+                            'ok' => true,
+                            'mensaje' => $mensaje_stock,
+                            'fecha' => $fecha,
+                            'linea' => $linea,
+                            'articulo' => $articulo_raw,
+                            'orden' => $orden,
+                            'cantidad' => $cantidad,
+                            'deposito' => $deposito_raw
+                        ]);
+                        exit;
+                    }
                     header('Location: gestionar_azucares.php?alta=ok');
                     exit;
                 } else {
                     $mensaje_stock = 'Error: ' . mysqli_error($conexion);
+                    if ($es_ajax) {
+                        header('Content-Type: application/json; charset=utf-8');
+                        echo json_encode(['ok' => false, 'mensaje' => $mensaje_stock]);
+                        exit;
+                    }
                 }
             }
         } else {
             $mensaje_stock = 'Fecha inválida (formato AAAA-MM-DD).';
+            if ($es_ajax && $editar_id === 0) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['ok' => false, 'mensaje' => $mensaje_stock]);
+                exit;
+            }
         }
     }
 }
@@ -640,8 +673,9 @@ function fmtNum($n) {
                             <?php endforeach; ?>
                         </datalist>
                     </div>
+                    <div id="alta_mensaje_ok" class="msg-ok-modal" style="display: none; margin-bottom: 8px; padding: 8px; background: #d4edda; color: #155724; border-radius: 4px;"></div>
                     <div class="botones">
-                        <button type="submit" class="btn-guardar" id="alta_btn_guardar">Guardar</button>
+                        <button type="button" class="btn-guardar" id="alta_btn_guardar">Guardar</button>
                         <button type="button" class="btn-cerrar" onclick="cerrarModalAltaStock()">Cancelar</button>
                     </div>
                 </form>
@@ -765,6 +799,8 @@ function fmtNum($n) {
         document.getElementById('alta_cantidad').value = '';
         document.getElementById('alta_articulo').value = '<?= htmlspecialchars($ultimo_articulo, ENT_QUOTES, 'UTF-8') ?>';
         document.getElementById('alta_deposito').value = '<?= htmlspecialchars($ultimo_deposito, ENT_QUOTES, 'UTF-8') ?>';
+        var m = document.getElementById('alta_mensaje_ok');
+        if (m) m.style.display = 'none';
         document.getElementById('modalAltaStock').classList.add('activo');
     });
     function abrirFormularioEditarStock(tr) {
@@ -1146,10 +1182,75 @@ function fmtNum($n) {
             document.getElementById(camposAltaOrden[idx + 1]).focus();
         } else {
             if (id === 'alta_btn_guardar') {
-                if (form.checkValidity()) form.submit();
+                if (form.checkValidity() && typeof ejecutarGuardarAltaStock === 'function') ejecutarGuardarAltaStock();
             }
         }
     });
+
+    // Alta stock: Guardar por AJAX si es nuevo (no se cierra el formulario); si es edición, submit normal
+    (function() {
+        var formAlta = document.getElementById('formAltaStock');
+        var altaId = document.getElementById('alta_id');
+        var msgOk = document.getElementById('alta_mensaje_ok');
+        if (!formAlta || !altaId) return;
+
+        function mostrarMensaje(texto, esError) {
+            msgOk.textContent = texto;
+            msgOk.style.background = esError ? '#f8d7da' : '#d4edda';
+            msgOk.style.color = esError ? '#721c24' : '#155724';
+            msgOk.style.display = 'block';
+        }
+        function ocultarMensaje() {
+            msgOk.style.display = 'none';
+        }
+
+        window.ejecutarGuardarAltaStock = function() {
+            var esNuevo = !altaId.value || altaId.value === '0';
+            if (esNuevo) {
+                if (!formAlta.checkValidity()) {
+                    formAlta.reportValidity();
+                    return;
+                }
+                ocultarMensaje();
+                var formData = new FormData(formAlta);
+                formData.append('alta_ajax', '1');
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', 'gestionar_azucares.php');
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.onload = function() {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        if (data.ok) {
+                            mostrarMensaje('Se guardó con éxito.', false);
+                            altaId.value = '';
+                            document.getElementById('alta_fecha').value = data.fecha || '';
+                            document.getElementById('alta_linea').value = String(data.linea || 1);
+                            document.getElementById('alta_articulo').value = data.articulo || '';
+                            document.getElementById('alta_orden').value = String((data.orden || 0) + 1);
+                            document.getElementById('alta_cantidad').value = String(data.cantidad || '');
+                            document.getElementById('alta_deposito').value = data.deposito || '';
+                            document.getElementById('alta_orden').focus();
+                            setTimeout(ocultarMensaje, 3000);
+                        } else {
+                            mostrarMensaje(data.mensaje || 'Error.', true);
+                        }
+                    } catch (err) {
+                        mostrarMensaje('Error al guardar.', true);
+                    }
+                };
+                xhr.onerror = function() {
+                    mostrarMensaje('Error de conexión.', true);
+                };
+                xhr.send(formData);
+            } else {
+                formAlta.submit();
+            }
+        };
+
+        document.getElementById('alta_btn_guardar').addEventListener('click', function() {
+            if (formAlta.checkValidity() && typeof ejecutarGuardarAltaStock === 'function') ejecutarGuardarAltaStock();
+        });
+    })();
 
     function fmtNum(n) {
         if (n === null || n === undefined || n === '') return '0';

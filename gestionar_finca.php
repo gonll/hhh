@@ -399,7 +399,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .vista-partes-cel .buscador-usuario-container { width: 100% !important; }
         .vista-partes-cel .form-group input, .vista-partes-cel .form-group select, .vista-partes-cel .form-group textarea { font-size: 16px; min-height: 44px; }
         .vista-partes-cel .btn { padding: 10px 16px; min-height: 44px; font-size: 14px; touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,0,0,0.1); cursor: pointer; }
-        .vista-partes-cel #btnCargaGasoilSisterna { min-height: 48px; padding: 12px 20px; font-size: 14px; display: block; width: 100%; max-width: 320px; margin: 0 auto; box-sizing: border-box; }
+        .vista-partes-cel #btnCargaGasoilSisterna { min-height: 48px; padding: 12px 20px; font-size: 14px; display: block; width: 100%; max-width: 320px; margin: 0 auto; box-sizing: border-box; position: relative; z-index: 5; }
         .vista-partes-cel .wrap-tabla-pdt { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .vista-partes-cel .tabla-listado-pdt { display: table; width: 100%; }
         .vista-partes-cel .tabla-listado-pdt thead, .vista-partes-cel .tabla-listado-pdt tbody, .vista-partes-cel .tabla-listado-pdt tr { display: table-row; }
@@ -433,7 +433,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?></h2>
             <div style="text-align: right; flex-shrink: 0;">
                 <div style="margin-bottom: 6px;">
-                    <button type="button" id="btnCargaGasoilSisterna" class="btn btn-secondary" style="font-size: 12px;">Carga gasoil en cisterna</button>
+                    <button type="button" id="btnCargaGasoilSisterna" class="btn btn-secondary" style="font-size: 12px;" ontouchend="var f=document.getElementById('formCargaGasoilSisterna'); if(f){ f.style.display=f.style.display==='none'?'block':'none'; } event.preventDefault();">Carga gasoil en cisterna</button>
                 </div>
                 <div style="font-size: 13px;">
                     <strong>Gestión de gasoil</strong><br>
@@ -938,16 +938,17 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     
     tipoHoras.addEventListener('change', manejarCambioTipoHoras);
     
-    // Toggle formulario carga gasoil en cisterna (también touchend para móvil)
-    const btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
+    // Toggle formulario carga gasoil en cisterna (función global para uso desde onclick; móvil usa ontouchend inline)
     const formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
-    function toggleFormCargaGasoil(e) {
-        if (e && e.type === 'touchend') e.preventDefault();
+    window.toggleCargaGasoilForm = function() {
         if (formCargaGasoilSisterna) formCargaGasoilSisterna.style.display = formCargaGasoilSisterna.style.display === 'none' ? 'block' : 'none';
-    }
+    };
+    var btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
     if (btnCargaGasoilSisterna && formCargaGasoilSisterna) {
-        btnCargaGasoilSisterna.addEventListener('click', toggleFormCargaGasoil);
-        btnCargaGasoilSisterna.addEventListener('touchend', toggleFormCargaGasoil, { passive: false });
+        btnCargaGasoilSisterna.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggleCargaGasoilForm();
+        });
     }
     
     // Guardar valores cuando cambian los campos
