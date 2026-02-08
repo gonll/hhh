@@ -21,6 +21,7 @@ if (!$res_check || mysqli_num_rows($res_check) == 0) {
         fecha_vta DATE NULL,
         cant_vta INT NULL DEFAULT 0,
         vendida_a_id INT NULL,
+        operador_id INT NULL,
         precio_vta DECIMAL(12,2) NULL DEFAULT 0,
         fecha_fact DATE NULL,
         cant_fact INT NULL DEFAULT 0,
@@ -46,6 +47,10 @@ $res_col2 = @mysqli_query($conexion, "SHOW COLUMNS FROM stock LIKE 'venta_movimi
 if ($res_col2 && mysqli_num_rows($res_col2) == 0) {
     mysqli_query($conexion, "ALTER TABLE stock ADD venta_movimiento_id INT NULL AFTER operacion");
 }
+$res_col3 = @mysqli_query($conexion, "SHOW COLUMNS FROM stock LIKE 'operador_id'");
+if ($res_col3 && mysqli_num_rows($res_col3) == 0) {
+    mysqli_query($conexion, "ALTER TABLE stock ADD operador_id INT NULL AFTER vendida_a_id");
+}
 // Permitir operación duplicada (varias órdenes en la misma operación): quitar UNIQUE si existe
 $r_idx = @mysqli_query($conexion, "SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock' AND COLUMN_NAME = 'operacion' AND NON_UNIQUE = 0 LIMIT 1");
 if ($r_idx && mysqli_num_rows($r_idx) > 0) {
@@ -53,12 +58,14 @@ if ($r_idx && mysqli_num_rows($r_idx) > 0) {
     @mysqli_query($conexion, "ALTER TABLE stock ADD INDEX idx_operacion (operacion)");
 }
 
-// Cargar stock con apellido de Vendida a y Facturada a (por id de usuario)
+// Cargar stock con apellido de Vendida a, Operador y Facturada a (por id de usuario)
 $sql_stock = "SELECT s.*,
     v.apellido AS vendida_a_apellido,
+    op.apellido AS operador_apellido,
     f.apellido AS facturada_a_apellido
 FROM stock s
 LEFT JOIN usuarios v ON v.id = s.vendida_a_id
+LEFT JOIN usuarios op ON op.id = s.operador_id
 LEFT JOIN usuarios f ON f.id = s.facturada_a_id
 ORDER BY s.orden ASC, s.fecha DESC, s.id DESC";
 $res_stock = mysqli_query($conexion, $sql_stock);
@@ -83,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $ref_elim_esc = mysqli_real_escape_string($conexion, 'Vta eliminada');
                 mysqli_query($conexion, "UPDATE cuentas SET referencia = '$ref_elim_esc', monto = 0 WHERE movimiento_id = $mov_id");
             }
-            mysqli_query($conexion, "UPDATE stock SET fecha_vta = NULL, cant_vta = 0, vendida_a_id = NULL, precio_vta = NULL, operacion = NULL, venta_movimiento_id = NULL WHERE id = $stock_id");
+            mysqli_query($conexion, "UPDATE stock SET fecha_vta = NULL, cant_vta = 0, vendida_a_id = NULL, operador_id = NULL, precio_vta = NULL, operacion = NULL, venta_movimiento_id = NULL WHERE id = $stock_id");
             header('Location: gestionar_azucares.php?venta=elim');
             exit;
         }
@@ -97,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['guardar_venta_azucar']) || isset($_POST['editar_venta_azucar'])) {
         $stock_id = (int)($_POST['stock_id'] ?? 0);
         $usuario_id = (int)($_POST['usuario_id'] ?? 0);
+        $operador_id = (int)($_POST['operador_id'] ?? 0);
         $fecha_vta = trim($_POST['fecha_vta'] ?? '');
         $precio_venta_raw = str_replace(',', '.', trim($_POST['precio_venta'] ?? ''));
         $precio_vta = (float)$precio_venta_raw;
@@ -166,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         mysqli_query($conexion, $ins);
                         $mov_id = (int)mysqli_insert_id($conexion);
                     }
-                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id WHERE id = $stock_id");
+                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id WHERE id = $stock_id");
                 } else {
                     // Cambio de comprador: en el registro del usuario viejo solo actualizar referencia a "Vta corregida" y monto a 0 (no nuevo asiento).
                     $mov_id_old = (int)($r_old['venta_movimiento_id'] ?? 0);
@@ -180,13 +188,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ins = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) VALUES ($usuario_id, '$fecha_vta_esc', '$concepto', '$compro', '$refer', $monto)";
                     mysqli_query($conexion, $ins);
                     $mov_id = (int)mysqli_insert_id($conexion);
-                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id WHERE id = $stock_id");
+                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id WHERE id = $stock_id");
                 }
             } else {
                 $ins = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) VALUES ($usuario_id, '$fecha_vta_esc', '$concepto', '$compro', '$refer', $monto)";
                 if (mysqli_query($conexion, $ins)) {
                     $mov_id = (int)mysqli_insert_id($conexion);
-                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id WHERE id = $stock_id");
+                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id WHERE id = $stock_id");
                 } else {
                     $mensaje_stock = 'Error al grabar en cuenta.';
                     $operacion = null;
@@ -338,9 +346,9 @@ function fmtNum($n) {
         .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; text-decoration: none; display: inline-block; }
         .btn-secondary { background: #6c757d; color: white; }
         .volver { margin-top: 15px; }
-        .contenedor-grilla-con-botones { overflow-x: auto; margin-top: 10px; }
+        .contenedor-grilla-con-botones { overflow-x: hidden; margin-top: 10px; }
         .contenedor-grilla-con-botones .fila-botones-stock,
-        .contenedor-grilla-con-botones #cartelSaldoOrden { min-width: 1270px; }
+        .contenedor-grilla-con-botones #cartelSaldoOrden { min-width: 1410px; }
         .grid-azucar-wrap { overflow-x: visible; overflow-y: scroll; max-height: 185px; border: 1px solid #ddd; outline: none; }
         .grid-azucar-wrap:focus { outline: none; }
         .tabla-azucar { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; min-width: 1270px; line-height: 1.2; font-weight: bold; }
@@ -357,7 +365,7 @@ function fmtNum($n) {
         .tabla-azucar .col-cantidad, .tabla-azucar .col-cantvta, .tabla-azucar .col-cantfact { width: 55px; }
         .tabla-azucar .col-deposito { width: 160px; }
         .tabla-azucar .col-operacion { width: 45px; }
-        .tabla-azucar .col-vendida, .tabla-azucar .col-facturada { width: 140px; }
+        .tabla-azucar .col-vendida, .tabla-azucar .col-facturada, .tabla-azucar .col-operador { width: 140px; }
         .tabla-azucar .col-preciovta, .tabla-azucar .col-preciofac { width: 75px; }
         .tabla-azucar .col-nfact, .tabla-azucar .col-nremt { width: 70px; }
         .tabla-azucar .sin-dato { color: #999; }
@@ -395,20 +403,20 @@ function fmtNum($n) {
         .btn-editar-fact:hover { background: #5a32a3; }
         .btn-eliminar-fact { background: #dc3545; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-eliminar-fact:hover { background: #c82333; }
-        .modal-venta-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box; }
+        .modal-venta-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 8px; box-sizing: border-box; overflow-y: auto; }
         .modal-venta-overlay.activo { display: flex; }
-        .modal-venta { background: white; border-radius: 8px; padding: 20px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-        .modal-venta h3 { margin: 0 0 15px 0; font-size: 1rem; color: #007bff; }
-        .modal-venta label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px; }
-        .modal-venta input, .modal-venta select { width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 12px; margin-bottom: 12px; }
-        .modal-venta .fila-buscar { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
+        .modal-venta { background: white; border-radius: 8px; padding: 12px 16px; max-width: 520px; width: 100%; max-height: calc(100vh - 20px); overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .modal-venta h3 { margin: 0 0 8px 0; font-size: 0.95rem; color: #007bff; }
+        .modal-venta label { display: block; margin-bottom: 2px; font-weight: bold; font-size: 10px; }
+        .modal-venta input, .modal-venta select { width: 100%; padding: 6px 8px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 12px; margin-bottom: 0; }
+        .modal-venta .fila-buscar { display: flex; gap: 6px; align-items: flex-end; margin-bottom: 6px; }
         .modal-venta .fila-buscar input { margin-bottom: 0; flex: 1; }
-        .modal-venta .fila-buscar .btn-alta-usuario { padding: 8px 12px; font-size: 11px; white-space: nowrap; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .buscador-venta-resultados { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ced4da; border-top: none; max-height: 160px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; font-size: 12px; }
-        .buscador-venta-resultados .item-venta { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .modal-venta .fila-buscar .btn-alta-usuario { padding: 6px 10px; font-size: 10px; white-space: nowrap; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .buscador-venta-resultados { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ced4da; border-top: none; max-height: 120px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; font-size: 11px; }
+        .buscador-venta-resultados .item-venta { padding: 6px 8px; cursor: pointer; border-bottom: 1px solid #eee; }
         .buscador-venta-resultados .item-venta:hover { background: #e7f3ff; }
-        .modal-venta .campo-ro { background: #f0f0f0; padding: 6px 8px; border-radius: 4px; margin-bottom: 12px; font-size: 12px; }
-        .modal-venta .fila-venta-uno { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+        .modal-venta .campo-ro { background: #f0f0f0; padding: 4px 6px; border-radius: 4px; margin-bottom: 6px; font-size: 11px; }
+        .modal-venta .fila-venta-uno { display: flex; gap: 6px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 6px; }
         .modal-venta .fila-venta-uno .campo-fecha-vta { flex: 0 0 20%; min-width: 80px; }
         .modal-venta .fila-venta-uno .campo-linea { flex: 0 0 auto; width: 3.2em; }
         .modal-venta .fila-venta-uno .campo-orden { flex: 0 0 4.5em; min-width: 60px; }
@@ -416,11 +424,13 @@ function fmtNum($n) {
         .modal-venta .fila-venta-uno .campo-deposito { flex: 1; min-width: 80px; }
         .modal-venta .fila-venta-uno input { margin-bottom: 0; }
         .modal-venta .fila-venta-uno .campo-ro { margin-bottom: 0; }
-        .modal-venta .botones { display: flex; gap: 10px; margin-top: 15px; }
-        .modal-venta .botones button { padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .modal-venta .fila-venta-dos { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 6px; }
+        .modal-venta .fila-venta-dos .form-g { margin-bottom: 0; }
+        .modal-venta .botones { display: flex; gap: 8px; margin-top: 10px; }
+        .modal-venta .botones button { padding: 6px 14px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
         .modal-venta .btn-guardar-venta { background: #28a745; color: white; }
         .modal-venta .btn-cerrar-venta { background: #6c757d; color: white; }
-        .modal-venta .campo-precio-venta { width: 25%; min-width: 80px; }
+        .modal-venta .campo-precio-venta { width: 25%; min-width: 70px; }
         .modal-venta .campo-precio-venta input { width: 100%; position: relative; z-index: 2; }
         .modal-venta #venta_cant_vendida::-webkit-outer-spin-button,
         .modal-venta #venta_cant_vendida::-webkit-inner-spin-button,
@@ -429,7 +439,9 @@ function fmtNum($n) {
         .modal-venta #venta_cant_vendida,
         .modal-venta #venta_operacion { -moz-appearance: textfield; appearance: textfield; }
         .modal-venta .campo-ro { text-transform: uppercase; }
-        .modal-venta .cartel-parcial-venta { background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; font-weight: bold; }
+        .modal-venta .cartel-parcial-venta { background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 6px 10px; border-radius: 4px; margin-bottom: 6px; font-size: 12px; font-weight: bold; }
+        .modal-venta .fila-usuario-operador { display: flex; gap: 12px; margin-bottom: 6px; }
+        .modal-venta .fila-usuario-operador > div { flex: 1; min-width: 0; }
         .modal-alta #alta_articulo,
         .modal-alta #alta_deposito { text-transform: uppercase; }
         .modal-alta-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box; }
@@ -517,6 +529,7 @@ function fmtNum($n) {
                         <th class="col-fechavta">FechaVta</th>
                         <th class="col-cantvta">Cant Vta</th>
                         <th class="col-vendida">Vendida a</th>
+                        <th class="col-operador">Operador</th>
                         <th class="col-preciovta">Precio vta</th>
                         <th class="col-fechafact">Fechafact</th>
                         <th class="col-cantfact">Cant Fact</th>
@@ -529,7 +542,7 @@ function fmtNum($n) {
                 <tbody>
                     <?php if (empty($filas_stock)): ?>
                         <tr>
-                            <td colspan="17" style="text-align: center; padding: 15px; color: #666;">No hay registros en stock. La tabla ya está creada; podés cargar datos cuando agreguemos el alta/edición.</td>
+                            <td colspan="18" style="text-align: center; padding: 15px; color: #666;">No hay registros en stock. La tabla ya está creada; podés cargar datos cuando agreguemos el alta/edición.</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($filas_stock as $i => $r): ?>
@@ -566,6 +579,7 @@ function fmtNum($n) {
                             <td class="col-fechavta"><?= htmlspecialchars(fmtFecha($r['fecha_vta'])) ?></td>
                             <td class="col-cantvta"><?= (int)$r['cant_vta'] ?></td>
                             <td class="col-vendida <?= empty($r['vendida_a_apellido']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['vendida_a_apellido'] ?? '') ?></td>
+                            <td class="col-operador <?= empty($r['operador_apellido']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['operador_apellido'] ?? '') ?></td>
                             <td class="col-preciovta"><?= fmtNum($r['precio_vta']) ?></td>
                             <td class="col-fechafact"><?= htmlspecialchars(fmtFecha($r['fecha_fact'])) ?></td>
                             <td class="col-cantfact"><?= (int)$r['cant_fact'] ?></td>
@@ -641,7 +655,8 @@ function fmtNum($n) {
                     <input type="hidden" name="guardar_venta_azucar" value="1">
                     <input type="hidden" name="stock_id" id="venta_stock_id" value="">
                     <input type="hidden" name="usuario_id" id="venta_usuario_id" value="">
-                    <div class="fila-buscar" style="position: relative;">
+                    <input type="hidden" name="operador_id" id="venta_operador_id" value="">
+                    <div class="fila-buscar" style="position: relative; margin-bottom: 6px;">
                         <div style="flex: 1; position: relative;">
                             <label>Buscar usuario (cliente)</label>
                             <input type="text" id="venta_buscar_usuario" placeholder="Escribí apellido..." autocomplete="off">
@@ -649,7 +664,20 @@ function fmtNum($n) {
                         </div>
                         <a href="registro.php?volver=<?= urlencode('gestionar_azucares.php?abrir_venta=1') ?>" target="_blank" class="btn-alta-usuario">Alta usuario</a>
                     </div>
-                    <div><label>Usuario seleccionado</label><div id="venta_usuario_nombre" class="campo-ro">—</div></div>
+                    <div class="fila-usuario-operador">
+                        <div><label>Usuario seleccionado</label><div id="venta_usuario_nombre" class="campo-ro">—</div></div>
+                        <div><label>Operador (intermediario)</label><div id="venta_operador_nombre" class="campo-ro">—</div></div>
+                    </div>
+                    <div class="fila-buscar fila-buscar-operador" style="position: relative; margin-bottom: 6px;">
+                        <div style="flex: 1; position: relative;">
+                            <label>Buscar operador</label>
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <span style="font-size: 1em;" title="Buscar">🔍</span>
+                                <input type="text" id="venta_buscar_operador" placeholder="Apellido..." autocomplete="off" style="flex: 1;">
+                            </div>
+                            <div id="venta_resultados_operador" class="buscador-venta-resultados"></div>
+                        </div>
+                    </div>
                     <div class="fila-venta-uno">
                         <div class="campo-fecha-vta"><label>Fecha venta</label><input type="date" name="fecha_vta" id="venta_fecha" required></div>
                         <div class="campo-linea"><label>Línea</label><div id="venta_linea" class="campo-ro">—</div></div>
@@ -657,11 +685,13 @@ function fmtNum($n) {
                         <div class="campo-cantidad"><label>Cantidad</label><div id="venta_cantidad" class="campo-ro">—</div></div>
                         <div class="campo-deposito"><label>Depósito</label><div id="venta_deposito" class="campo-ro">—</div></div>
                     </div>
-                    <div><label>Artículo</label><div id="venta_articulo" class="campo-ro">—</div></div>
+                    <div style="margin-bottom: 6px;"><label>Artículo</label><div id="venta_articulo" class="campo-ro">—</div></div>
                     <div id="venta_cartel_parcial" class="cartel-parcial-venta" style="display: none;"></div>
-                    <div class="campo-precio-venta"><label for="venta_precio">Precio venta</label><input type="text" name="precio_venta" id="venta_precio" placeholder="0,00 o 0.00" autocomplete="off" required></div>
-                    <div><label>Cantidad vendida</label><input type="number" name="cantidad_vendida" id="venta_cant_vendida" min="1" step="1" required></div>
-                    <div><label>Operación (opcional; vacío = autoincremental no usado desde 1)</label><input type="number" name="operacion" id="venta_operacion" min="1" step="1" placeholder="Vacío = auto desde 1"></div>
+                    <div class="fila-venta-dos">
+                        <div class="form-g campo-precio-venta" style="flex: 0 0 auto;"><label for="venta_precio">Precio venta</label><input type="text" name="precio_venta" id="venta_precio" placeholder="0,00" autocomplete="off" required></div>
+                        <div class="form-g" style="flex: 0 0 5em;"><label>Cant. vendida</label><input type="number" name="cantidad_vendida" id="venta_cant_vendida" min="1" step="1" required></div>
+                        <div class="form-g" style="flex: 0 0 5em;"><label>Operación</label><input type="number" name="operacion" id="venta_operacion" min="1" step="1" placeholder="Auto"></div>
+                    </div>
                     <div class="botones">
                         <button type="submit" class="btn-guardar-venta" id="venta_btn_guardar">Guardar venta</button>
                         <button type="button" class="btn-cerrar-venta" onclick="cerrarModalVenta()">Cancelar</button>
@@ -713,6 +743,16 @@ function fmtNum($n) {
     <script>
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
+            var modalVenta = document.getElementById('modalVenta');
+            var modalFactura = document.getElementById('modalFactura');
+            if (modalVenta && modalVenta.classList.contains('activo')) {
+                cerrarModalVenta();
+                return;
+            }
+            if (modalFactura && modalFactura.classList.contains('activo')) {
+                cerrarModalFactura();
+                return;
+            }
             window.location.href = 'index.php';
         }
     });
@@ -807,6 +847,9 @@ function fmtNum($n) {
             document.getElementById('venta_usuario_id').value = tr.dataset.vendidaAId || '';
             document.getElementById('venta_usuario_nombre').textContent = tr.dataset.vendidaAApellido || '—';
             document.getElementById('venta_buscar_usuario').value = tr.dataset.vendidaAApellido || '';
+            document.getElementById('venta_operador_id').value = tr.dataset.operadorId || '';
+            document.getElementById('venta_operador_nombre').textContent = tr.dataset.operadorApellido || '—';
+            document.getElementById('venta_buscar_operador').value = tr.dataset.operadorApellido || '';
             document.getElementById('venta_operacion').value = tr.dataset.operacion || '';
             if (hGuardar) hGuardar.remove();
             var he = document.createElement('input');
@@ -941,10 +984,49 @@ function fmtNum($n) {
     });
     document.addEventListener('click', function() {
         document.getElementById('venta_resultados_usuario').style.display = 'none';
+        document.getElementById('venta_resultados_operador').style.display = 'none';
         var fel = document.getElementById('factura_resultados_usuario');
         if (fel) fel.style.display = 'none';
     });
     document.getElementById('venta_resultados_usuario').addEventListener('click', function(e) { e.stopPropagation(); });
+    document.getElementById('venta_resultados_operador').addEventListener('click', function(e) { e.stopPropagation(); });
+
+    var ventaBuscarOperadorTimer;
+    document.getElementById('venta_buscar_operador').addEventListener('input', function() {
+        var q = this.value.trim();
+        var resEl = document.getElementById('venta_resultados_operador');
+        resEl.style.display = 'none';
+        resEl.innerHTML = '';
+        if (q.length < 2) return;
+        clearTimeout(ventaBuscarOperadorTimer);
+        ventaBuscarOperadorTimer = setTimeout(function() {
+            fetch('buscar_personas.php?q=' + encodeURIComponent(q))
+                .then(function(r) { return r.json(); })
+                .then(function(arr) {
+                    resEl.innerHTML = '';
+                    if (arr.length === 0) { resEl.innerHTML = '<div style="padding:8px;color:#666;">Sin resultados</div>'; }
+                    else arr.forEach(function(u) {
+                        var div = document.createElement('div');
+                        div.className = 'item-venta';
+                        div.textContent = u.apellido;
+                        div.dataset.id = u.id;
+                        div.dataset.apellido = u.apellido;
+                        div.addEventListener('click', function() {
+                            document.getElementById('venta_operador_id').value = this.dataset.id;
+                            document.getElementById('venta_operador_nombre').textContent = this.dataset.apellido;
+                            document.getElementById('venta_buscar_operador').value = this.dataset.apellido;
+                            resEl.style.display = 'none';
+                            resEl.innerHTML = '';
+                        });
+                        resEl.appendChild(div);
+                    });
+                    resEl.style.display = 'block';
+                });
+        }, 200);
+    });
+    document.getElementById('venta_buscar_operador').addEventListener('focus', function() {
+        if (this.value.trim().length >= 2 && document.getElementById('venta_resultados_operador').children.length) document.getElementById('venta_resultados_operador').style.display = 'block';
+    });
 
     var facturaBuscarTimer;
     document.getElementById('factura_buscar_usuario').addEventListener('input', function() {
@@ -1119,7 +1201,7 @@ function fmtNum($n) {
                     var tbody = document.querySelector('.tabla-azucar tbody');
                     tbody.innerHTML = '';
                     if (datos.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;padding:15px;color:#666;">No se extrajeron registros.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:15px;color:#666;">No se extrajeron registros.</td></tr>';
                     } else {
                         datos.forEach(function(r, i) {
                             var tr = document.createElement('tr');
@@ -1136,6 +1218,7 @@ function fmtNum($n) {
                                 '<td class="col-fechavta">' + esc(v('fecha_vta')) + '</td>' +
                                 '<td class="col-cantvta">' + (parseInt(v('cant_vta'), 10) || 0) + '</td>' +
                                 '<td class="col-vendida ' + (v('vendida_a') ? '' : 'sin-dato') + '">' + esc(v('vendida_a')) + '</td>' +
+                                '<td class="col-operador ' + (v('operador') ? '' : 'sin-dato') + '">' + esc(v('operador')) + '</td>' +
                                 '<td class="col-preciovta">' + fmtNum(v('precio_vta')) + '</td>' +
                                 '<td class="col-fechafact">' + esc(v('fecha_fact')) + '</td>' +
                                 '<td class="col-cantfact">' + (parseInt(v('cant_fact'), 10) || 0) + '</td>' +

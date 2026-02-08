@@ -880,6 +880,13 @@ function generarWord() {
 const CAMPOS_MOV = ['ins_fecha', 'ins_concepto', 'ins_compro', 'ins_refer', 'ins_monto'];
 
 document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        var modalAnt = document.getElementById('modalAntCel');
+        if (modalAnt && modalAnt.classList.contains('activo')) {
+            cerrarModalAntCel();
+            return;
+        }
+    }
     if (e.key !== 'Enter') return;
     const filaCarga = document.getElementById("filaCarga");
     if (filaCarga.style.display === 'none') return;
