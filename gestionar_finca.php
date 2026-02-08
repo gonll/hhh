@@ -398,12 +398,29 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .vista-partes-cel .form-row .form-group { width: 100%; max-width: 100%; }
         .vista-partes-cel .buscador-usuario-container { width: 100% !important; }
         .vista-partes-cel .form-group input, .vista-partes-cel .form-group select, .vista-partes-cel .form-group textarea { font-size: 16px; min-height: 44px; }
-        .vista-partes-cel .btn { padding: 10px 16px; min-height: 44px; font-size: 14px; }
+        .vista-partes-cel .btn { padding: 10px 16px; min-height: 44px; font-size: 14px; touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,0,0,0.1); cursor: pointer; }
+        .vista-partes-cel #btnCargaGasoilSisterna { min-height: 48px; padding: 12px 20px; font-size: 14px; display: block; width: 100%; max-width: 320px; margin: 0 auto; box-sizing: border-box; }
         .vista-partes-cel .wrap-tabla-pdt { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .vista-partes-cel .tabla-listado-pdt { display: table; width: 100%; }
         .vista-partes-cel .tabla-listado-pdt thead, .vista-partes-cel .tabla-listado-pdt tbody, .vista-partes-cel .tabla-listado-pdt tr { display: table-row; }
         .vista-partes-cel .tabla-listado-pdt th, .vista-partes-cel .tabla-listado-pdt td { display: table-cell; white-space: nowrap; padding: 8px 6px; font-size: 12px; }
         .vista-partes-cel h2 { font-size: 1.2rem; }
+        .vista-partes-cel h3 { margin-top: 20px; margin-bottom: 10px; font-size: 1rem; }
+        .vista-partes-cel .wrap-tabla-pdt { margin-bottom: 20px; }
+        /* Botones Guardar, Cancelar y Salir: mismo tamaño y estilo en Partes desde cel */
+        .vista-partes-cel .botones-form-partes .btn,
+        .vista-partes-cel .botones-form-partes a.btn {
+            padding: 12px 20px;
+            min-height: 48px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
         @media (max-width: 480px) {
             .vista-partes-cel .form-row { gap: 12px; }
         }
@@ -579,15 +596,19 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <textarea name="observaciones" rows="1" style="resize: vertical; min-height: 20px;"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div class="<?= $desde_cel ? 'botones-form-partes' : '' ?>" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary">Guardar</button>
+                <?php if ($desde_cel): ?>
+                <a href="<?= htmlspecialchars($form_action_url) ?>" class="btn btn-secondary">Cancelar</a>
+                <a href="<?= $es_nivel_0 ? 'logout.php' : 'gestionar_finca.php' ?>" class="btn btn-secondary">Salir</a>
+                <?php endif; ?>
                 <?php if ($mensaje === 'Parte guardado.'): ?>
                     <div id="cartelMensaje" class="cartel-parte-guardado parte-guardado">Parte guardado.</div>
                 <?php endif; ?>
                 <?php if (!$desde_cel): ?>
                 <span id="resumenHorasUsuario" style="font-size: 11px; color: #555; padding: 4px 8px; background: #f0f0f0; border-radius: 4px; min-height: 24px; display: inline-flex; align-items: center;">Seleccione un usuario para ver el resumen (horas con CC=NO)</span>
                 <?php endif; ?>
-                <?php if ($pdt_edit): ?>
+                <?php if ($pdt_edit && !$desde_cel): ?>
                     <a href="<?= htmlspecialchars($form_action_url) ?>" class="btn btn-secondary">Cancelar</a>
                 <?php endif; ?>
                 <?php if (!$desde_cel): ?>
@@ -917,13 +938,16 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     
     tipoHoras.addEventListener('change', manejarCambioTipoHoras);
     
-    // Toggle formulario carga gasoil en cisterna
+    // Toggle formulario carga gasoil en cisterna (también touchend para móvil)
     const btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
     const formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
+    function toggleFormCargaGasoil(e) {
+        if (e && e.type === 'touchend') e.preventDefault();
+        if (formCargaGasoilSisterna) formCargaGasoilSisterna.style.display = formCargaGasoilSisterna.style.display === 'none' ? 'block' : 'none';
+    }
     if (btnCargaGasoilSisterna && formCargaGasoilSisterna) {
-        btnCargaGasoilSisterna.addEventListener('click', function() {
-            formCargaGasoilSisterna.style.display = formCargaGasoilSisterna.style.display === 'none' ? 'block' : 'none';
-        });
+        btnCargaGasoilSisterna.addEventListener('click', toggleFormCargaGasoil);
+        btnCargaGasoilSisterna.addEventListener('touchend', toggleFormCargaGasoil, { passive: false });
     }
     
     // Guardar valores cuando cambian los campos
