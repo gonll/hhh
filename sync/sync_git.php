@@ -34,13 +34,15 @@ if ($uuid === '' || $uuid !== $expectedUuid) {
 }
 
 $projectRoot = realpath(dirname(__DIR__));
-$cmd = 'cd ' . escapeshellarg($projectRoot) . ' && git pull 2>&1';
+$gitBin = trim(shell_exec('which git 2>/dev/null') ?: '') ?: '/usr/bin/git';
+$cmd = 'cd ' . escapeshellarg($projectRoot) . ' && ' . escapeshellarg($gitBin) . ' pull 2>&1';
 $output = [];
 exec($cmd, $output, $code);
 
 if ($code !== 0) {
     http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'git pull falló', 'output' => implode("\n", $output)]);
+    $outStr = implode("\n", $output);
+    echo json_encode(['ok' => false, 'error' => 'git pull falló', 'output' => $outStr]);
     exit;
 }
 

@@ -38,12 +38,23 @@ if ($action === 'subir_codigo') {
         ]);
         $resp = @file_get_contents($urlGit, false, $ctx);
         $syncOk = ($resp !== false);
-        if ($syncOk) {
+        $serverError = '';
+        if ($resp !== false) {
             $json = @json_decode($resp, true);
             $syncOk = isset($json['ok']) && $json['ok'] === true;
+            if (!$syncOk && is_array($json)) {
+                $serverError = isset($json['error']) ? $json['error'] : '';
+                if (!empty($json['output'])) $serverError .= ' ' . $json['output'];
+            } elseif ($resp !== false && $json === null && trim($resp) !== '') {
+                $serverError = 'Servidor no devolvió JSON (¿error PHP?): ' . substr(trim($resp), 0, 200);
+            }
+        } else {
+            $serverError = 'No se pudo conectar con el servidor (revisar URL, firewall, HTTPS).';
         }
         if (!$syncOk) {
-            header('Location: index.php?deploy=error&msg=' . urlencode('Push ok, pero falló pull en el servidor'));
+            $msg = 'Push ok, pero falló pull en el servidor.';
+            if ($serverError !== '') $msg .= ' ' . $serverError;
+            header('Location: index.php?deploy=error&msg=' . urlencode($msg));
             exit;
         }
     }
