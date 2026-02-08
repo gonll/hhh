@@ -1,10 +1,12 @@
 <?php
-$servidor = "localhost";
-$usuario  = "root";
-$clave    = "";
-$base     = "sistemahhh26";
+$env = parse_ini_file(__DIR__ . '/.env');
 
-$conexion = mysqli_connect($servidor, $usuario, $clave, $base);
+$conexion = mysqli_connect(
+    $env['DB_HOST'],
+    $env['DB_USER'],
+    $env['DB_PASS'],
+    $env['DB_NAME']
+);
 
 if (!$conexion) {
     die("Error de conexión: " . mysqli_connect_error());

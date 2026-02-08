@@ -36,6 +36,18 @@ if ($nivelAcceso === 3) {
 <head>
     <meta charset="UTF-8">
     <title>Sistema HHH 2026</title>
+    <!-- Favicons -->
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+
+    <!-- Apple -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+    <!-- Android / PWA -->
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; align-items: flex-start; }
         
