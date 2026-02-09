@@ -532,6 +532,14 @@ function fmtNum($n) {
         .modal-venta .btn-cerrar-venta { background: #6c757d; color: white; }
         .modal-venta .campo-precio-venta { width: 25%; min-width: 70px; }
         .modal-venta .campo-precio-venta input { width: 100%; position: relative; z-index: 2; }
+        .modal-venta .fila-factura-precios { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 6px; }
+        .modal-venta .fila-factura-precios .campo-precio-venta { flex: 0 0 auto; min-width: 90px; }
+        .modal-venta .fila-factura-precios .campo-fact-sin-iva { flex: 0 0 auto; min-width: 85px; }
+        .modal-venta .fila-factura-precios .campo-fact-sin-iva .campo-ro { margin-bottom: 0; }
+        .modal-venta .fila-factura-precios .campo-fact-cant { flex: 0 0 auto; min-width: 70px; }
+        .modal-venta .fila-factura-precios .campo-fact-cant input { margin-bottom: 0; }
+        .modal-venta .fila-factura-precios .campo-fact-monto { flex: 0 0 auto; min-width: 100px; }
+        .modal-venta .fila-factura-precios .campo-fact-monto .campo-ro { margin-bottom: 0; }
         .modal-venta #venta_cant_vendida::-webkit-outer-spin-button,
         .modal-venta #venta_cant_vendida::-webkit-inner-spin-button,
         .modal-venta #venta_operacion::-webkit-outer-spin-button,
@@ -824,8 +832,12 @@ function fmtNum($n) {
                         <div class="campo-cantidad"><label>Cantidad</label><div id="factura_cantidad" class="campo-ro">—</div></div>
                     </div>
                     <div><label>Artículo</label><div id="factura_articulo" class="campo-ro">—</div></div>
-                    <div class="campo-precio-venta"><label for="factura_precio">Precio factura</label><input type="text" name="precio_fac" id="factura_precio" placeholder="0,00 o 0.00" autocomplete="off"></div>
-                    <div><label>Cantidad facturada</label><input type="number" name="cantidad_facturada" id="factura_cant_fact" min="1" step="1" required></div>
+                    <div class="fila-factura-precios">
+                        <div class="campo-precio-venta"><label for="factura_precio">Precio factura (con IVA)</label><input type="text" name="precio_fac" id="factura_precio" placeholder="0,00" autocomplete="off"></div>
+                        <div class="campo-fact-sin-iva"><label>Precio sin IVA</label><div id="factura_precio_sin_iva" class="campo-ro">—</div></div>
+                        <div class="campo-fact-cant"><label>Cantidad facturada</label><input type="number" name="cantidad_facturada" id="factura_cant_fact" min="1" step="1" required></div>
+                        <div class="campo-fact-monto"><label>Monto final factura</label><div id="factura_monto_final" class="campo-ro">—</div></div>
+                    </div>
                     <div><label>N° Factura</label><input type="text" name="n_fact" id="factura_n_fact" placeholder="Opcional"></div>
                     <div><label>N° Remito</label><input type="text" name="n_remt" id="factura_n_remt" placeholder="Opcional"></div>
                     <div class="botones">
@@ -1102,7 +1114,7 @@ function fmtNum($n) {
             document.getElementById('modalFacturaTitulo').textContent = 'Registrar factura';
             document.getElementById('factura_btn_guardar').textContent = 'Guardar factura';
             document.getElementById('factura_fecha').value = '<?= date('Y-m-d') ?>';
-            document.getElementById('factura_precio').value = '';
+            document.getElementById('factura_precio').value = (tr.dataset.preciovta !== undefined && tr.dataset.preciovta !== '') ? String(tr.dataset.preciovta).replace('.', ',') : '';
             document.getElementById('factura_cant_fact').value = tr.dataset.cantvta || tr.dataset.cantidad || '1';
             document.getElementById('factura_usuario_id').value = tr.dataset.vendidaAId || '';
             document.getElementById('factura_usuario_nombre').textContent = tr.dataset.vendidaAApellido || '—';
@@ -1110,7 +1122,18 @@ function fmtNum($n) {
             document.getElementById('factura_n_fact').value = '';
             document.getElementById('factura_n_remt').value = '';
         }
+        actualizarFacturaPrecios();
         document.getElementById('modalFactura').classList.add('activo');
+    }
+    function actualizarFacturaPrecios() {
+        var precioStr = (document.getElementById('factura_precio').value || '').replace(',', '.').trim();
+        var precio = parseFloat(precioStr) || 0;
+        var cant = parseInt(document.getElementById('factura_cant_fact').value, 10) || 0;
+        var sinIva = precio / 1.21;
+        var montoFinal = precio * cant;
+        var fmt = function(n) { return (typeof n === 'number' && !isNaN(n)) ? n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'; };
+        document.getElementById('factura_precio_sin_iva').textContent = fmt(sinIva);
+        document.getElementById('factura_monto_final').textContent = fmt(montoFinal);
     }
     document.getElementById('btnFacturar').addEventListener('click', function() { abrirModalFactura(false); });
     document.getElementById('btnEditarFact').addEventListener('click', function() { abrirModalFactura(true); });
@@ -1275,7 +1298,13 @@ function fmtNum($n) {
                 v = v.substring(0, idxSep) + sep + after;
             }
             this.value = v;
+            if (typeof actualizarFacturaPrecios === 'function') actualizarFacturaPrecios();
         });
+        var cantFactEl = document.getElementById('factura_cant_fact');
+        if (cantFactEl) {
+            cantFactEl.addEventListener('input', function() { if (typeof actualizarFacturaPrecios === 'function') actualizarFacturaPrecios(); });
+            cantFactEl.addEventListener('change', function() { if (typeof actualizarFacturaPrecios === 'function') actualizarFacturaPrecios(); });
+        }
     })();
 
     var camposVentaOrden = ['venta_buscar_usuario', 'venta_fecha', 'venta_precio', 'venta_cant_vendida', 'venta_operacion', 'venta_btn_guardar'];
