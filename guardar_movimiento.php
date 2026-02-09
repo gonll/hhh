@@ -55,9 +55,10 @@ if (isset($_POST['id'])) {
         $compro_es_sueldo = ($compro === 'SUELDO' || $compro === 'SUELDO/EXTRAS');
         $compro_es_transferencia = ($compro === 'TRANSFERENCIA');
         $compro_es_anticipo = ($compro === 'ANTICIPO');
+        $concepto_es_cobro = (stripos($concepto, 'COBRO') === 0);
 
-        // No grabar en Caja si es SUELDO/EXTRAS, TRANSFERENCIA o ANTICIPO (para cualquier usuario) o si es Consorcio sin BOLETA/EFVO
-        if (!$compro_es_sueldo && !$compro_es_transferencia && !$compro_es_anticipo && (!$es_consorcio || $compro_es_efvo_boleta)) {
+        // No grabar en Caja si es SUELDO/EXTRAS, TRANSFERENCIA, ANTICIPO o COBRO (para cualquier usuario) o si es Consorcio sin BOLETA/EFVO
+        if (!$compro_es_sueldo && !$compro_es_transferencia && !$compro_es_anticipo && !$concepto_es_cobro && (!$es_consorcio || $compro_es_efvo_boleta)) {
             $concepto_caja = $nom_usuario ? ($nom_usuario . ' - ' . $concepto) : $concepto;
             $concepto_caja = mysqli_real_escape_string($conexion, $concepto_caja);
             $sql_caja = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 

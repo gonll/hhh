@@ -81,6 +81,8 @@ if ($nivelAcceso === 3) {
         }
         .btn-contrato { background: #007bff; } 
         .btn-indice { background: #f39c12; }
+        .btn-finca { background: #28a745; }
+        .btn-arriendos { background: #0047AB; }
         .btn-admin-prop { background: #17a2b8; }
         
         /* Cabecera Central y Reloj */
@@ -197,6 +199,8 @@ if ($nivelAcceso === 3) {
         .modal-cobro .btns button { flex: 1; padding: 8px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
         .modal-cobro .btn-guardar { background: #28a745; color: white; }
         .modal-cobro .btn-cerrar { background: #6c757d; color: white; }
+        .col-operacion-link { cursor: pointer; color: #007bff !important; }
+        .col-operacion-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -251,9 +255,9 @@ if ($nivelAcceso === 3) {
         
         <?php if (!$soloLectura): ?>
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <a href="gestionar_finca.php" class="btn-abm-prop" style="flex: 1;">Finca</a>
+                <a href="gestionar_finca.php" class="btn-abm-prop btn-finca" style="flex: 1;">Finca</a>
                 <a href="gestionar_azucares.php" class="btn-abm-prop" style="flex: 1;">Azucar</a>
-                <a href="#" class="btn-abm-prop" onclick="return false;" style="flex: 1;">Arriendos</a>
+                <a href="#" class="btn-abm-prop btn-arriendos" onclick="return false;" style="flex: 1;">Arriendos</a>
             </div>
             <a href="propiedades.php" class="btn-abm-prop btn-admin-prop">⚙️ Admin. Propiedades</a>
             <a href="contrato_alquiler.php" class="btn-abm-prop btn-contrato">📜 Contrato de Alquiler</a>
@@ -314,6 +318,7 @@ if ($nivelAcceso === 3) {
                                 <option value="BOLETA">BOLETA</option>
                                 <option value="TRANSFERENCIA">TRANSFERENCIA</option>
                                 <option value="EFVO">EFVO</option>
+                                <option value="CHEQUE/ECHEQ">CHEQUE/ECHEQ</option>
                                 <option value="SUELDO/EXTRAS">SUELDO/EXTRAS</option>
                                 <option value="Exp Extraordinaria">Exp Extraordinaria</option>
                             </select>
@@ -457,6 +462,34 @@ if ($nivelAcceso === 3) {
         </div>
     </div>
     <?php endif; ?>
+
+    <!-- Modal Movimientos de pago - Operación (como en venta de azúcar) -->
+    <div id="modalMovimientosOperacion" class="modal-overlay" onclick="if(event.target===this) cerrarModalMovimientosOperacion()">
+        <div class="modal-cobro" onclick="event.stopPropagation()" style="max-width:90%; max-height:90vh; overflow:auto; width:auto;">
+            <h3>Movimientos de pago - Operación N° <span id="modalOpNumero"></span></h3>
+            <div style="margin-bottom:15px;">
+                <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                    <thead>
+                        <tr style="background:#007bff; color:white;">
+                            <th class="al-cen" style="padding:6px; border:1px solid #0056b3;">Fecha</th>
+                            <th class="al-izq" style="padding:6px; border:1px solid #0056b3;">Concepto</th>
+                            <th class="al-cen" style="padding:6px; border:1px solid #0056b3;">Comprobante</th>
+                            <th class="al-cen" style="padding:6px; border:1px solid #0056b3;">Referencia</th>
+                            <th class="al-izq" style="padding:6px; border:1px solid #0056b3;">Usuario</th>
+                            <th class="al-der" style="padding:6px; border:1px solid #0056b3;">Monto</th>
+                            <th class="al-der" style="padding:6px; border:1px solid #0056b3;">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaMovimientosOperacion">
+                        <tr><td colspan="7" style="text-align:center; padding:30px; color:gray;">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="btns">
+                <button type="button" class="btn-cerrar" onclick="cerrarModalMovimientosOperacion()">Cerrar</button>
+            </div>
+        </div>
+    </div>
 
 <script>
 let uSel = null; 
@@ -1105,6 +1138,25 @@ function preparar(t) {
     tipo = t; 
     document.getElementById("filaCarga").style.display = "table-footer-group";
     ponerFechaActual();
+    // Si es INGRESO y hay un movimiento seleccionado de VENTA DE AZUCAR, llenar concepto con "COBRO VTA AZUCAR" y comprobante "CHEQUE/ECHEQ"
+    if (t === 'INGRESO' && movSel && movSel.concepto) {
+        var conceptoUpper = (movSel.concepto || '').toUpperCase();
+        // Verificar si empieza con "VENTA DE AZUCAR" o "VENTA AZUCAR" (puede tener espacios o guiones)
+        if (conceptoUpper.indexOf('VENTA DE AZUCAR') === 0 || conceptoUpper.indexOf('VENTA AZUCAR') === 0 || conceptoUpper.indexOf('VENTA DE AZÚCAR') === 0 || conceptoUpper.indexOf('VENTA AZÚCAR') === 0) {
+            var conceptoNuevo = 'COBRO VTA AZUCAR';
+            var ref = (movSel.ref || '').trim();
+            document.getElementById("ins_concepto").value = conceptoNuevo;
+            document.getElementById("ins_refer").value = ref;
+            document.getElementById("ins_compro").value = "CHEQUE/ECHEQ";
+        } else {
+            document.getElementById("ins_concepto").value = "";
+            document.getElementById("ins_refer").value = "";
+        }
+    } else {
+        document.getElementById("ins_concepto").value = "";
+        document.getElementById("ins_refer").value = "";
+    }
+    document.getElementById("ins_monto").value = "";
     setTimeout(function() {
         document.getElementById("ins_concepto").focus();
     }, 0);
@@ -1160,6 +1212,43 @@ function guardar() {
 })();
 <?php endif; ?>
 
+// Detectar parámetros de nuevo cobro desde gestión de azúcares
+(function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var nuevoCobro = urlParams.get('nuevo_cobro');
+    var usuarioId = urlParams.get('usuario_id');
+    var operacion = urlParams.get('operacion');
+    var referencia = urlParams.get('referencia');
+    
+    if (nuevoCobro === '1' && usuarioId && operacion && referencia) {
+        // Esperar a que la página cargue completamente
+        setTimeout(function() {
+            // Buscar y seleccionar el usuario
+            var filasUsuarios = document.querySelectorAll('#cuerpo tr[data-id]');
+            for (var i = 0; i < filasUsuarios.length; i++) {
+                var fila = filasUsuarios[i];
+                var idFila = fila.getAttribute('data-id');
+                if (idFila === usuarioId) {
+                    cargarMovimientos(fila, parseInt(usuarioId));
+                    // Preparar formulario de ingreso con los datos
+                    setTimeout(function() {
+                        preparar('INGRESO');
+                        // Prellenar campos específicos para cobro de venta de azúcar
+                        document.getElementById("ins_concepto").value = "COBRO VTA AZUCAR";
+                        document.getElementById("ins_refer").value = decodeURIComponent(referencia);
+                        document.getElementById("ins_compro").value = "CHEQUE/ECHEQ";
+                        document.getElementById("ins_monto").value = "";
+                        setTimeout(function() {
+                            document.getElementById("ins_concepto").focus();
+                        }, 100);
+                    }, 300);
+                    break;
+                }
+            }
+        }, 500);
+    }
+})();
+
 // Ocultar mensajes de mail después de 30 segundos
 (function() {
     var mensajeEnviado = document.getElementById('mensajeMailEnviado');
@@ -1185,6 +1274,29 @@ function guardar() {
         }, 30000); // 30 segundos
     }
 })();
+
+    function abrirModalMovimientosOperacion(operacion) {
+        if (!operacion) return;
+        document.getElementById('modalOpNumero').textContent = operacion;
+        document.getElementById('modalMovimientosOperacion').classList.add('visible');
+        var tbody = document.getElementById('tablaMovimientosOperacion');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:gray;">Cargando...</td></tr>';
+        fetch('obtener_movimientos_operacion.php?operacion=' + encodeURIComponent(operacion))
+            .then(function(r) { return r.text(); })
+            .then(function(html) { tbody.innerHTML = html; })
+            .catch(function(e) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:red;">Error al cargar</td></tr>'; });
+    }
+    function cerrarModalMovimientosOperacion() {
+        document.getElementById('modalMovimientosOperacion').classList.remove('visible');
+    }
+    document.getElementById('tablaMovimientos').addEventListener('click', function(e) {
+        var td = e.target.closest('.col-operacion-link');
+        if (td && td.getAttribute('data-operacion')) {
+            e.stopPropagation();
+            e.preventDefault();
+            abrirModalMovimientosOperacion(td.getAttribute('data-operacion'));
+        }
+    });
 </script>
 <?php include 'timeout_sesion_inc.php'; ?>
 </body>

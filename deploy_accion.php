@@ -22,7 +22,7 @@ if ($action === 'subir_codigo') {
         header('Location: index.php?deploy=error&msg=' . urlencode(implode("\n", $output)));
         exit;
     }
-    
+
     $uuid = trim($env['DEPLOY_UUID'] ?? '');
     $urlGit = trim($env['DEPLOY_URL_GIT'] ?? '');
     if ($urlGit === '' && !empty($env['DEPLOY_URL'])) {

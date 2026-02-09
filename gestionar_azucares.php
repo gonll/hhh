@@ -268,6 +268,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (mysqli_query($conexion, $sql_ins)) {
                     $mensaje_stock = 'Registro agregado.';
                     if ($es_ajax) {
+                        $nuevo_id = mysqli_insert_id($conexion);
+                        $sql_nuevo = "SELECT s.*,
+                            v.apellido AS vendida_a_apellido,
+                            op.apellido AS operador_apellido,
+                            f.apellido AS facturada_a_apellido
+                        FROM stock s
+                        LEFT JOIN usuarios v ON v.id = s.vendida_a_id
+                        LEFT JOIN usuarios op ON op.id = s.operador_id
+                        LEFT JOIN usuarios f ON f.id = s.facturada_a_id
+                        WHERE s.id = $nuevo_id LIMIT 1";
+                        $res_nuevo = mysqli_query($conexion, $sql_nuevo);
+                        $r_nuevo = $res_nuevo ? mysqli_fetch_assoc($res_nuevo) : null;
+                        $fila_html = '';
+                        if ($r_nuevo) {
+                            $fechaRaw = !empty($r_nuevo['fecha']) && $r_nuevo['fecha'] !== '0000-00-00' ? $r_nuevo['fecha'] : '';
+                            $fila_html = '<tr data-id="' . (int)$r_nuevo['id'] . '"'
+                                . ' data-fecha="' . htmlspecialchars($fechaRaw, ENT_QUOTES) . '"'
+                                . ' data-linea="' . (int)$r_nuevo['linea'] . '"'
+                                . ' data-articulo="' . htmlspecialchars($r_nuevo['articulo'] ?? '', ENT_QUOTES) . '"'
+                                . ' data-orden="' . (int)$r_nuevo['orden'] . '"'
+                                . ' data-cantidad="' . (int)$r_nuevo['cantidad'] . '"'
+                                . ' data-deposito="' . htmlspecialchars($r_nuevo['deposito'] ?? '', ENT_QUOTES) . '"'
+                                . ' data-vendida-a-id="' . (int)($r_nuevo['vendida_a_id'] ?? 0) . '"'
+                                . ' data-vendida-a-apellido="' . htmlspecialchars($r_nuevo['vendida_a_apellido'] ?? '', ENT_QUOTES) . '"'
+                                . ' data-fechavta="' . (!empty($r_nuevo['fecha_vta']) && $r_nuevo['fecha_vta'] !== '0000-00-00' ? $r_nuevo['fecha_vta'] : '') . '"'
+                                . ' data-preciovta="' . ($r_nuevo['precio_vta'] !== null && $r_nuevo['precio_vta'] !== '' ? (float)$r_nuevo['precio_vta'] : '') . '"'
+                                . ' data-cantvta="' . (int)($r_nuevo['cant_vta'] ?? 0) . '"'
+                                . ' data-operacion="' . (int)($r_nuevo['operacion'] ?? 0) . '"'
+                                . ' data-fechafact="' . (!empty($r_nuevo['fecha_fact']) && $r_nuevo['fecha_fact'] !== '0000-00-00' ? $r_nuevo['fecha_fact'] : '') . '"'
+                                . ' data-cantfact="' . (int)($r_nuevo['cant_fact'] ?? 0) . '"'
+                                . ' data-facturada-a-id="' . (int)($r_nuevo['facturada_a_id'] ?? 0) . '"'
+                                . ' data-facturada-a-apellido="' . htmlspecialchars($r_nuevo['facturada_a_apellido'] ?? '', ENT_QUOTES) . '"'
+                                . ' data-preciofac="' . ($r_nuevo['precio_fac'] !== null && $r_nuevo['precio_fac'] !== '' ? (float)$r_nuevo['precio_fac'] : '') . '"'
+                                . ' data-nfact="' . htmlspecialchars($r_nuevo['n_fact'] ?? '', ENT_QUOTES) . '"'
+                                . ' data-nremt="' . htmlspecialchars($r_nuevo['n_remt'] ?? '', ENT_QUOTES) . '">'
+                                . '<td class="col-fecha">' . htmlspecialchars(fmtFecha($r_nuevo['fecha'])) . '</td>'
+                                . '<td class="col-l">' . (int)$r_nuevo['linea'] . '</td>'
+                                . '<td class="col-articulo">' . htmlspecialchars($r_nuevo['articulo']) . '</td>'
+                                . '<td class="col-orden">' . (int)$r_nuevo['orden'] . '</td>'
+                                . '<td class="col-cantidad">' . (int)$r_nuevo['cantidad'] . '</td>'
+                                . '<td class="col-deposito">' . htmlspecialchars($r_nuevo['deposito'] ?? '') . '</td>'
+                                . '<td class="col-operacion">' . ((int)($r_nuevo['operacion'] ?? 0) ?: '') . '</td>'
+                                . '<td class="col-fechavta">' . htmlspecialchars(fmtFecha($r_nuevo['fecha_vta'])) . '</td>'
+                                . '<td class="col-cantvta">' . (int)$r_nuevo['cant_vta'] . '</td>'
+                                . '<td class="col-vendida ' . (empty($r_nuevo['vendida_a_apellido']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['vendida_a_apellido'] ?? '') . '</td>'
+                                . '<td class="col-operador ' . (empty($r_nuevo['operador_apellido']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['operador_apellido'] ?? '') . '</td>'
+                                . '<td class="col-preciovta">' . fmtNum($r_nuevo['precio_vta']) . '</td>'
+                                . '<td class="col-fechafact">' . htmlspecialchars(fmtFecha($r_nuevo['fecha_fact'])) . '</td>'
+                                . '<td class="col-cantfact">' . (int)$r_nuevo['cant_fact'] . '</td>'
+                                . '<td class="col-facturada ' . (empty($r_nuevo['facturada_a_apellido']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['facturada_a_apellido'] ?? '') . '</td>'
+                                . '<td class="col-preciofac">' . fmtNum($r_nuevo['precio_fac']) . '</td>'
+                                . '<td class="col-nfact ' . (empty($r_nuevo['n_fact']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['n_fact'] ?? '') . '</td>'
+                                . '<td class="col-nremt ' . (empty($r_nuevo['n_remt']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['n_remt'] ?? '') . '</td>'
+                                . '</tr>';
+                        }
                         header('Content-Type: application/json; charset=utf-8');
                         echo json_encode([
                             'ok' => true,
@@ -277,7 +332,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'articulo' => $articulo_raw,
                             'orden' => $orden,
                             'cantidad' => $cantidad,
-                            'deposito' => $deposito_raw
+                            'deposito' => $deposito_raw,
+                            'fila_html' => $fila_html
                         ]);
                         exit;
                     }
@@ -303,18 +359,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Último articulo y último deposito cargados (para default); listas únicas para datalist
+// Último articulo, deposito y cantidad cargados (para default); listas únicas para datalist
 $ultimo_articulo = '';
 $ultimo_deposito = '';
+$ultima_cantidad = '';
 $articulos_unicos = [];
 $depositos_unicos = [];
 foreach ($filas_stock as $f) {
     if (!empty($f['articulo']) && !in_array($f['articulo'], $articulos_unicos)) $articulos_unicos[] = $f['articulo'];
     if (isset($f['deposito']) && $f['deposito'] !== '' && $f['deposito'] !== null && !in_array($f['deposito'], $depositos_unicos)) $depositos_unicos[] = $f['deposito'];
 }
+// Buscar el último registro que tenga depósito con valor (el más reciente con depósito)
 if (!empty($filas_stock)) {
     $ultimo_articulo = $filas_stock[0]['articulo'] ?? '';
-    $ultimo_deposito = $filas_stock[0]['deposito'] ?? '';
+    $ultima_cantidad = (int)($filas_stock[0]['cantidad'] ?? 0);
+    // Buscar el último depósito con valor (recorrer desde el inicio, que es el más reciente)
+    foreach ($filas_stock as $f) {
+        if (isset($f['deposito']) && trim($f['deposito']) !== '' && $f['deposito'] !== null) {
+            $ultimo_deposito = trim($f['deposito']);
+            break; // Tomar el primero que encuentre (ya está ordenado por fecha DESC, es el más reciente)
+        }
+    }
 }
 if (isset($_GET['alta']) && $_GET['alta'] === 'ok') {
     $mensaje_stock = 'Registro guardado.';
@@ -397,7 +462,9 @@ function fmtNum($n) {
         .tabla-azucar .col-orden { width: 55px; }
         .tabla-azucar .col-cantidad, .tabla-azucar .col-cantvta, .tabla-azucar .col-cantfact { width: 55px; }
         .tabla-azucar .col-deposito { width: 160px; }
-        .tabla-azucar .col-operacion { width: 45px; }
+        .tabla-azucar .col-operacion { width: 45px; cursor: pointer; }
+        .tabla-azucar .col-operacion:hover { text-decoration: underline; color: #007bff; }
+        .tabla-azucar tbody tr .col-operacion:hover { background-color: #e7f3ff; }
         .tabla-azucar .col-vendida, .tabla-azucar .col-facturada, .tabla-azucar .col-operador { width: 140px; }
         .tabla-azucar .col-preciovta, .tabla-azucar .col-preciofac { width: 75px; }
         .tabla-azucar .col-nfact, .tabla-azucar .col-nremt { width: 70px; }
@@ -769,6 +836,73 @@ function fmtNum($n) {
             </div>
         </div>
 
+        <!-- Modal movimientos por operación -->
+        <div id="modalMovimientosOperacion" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalMovimientosOperacion()">
+            <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 90%; max-height: 90vh; overflow: auto;">
+                <h3 id="modalMovimientosOperacionTitulo">Movimientos de pago - Operación N° <span id="modalOpNumero"></span></h3>
+                <div style="margin-bottom: 15px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #007bff; color: white;">
+                                <th class="al-cen" style="padding: 6px; border: 1px solid #0056b3;">Fecha</th>
+                                <th class="al-izq" style="padding: 6px; border: 1px solid #0056b3;">Concepto</th>
+                                <th class="al-cen" style="padding: 6px; border: 1px solid #0056b3;">Comprobante</th>
+                                <th class="al-cen" style="padding: 6px; border: 1px solid #0056b3;">Referencia</th>
+                                <th class="al-izq" style="padding: 6px; border: 1px solid #0056b3;">Usuario</th>
+                                <th class="al-der" style="padding: 6px; border: 1px solid #0056b3; width: 150px; min-width: 150px;">Monto</th>
+                                <th class="al-der" style="padding: 6px; border: 1px solid #0056b3; width: 150px; min-width: 150px;">Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaMovimientosOperacion">
+                            <tr><td colspan="7" style="text-align:center; padding:30px; color:gray;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Formulario de nuevo cobro (oculto por defecto) -->
+                <div id="formNuevoCobroOperacion" style="display:none; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; border: 1px solid #dee2e6;">
+                    <h4 style="margin: 0 0 15px 0; color: #007bff; font-size: 14px;">Nuevo cobro</h4>
+                    <div id="msgCobroOperacion" style="display:none; margin-bottom: 10px; padding: 8px; border-radius: 4px;"></div>
+                    <form id="formCobroOperacion" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <input type="hidden" id="cobro_usuario_id" value="">
+                        <input type="hidden" id="cobro_operacion" value="">
+                        <div class="form-g">
+                            <label for="cobro_fecha" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Fecha</label>
+                            <input type="date" id="cobro_fecha" required style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                        </div>
+                        <div class="form-g">
+                            <label for="cobro_concepto" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Concepto</label>
+                            <input type="text" id="cobro_concepto" value="COBRO VTA AZUCAR" required style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                        </div>
+                        <div class="form-g">
+                            <label for="cobro_comprobante" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Comprobante</label>
+                            <select id="cobro_comprobante" required style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                                <option value="CHEQUE/ECHEQ" selected>CHEQUE/ECHEQ</option>
+                                <option value="EFVO">EFVO</option>
+                                <option value="BOLETA">BOLETA</option>
+                                <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                            </select>
+                        </div>
+                        <div class="form-g">
+                            <label for="cobro_referencia" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Referencia</label>
+                            <input type="text" id="cobro_referencia" required style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                        </div>
+                        <div class="form-g" style="grid-column: 1 / -1;">
+                            <label for="cobro_monto" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Monto</label>
+                            <input type="number" id="cobro_monto" step="0.01" min="0" required placeholder="0,00" style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                        </div>
+                        <div class="form-g" style="grid-column: 1 / -1; display: flex; gap: 10px; margin-top: 5px;">
+                            <button type="button" class="btn-guardar-venta" id="btnGuardarCobroOperacion" style="flex: 1;">Guardar</button>
+                            <button type="button" class="btn-cerrar-venta" id="btnCancelarCobroOperacion" style="flex: 1;">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="botones">
+                    <button type="button" class="btn-guardar-venta" id="btnNuevoCobroOperacion" style="display:none;">Nuevo cobro</button>
+                    <button type="button" class="btn-cerrar-venta" onclick="cerrarModalMovimientosOperacion()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+
         <p class="volver">
             <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
         </p>
@@ -779,6 +913,12 @@ function fmtNum($n) {
         if (e.key === 'Escape') {
             var modalVenta = document.getElementById('modalVenta');
             var modalFactura = document.getElementById('modalFactura');
+            var modalMovOp = document.getElementById('modalMovimientosOperacion');
+            if (modalMovOp && modalMovOp.classList.contains('activo')) {
+                cerrarModalMovimientosOperacion();
+                e.preventDefault();
+                return;
+            }
             if (modalVenta && modalVenta.classList.contains('activo')) {
                 cerrarModalVenta();
                 return;
@@ -796,7 +936,7 @@ function fmtNum($n) {
         document.getElementById('alta_fecha').value = '<?= date('Y-m-d') ?>';
         document.getElementById('alta_linea').value = '1';
         document.getElementById('alta_orden').value = '';
-        document.getElementById('alta_cantidad').value = '';
+        document.getElementById('alta_cantidad').value = '<?= $ultima_cantidad ?>';
         document.getElementById('alta_articulo').value = '<?= htmlspecialchars($ultimo_articulo, ENT_QUOTES, 'UTF-8') ?>';
         document.getElementById('alta_deposito').value = '<?= htmlspecialchars($ultimo_deposito, ENT_QUOTES, 'UTF-8') ?>';
         var m = document.getElementById('alta_mensaje_ok');
@@ -1222,6 +1362,63 @@ function fmtNum($n) {
                         var data = JSON.parse(xhr.responseText);
                         if (data.ok) {
                             mostrarMensaje('Se guardó con éxito.', false);
+                            // Agregar nueva fila a la grilla si viene en la respuesta
+                            if (data.fila_html) {
+                                var tbody = document.querySelector('.tabla-azucar tbody');
+                                if (!tbody) {
+                                    console.error('No se encontró tbody de tabla-azucar');
+                                } else {
+                                    // Si hay mensaje de "no hay registros", quitarlo
+                                    var trs = tbody.querySelectorAll('tr');
+                                    if (trs.length === 1) {
+                                        var trVacio = trs[0];
+                                        if (trVacio.cells && trVacio.cells.length === 1 && trVacio.cells[0].colSpan > 1) {
+                                            tbody.innerHTML = '';
+                                        }
+                                    }
+                                    // Crear elemento temporal para parsear el HTML
+                                    var temp = document.createElement('table');
+                                    temp.innerHTML = '<tbody>' + data.fila_html + '</tbody>';
+                                    var nuevaFila = temp.querySelector('tbody tr');
+                                    if (nuevaFila) {
+                                        var nuevoId = nuevaFila.getAttribute('data-id');
+                                        // Quitar selección de otras filas
+                                        document.querySelectorAll('.tabla-azucar tbody tr.fila-seleccionada').forEach(function(r) {
+                                            r.classList.remove('fila-seleccionada');
+                                        });
+                                        // Agregar nueva fila al tbody
+                                        tbody.appendChild(nuevaFila);
+                                        // Reordenar TODA la tabla según: orden ASC, fecha DESC, id DESC
+                                        var filas = Array.from(tbody.querySelectorAll('tr'));
+                                        filas.sort(function(a, b) {
+                                            var ordenA = parseInt(a.getAttribute('data-orden') || '0');
+                                            var ordenB = parseInt(b.getAttribute('data-orden') || '0');
+                                            if (ordenA !== ordenB) {
+                                                return ordenA - ordenB; // ASC
+                                            }
+                                            var fechaA = a.getAttribute('data-fecha') || '';
+                                            var fechaB = b.getAttribute('data-fecha') || '';
+                                            if (fechaA !== fechaB) {
+                                                return fechaB.localeCompare(fechaA); // DESC (más reciente primero)
+                                            }
+                                            var idA = parseInt(a.getAttribute('data-id') || '0');
+                                            var idB = parseInt(b.getAttribute('data-id') || '0');
+                                            return idB - idA; // DESC (mayor id primero)
+                                        });
+                                        // Reinsertar filas ordenadas
+                                        filas.forEach(function(fila) {
+                                            tbody.appendChild(fila);
+                                        });
+                                        // Seleccionar la nueva fila y hacer scroll
+                                        nuevaFila.classList.add('fila-seleccionada');
+                                        setTimeout(function() {
+                                            nuevaFila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                        }, 100);
+                                    } else {
+                                        console.error('No se pudo parsear la fila HTML');
+                                    }
+                                }
+                            }
                             altaId.value = '';
                             document.getElementById('alta_fecha').value = data.fecha || '';
                             document.getElementById('alta_linea').value = String(data.linea || 1);
@@ -1262,6 +1459,224 @@ function fmtNum($n) {
         d.textContent = s == null ? '' : String(s);
         return d.innerHTML;
     }
+
+    // Abrir modal de movimientos por operación al hacer click en columna OP
+    function abrirModalMovimientosOperacion(operacion) {
+        if (!operacion || operacion === '0' || operacion === '') {
+            alert('No hay operación asociada.');
+            return;
+        }
+        document.getElementById('modalOpNumero').textContent = operacion;
+        document.getElementById('modalMovimientosOperacion').classList.add('activo');
+        // Ocultar formulario de cobro al abrir el modal
+        var formCobro = document.getElementById('formNuevoCobroOperacion');
+        if (formCobro) {
+            formCobro.style.display = 'none';
+        }
+        var tbody = document.getElementById('tablaMovimientosOperacion');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:gray;">Cargando...</td></tr>';
+        
+        fetch('obtener_movimientos_operacion.php?operacion=' + encodeURIComponent(operacion))
+            .then(function(response) {
+                if (!response.ok) throw new Error('Error al cargar movimientos');
+                return response.text();
+            })
+            .then(function(html) {
+                tbody.innerHTML = html;
+                // Extraer usuario_id del comentario HTML si existe
+                var match = html.match(/<!-- DATA:usuario_id=(\d+) -->/);
+                var usuarioId = match ? parseInt(match[1]) : null;
+                var btnNuevoCobro = document.getElementById('btnNuevoCobroOperacion');
+                var formCobro = document.getElementById('formNuevoCobroOperacion');
+                if (btnNuevoCobro && usuarioId) {
+                    btnNuevoCobro.style.display = 'inline-block';
+                    // Guardar datos de la operación para usar en el formulario
+                    btnNuevoCobro.dataset.usuarioId = usuarioId;
+                    btnNuevoCobro.dataset.operacion = operacion;
+                    btnNuevoCobro.onclick = function() {
+                        // Mostrar formulario y prellenar campos
+                        if (formCobro) {
+                            formCobro.style.display = 'block';
+                            document.getElementById('cobro_usuario_id').value = usuarioId;
+                            document.getElementById('cobro_operacion').value = operacion;
+                            document.getElementById('cobro_fecha').value = new Date().toISOString().split('T')[0];
+                            document.getElementById('cobro_concepto').value = 'COBRO VTA AZUCAR';
+                            document.getElementById('cobro_comprobante').value = 'CHEQUE/ECHEQ';
+                            document.getElementById('cobro_referencia').value = 'OP N° ' + operacion;
+                            document.getElementById('cobro_monto').value = '';
+                            document.getElementById('msgCobroOperacion').style.display = 'none';
+                            // Scroll al formulario
+                            formCobro.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            setTimeout(function() { document.getElementById('cobro_monto').focus(); }, 100);
+                        }
+                    };
+                } else if (btnNuevoCobro) {
+                    btnNuevoCobro.style.display = 'none';
+                }
+            })
+            .catch(function(error) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:red;">Error al cargar movimientos: ' + esc(error.message) + '</td></tr>';
+            });
+    }
+
+    function cerrarModalMovimientosOperacion() {
+        document.getElementById('modalMovimientosOperacion').classList.remove('activo');
+        // Ocultar formulario de cobro si está visible
+        var formCobro = document.getElementById('formNuevoCobroOperacion');
+        if (formCobro) {
+            formCobro.style.display = 'none';
+        }
+    }
+
+    // Función para guardar nuevo cobro desde el modal de operación
+    function guardarCobroOperacion() {
+        var usuarioId = document.getElementById('cobro_usuario_id').value;
+        var fecha = document.getElementById('cobro_fecha').value;
+        var concepto = document.getElementById('cobro_concepto').value.trim();
+        var comprobante = document.getElementById('cobro_comprobante').value;
+        var referencia = document.getElementById('cobro_referencia').value.trim();
+        var monto = parseFloat(document.getElementById('cobro_monto').value) || 0;
+        var operacion = document.getElementById('cobro_operacion').value;
+        var msgEl = document.getElementById('msgCobroOperacion');
+
+        // Validaciones
+        if (!fecha || !concepto || !comprobante || !referencia || monto <= 0) {
+            msgEl.textContent = 'Por favor complete todos los campos correctamente.';
+            msgEl.style.display = 'block';
+            msgEl.style.background = '#f8d7da';
+            msgEl.style.color = '#721c24';
+            return;
+        }
+
+        // Deshabilitar botón mientras se guarda
+        var btnGuardar = document.getElementById('btnGuardarCobroOperacion');
+        btnGuardar.disabled = true;
+        btnGuardar.textContent = 'Guardando...';
+
+        // Preparar datos para enviar
+        var formData = new FormData();
+        formData.append('id', usuarioId);
+        formData.append('fecha', fecha);
+        formData.append('concepto', concepto);
+        formData.append('compro', comprobante);
+        formData.append('refer', referencia);
+        formData.append('monto', monto);
+
+        // Enviar vía AJAX
+        fetch('guardar_movimiento.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(response) {
+            return response.text();
+        })
+        .then(function(result) {
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = 'Guardar';
+            
+            if (result === 'OK' || result === 'OK_CAJA') {
+                // Mostrar mensaje de éxito
+                msgEl.textContent = 'Cobro guardado con éxito.';
+                msgEl.style.display = 'block';
+                msgEl.style.background = '#d4edda';
+                msgEl.style.color = '#155724';
+                
+                // Limpiar formulario
+                document.getElementById('cobro_monto').value = '';
+                
+                // Ocultar formulario después de 1 segundo
+                setTimeout(function() {
+                    document.getElementById('formNuevoCobroOperacion').style.display = 'none';
+                    msgEl.style.display = 'none';
+                }, 1000);
+                
+                // Recargar movimientos de la operación
+                abrirModalMovimientosOperacion(operacion);
+            } else {
+                // Mostrar error
+                msgEl.textContent = 'Error al guardar: ' + esc(result);
+                msgEl.style.display = 'block';
+                msgEl.style.background = '#f8d7da';
+                msgEl.style.color = '#721c24';
+            }
+        })
+        .catch(function(error) {
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = 'Guardar';
+            msgEl.textContent = 'Error de conexión: ' + esc(error.message);
+            msgEl.style.display = 'block';
+            msgEl.style.background = '#f8d7da';
+            msgEl.style.color = '#721c24';
+        });
+    }
+
+    // Event listeners para el formulario de cobro
+    (function() {
+        var btnGuardarCobro = document.getElementById('btnGuardarCobroOperacion');
+        var btnCancelarCobro = document.getElementById('btnCancelarCobroOperacion');
+        var formCobro = document.getElementById('formCobroOperacion');
+        
+        if (btnGuardarCobro) {
+            btnGuardarCobro.addEventListener('click', function() {
+                if (formCobro && formCobro.checkValidity()) {
+                    guardarCobroOperacion();
+                } else if (formCobro) {
+                    formCobro.reportValidity();
+                }
+            });
+        }
+        
+        if (btnCancelarCobro) {
+            btnCancelarCobro.addEventListener('click', function() {
+                var formCobroEl = document.getElementById('formNuevoCobroOperacion');
+                if (formCobroEl) {
+                    formCobroEl.style.display = 'none';
+                    document.getElementById('msgCobroOperacion').style.display = 'none';
+                }
+            });
+        }
+        
+        // Permitir guardar con Enter en el campo monto
+        var campoMonto = document.getElementById('cobro_monto');
+        if (campoMonto) {
+            campoMonto.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (formCobro && formCobro.checkValidity()) {
+                        guardarCobroOperacion();
+                    } else if (formCobro) {
+                        formCobro.reportValidity();
+                    }
+                }
+            });
+        }
+    })();
+
+    // Agregar event listeners a las celdas de operación (event delegation para funcionar con filas dinámicas)
+    (function() {
+        function manejarClickOP(e) {
+            var celda = e.target;
+            if (celda.classList.contains('col-operacion')) {
+                var operacion = celda.textContent.trim();
+                if (operacion && operacion !== '' && operacion !== '0') {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    abrirModalMovimientosOperacion(operacion);
+                }
+            }
+        }
+        // Usar event delegation en el documento para capturar clicks en cualquier momento
+        document.addEventListener('click', function(e) {
+            if (e.target.closest && e.target.closest('.tabla-azucar')) {
+                manejarClickOP(e);
+            }
+        });
+        // También agregar directamente al tbody si existe
+        var tabla = document.querySelector('.tabla-azucar tbody');
+        if (tabla) {
+            tabla.addEventListener('click', manejarClickOP);
+        }
+    })();
 
     document.getElementById('btnInterpretar').addEventListener('click', function() {
         var texto = document.getElementById('textoInterpretar').value.trim();
