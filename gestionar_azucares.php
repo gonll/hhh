@@ -579,16 +579,6 @@ function fmtNum($n) {
     <div class="container">
         <h2>Gestión de azúcares</h2>
 
-        <div class="caja-interpretar">
-            <label>Pegá aquí texto o subí una foto para interpretar (ChatGPT extraerá los datos y cargará la grilla)</label>
-            <textarea id="textoInterpretar" placeholder="Texto, tabla, listado... o dejá vacío y subí una imagen."></textarea>
-            <div class="fila-boton">
-                <input type="file" id="imagenInterpretar" accept="image/*" title="Foto o captura">
-                <button type="button" class="btn-interpretar" id="btnInterpretar">Interpretar</button>
-            </div>
-            <div id="msgInterpretar" class="msg-interpretar" style="display: none;"></div>
-        </div>
-
         <?php if ($mensaje_stock): ?>
         <p class="msg-interpretar ok" style="display: block;"><?= htmlspecialchars($mensaje_stock) ?></p>
         <?php endif; ?>
@@ -1707,99 +1697,102 @@ function fmtNum($n) {
         }
     })();
 
-    document.getElementById('btnInterpretar').addEventListener('click', function() {
-        var texto = document.getElementById('textoInterpretar').value.trim();
-        var fileInput = document.getElementById('imagenInterpretar');
-        var msgEl = document.getElementById('msgInterpretar');
-        msgEl.style.display = 'none';
+    var btnInterpretar = document.getElementById('btnInterpretar');
+    if (btnInterpretar) {
+        btnInterpretar.addEventListener('click', function() {
+            var texto = document.getElementById('textoInterpretar').value.trim();
+            var fileInput = document.getElementById('imagenInterpretar');
+            var msgEl = document.getElementById('msgInterpretar');
+            msgEl.style.display = 'none';
 
-        if (!texto && (!fileInput.files || fileInput.files.length === 0)) {
-            msgEl.textContent = 'Escribí algo o subí una imagen.';
-            msgEl.className = 'msg-interpretar error';
+            if (!texto && (!fileInput.files || fileInput.files.length === 0)) {
+                msgEl.textContent = 'Escribí algo o subí una imagen.';
+                msgEl.className = 'msg-interpretar error';
+                msgEl.style.display = 'block';
+                return;
+            }
+
+            this.disabled = true;
+            msgEl.textContent = 'Interpretando...';
+            msgEl.className = 'msg-interpretar';
             msgEl.style.display = 'block';
-            return;
-        }
 
-        this.disabled = true;
-        msgEl.textContent = 'Interpretando...';
-        msgEl.className = 'msg-interpretar';
-        msgEl.style.display = 'block';
+            var fd = new FormData();
+            fd.append('texto', texto);
 
-        var fd = new FormData();
-        fd.append('texto', texto);
+            function enviar(imagenB64) {
+                if (imagenB64) fd.append('imagen', imagenB64);
+                fetch('interpretar_azucar.php', { method: 'POST', body: fd })
+                    .then(function(r) { return r.json(); })
+                    .then(function(res) {
+                        document.getElementById('btnInterpretar').disabled = false;
+                        if (!res.ok) {
+                            msgEl.textContent = res.error || 'Error al interpretar.';
+                            msgEl.className = 'msg-interpretar error';
+                            return;
+                        }
+                        var datos = res.datos || [];
+                        msgEl.textContent = 'Se cargaron ' + datos.length + ' registro(s) en la grilla.';
+                        msgEl.className = 'msg-interpretar ok';
 
-        function enviar(imagenB64) {
-            if (imagenB64) fd.append('imagen', imagenB64);
-            fetch('interpretar_azucar.php', { method: 'POST', body: fd })
-                .then(function(r) { return r.json(); })
-                .then(function(res) {
-                    document.getElementById('btnInterpretar').disabled = false;
-                    if (!res.ok) {
-                        msgEl.textContent = res.error || 'Error al interpretar.';
-                        msgEl.className = 'msg-interpretar error';
-                        return;
-                    }
-                    var datos = res.datos || [];
-                    msgEl.textContent = 'Se cargaron ' + datos.length + ' registro(s) en la grilla.';
-                    msgEl.className = 'msg-interpretar ok';
-
-                    var tbody = document.querySelector('.tabla-azucar tbody');
-                    tbody.innerHTML = '';
-                    if (datos.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:15px;color:#666;">No se extrajeron registros.</td></tr>';
-                    } else {
-                        datos.forEach(function(r, i) {
-                            var tr = document.createElement('tr');
-                            tr.className = i === 0 ? 'fila-seleccionada' : '';
-                            var v = function(k, def) { return (r[k] != null && r[k] !== '') ? r[k] : (def || ''); };
-                            tr.innerHTML =
-                                '<td class="col-fecha">' + esc(v('fecha')) + '</td>' +
-                                '<td class="col-l">' + esc(v('linea', '0')) + '</td>' +
-                                '<td class="col-articulo">' + esc(v('articulo')) + '</td>' +
-                                '<td class="col-orden">' + esc(v('orden', '0')) + '</td>' +
-                                '<td class="col-cantidad">' + (parseInt(v('cantidad'), 10) || 0) + '</td>' +
-                                '<td class="col-deposito">' + esc(v('deposito')) + '</td>' +
-                                '<td class="col-operacion">' + (parseInt(v('operacion'), 10) || '') + '</td>' +
-                                '<td class="col-fechavta">' + esc(v('fecha_vta')) + '</td>' +
-                                '<td class="col-cantvta">' + (parseInt(v('cant_vta'), 10) || 0) + '</td>' +
-                                '<td class="col-vendida ' + (v('vendida_a') ? '' : 'sin-dato') + '">' + esc(v('vendida_a')) + '</td>' +
-                                '<td class="col-operador ' + (v('operador') ? '' : 'sin-dato') + '">' + esc(v('operador')) + '</td>' +
-                                '<td class="col-preciovta">' + fmtNum(v('precio_vta')) + '</td>' +
-                                '<td class="col-fechafact">' + esc(v('fecha_fact')) + '</td>' +
-                                '<td class="col-cantfact">' + (parseInt(v('cant_fact'), 10) || 0) + '</td>' +
-                                '<td class="col-facturada ' + (v('facturada_a') ? '' : 'sin-dato') + '">' + esc(v('facturada_a')) + '</td>' +
-                                '<td class="col-preciofac">' + fmtNum(v('precio_fac')) + '</td>' +
-                                '<td class="col-nfact ' + (v('n_fact') ? '' : 'sin-dato') + '">' + esc(v('n_fact')) + '</td>' +
-                                '<td class="col-nremt ' + (v('n_remt') ? '' : 'sin-dato') + '">' + esc(v('n_remt')) + '</td>';
-                            tbody.appendChild(tr);
-                        });
-                        document.querySelectorAll('.tabla-azucar tbody tr').forEach(function(tr) {
-                            tr.addEventListener('click', function() {
-                                document.querySelectorAll('.tabla-azucar tbody tr.fila-seleccionada').forEach(function(r) { r.classList.remove('fila-seleccionada'); });
-                                this.classList.add('fila-seleccionada');
-                                if (typeof actualizarCartelSaldoOrden === 'function') actualizarCartelSaldoOrden();
+                        var tbody = document.querySelector('.tabla-azucar tbody');
+                        tbody.innerHTML = '';
+                        if (datos.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:15px;color:#666;">No se extrajeron registros.</td></tr>';
+                        } else {
+                            datos.forEach(function(r, i) {
+                                var tr = document.createElement('tr');
+                                tr.className = i === 0 ? 'fila-seleccionada' : '';
+                                var v = function(k, def) { return (r[k] != null && r[k] !== '') ? r[k] : (def || ''); };
+                                tr.innerHTML =
+                                    '<td class="col-fecha">' + esc(v('fecha')) + '</td>' +
+                                    '<td class="col-l">' + esc(v('linea', '0')) + '</td>' +
+                                    '<td class="col-articulo">' + esc(v('articulo')) + '</td>' +
+                                    '<td class="col-orden">' + esc(v('orden', '0')) + '</td>' +
+                                    '<td class="col-cantidad">' + (parseInt(v('cantidad'), 10) || 0) + '</td>' +
+                                    '<td class="col-deposito">' + esc(v('deposito')) + '</td>' +
+                                    '<td class="col-operacion">' + (parseInt(v('operacion'), 10) || '') + '</td>' +
+                                    '<td class="col-fechavta">' + esc(v('fecha_vta')) + '</td>' +
+                                    '<td class="col-cantvta">' + (parseInt(v('cant_vta'), 10) || 0) + '</td>' +
+                                    '<td class="col-vendida ' + (v('vendida_a') ? '' : 'sin-dato') + '">' + esc(v('vendida_a')) + '</td>' +
+                                    '<td class="col-operador ' + (v('operador') ? '' : 'sin-dato') + '">' + esc(v('operador')) + '</td>' +
+                                    '<td class="col-preciovta">' + fmtNum(v('precio_vta')) + '</td>' +
+                                    '<td class="col-fechafact">' + esc(v('fecha_fact')) + '</td>' +
+                                    '<td class="col-cantfact">' + (parseInt(v('cant_fact'), 10) || 0) + '</td>' +
+                                    '<td class="col-facturada ' + (v('facturada_a') ? '' : 'sin-dato') + '">' + esc(v('facturada_a')) + '</td>' +
+                                    '<td class="col-preciofac">' + fmtNum(v('precio_fac')) + '</td>' +
+                                    '<td class="col-nfact ' + (v('n_fact') ? '' : 'sin-dato') + '">' + esc(v('n_fact')) + '</td>' +
+                                    '<td class="col-nremt ' + (v('n_remt') ? '' : 'sin-dato') + '">' + esc(v('n_remt')) + '</td>';
+                                tbody.appendChild(tr);
                             });
-                        });
-                    }
-                })
-                .catch(function() {
-                    document.getElementById('btnInterpretar').disabled = false;
-                    msgEl.textContent = 'Error de red o servidor.';
-                    msgEl.className = 'msg-interpretar error';
-                });
-        }
+                            document.querySelectorAll('.tabla-azucar tbody tr').forEach(function(tr) {
+                                tr.addEventListener('click', function() {
+                                    document.querySelectorAll('.tabla-azucar tbody tr.fila-seleccionada').forEach(function(r) { r.classList.remove('fila-seleccionada'); });
+                                    this.classList.add('fila-seleccionada');
+                                    if (typeof actualizarCartelSaldoOrden === 'function') actualizarCartelSaldoOrden();
+                                });
+                            });
+                        }
+                    })
+                    .catch(function() {
+                        document.getElementById('btnInterpretar').disabled = false;
+                        msgEl.textContent = 'Error de red o servidor.';
+                        msgEl.className = 'msg-interpretar error';
+                    });
+            }
 
-        if (fileInput.files && fileInput.files[0]) {
-            var fr = new FileReader();
-            fr.onload = function() {
-                var b64 = fr.result.replace(/^data:image\/\w+;base64,/, '');
-                enviar(b64);
-            };
-            fr.readAsDataURL(fileInput.files[0]);
-        } else {
-            enviar(null);
-        }
-    });
+            if (fileInput.files && fileInput.files[0]) {
+                var fr = new FileReader();
+                fr.onload = function() {
+                    var b64 = fr.result.replace(/^data:image\/\w+;base64,/, '');
+                    enviar(b64);
+                };
+                fr.readAsDataURL(fileInput.files[0]);
+            } else {
+                enviar(null);
+            }
+        });
+    }
 
     function actualizarCartelSaldoOrden() {
         var tr = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada[data-id]');
