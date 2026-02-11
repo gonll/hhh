@@ -751,10 +751,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <?php else: ?>
                     <a href="gestionar_finca.php" class="btn btn-secondary">← Volver a Gestión Finca</a>
                 <?php endif; ?>
-            <?php else: ?>
-                <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
-                <a href="partes_desde_cel.php" class="btn btn-secondary">Partes desde cel</a>
             <?php endif; ?>
+            <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
+            <a href="partes_desde_cel.php" class="btn btn-secondary">Partes desde cel</a>
         </div>
 
         <div id="modalObservaciones" aria-hidden="true">
