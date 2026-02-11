@@ -1036,36 +1036,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     tipoHoras.addEventListener('change', manejarCambioTipoHoras);
                 }
     
-                // Toggle formulario carga gasoil en cisterna (touch + click para móvil y desktop)
-                // Ejecutar de forma independiente para asegurar que siempre funcione
-                (function() {
-                    try {
-                        const formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
-                        window.toggleCargaGasoilForm = function() {
-                            if (formCargaGasoilSisterna) {
-                                var estaVisible = formCargaGasoilSisterna.style.display !== 'none';
-                                formCargaGasoilSisterna.style.display = estaVisible ? 'none' : 'block';
-                            }
-                        };
-                        var btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
-                        if (btnCargaGasoilSisterna && formCargaGasoilSisterna) {
-                            var ultimoTouchGasoil = 0;
-                            btnCargaGasoilSisterna.addEventListener('touchend', function(e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                ultimoTouchGasoil = Date.now();
-                                toggleCargaGasoilForm();
-                            }, { passive: false });
-                            btnCargaGasoilSisterna.addEventListener('click', function(e) {
-                                e.preventDefault();
-                                if (Date.now() - ultimoTouchGasoil < 400) return;
-                                toggleCargaGasoilForm();
-                            });
-                        }
-                    } catch (err) {
-                        console.error('Error al inicializar botón carga gasoil:', err);
-                    }
-                })();
                 
                 // Guardar valores cuando cambian los campos
                 function actualizarTractorDesdeCambioAceite() {
@@ -1208,6 +1178,60 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             document.addEventListener('DOMContentLoaded', init);
         } else {
             init();
+        }
+    })();
+    
+    // Inicializar botón carga gasoil de forma completamente independiente
+    // Esto asegura que funcione incluso si hay errores en otras partes del código
+    (function initCargaGasoil() {
+        function initGasoil() {
+            try {
+                var formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
+                var btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
+                
+                if (!formCargaGasoilSisterna || !btnCargaGasoilSisterna) {
+                    console.warn('Elementos de carga gasoil no encontrados, reintentando...');
+                    setTimeout(initGasoil, 100);
+                    return;
+                }
+                
+                // Función global para toggle del formulario
+                window.toggleCargaGasoilForm = function() {
+                    if (formCargaGasoilSisterna) {
+                        var estaVisible = formCargaGasoilSisterna.style.display !== 'none' && formCargaGasoilSisterna.style.display !== '';
+                        formCargaGasoilSisterna.style.display = estaVisible ? 'none' : 'block';
+                    }
+                };
+                
+                var ultimoTouchGasoil = 0;
+                
+                // Listener para touch (móvil)
+                btnCargaGasoilSisterna.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    ultimoTouchGasoil = Date.now();
+                    toggleCargaGasoilForm();
+                }, { passive: false });
+                
+                // Listener para click (desktop)
+                btnCargaGasoilSisterna.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // Evitar doble ejecución si ya se ejecutó touchend recientemente
+                    if (Date.now() - ultimoTouchGasoil < 400) return;
+                    toggleCargaGasoilForm();
+                });
+                
+                console.log('Botón carga gasoil inicializado correctamente');
+            } catch (err) {
+                console.error('Error al inicializar botón carga gasoil:', err);
+            }
+        }
+        
+        // Ejecutar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initGasoil);
+        } else {
+            initGasoil();
         }
     })();
     </script>
