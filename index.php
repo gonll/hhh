@@ -264,9 +264,6 @@ if ($nivelAcceso === 3) {
             <a href="abm_indices.php" class="btn-abm-prop btn-indice">📈 ABM INDICE IPC</a>
         <?php endif; ?>
 
-        <?php if($falta_indice): ?>
-            <div class="alerta-indice">⚠️ FALTA IPC MES ACTUAL</div>
-        <?php endif; ?>
     </div>
 
     <div class="contenedor-grid">
