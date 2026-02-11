@@ -207,9 +207,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Obtener lista de PDTs (desde_cel: solo 3 últimos con CC=NO)
+// Obtener lista de PDTs (desde_cel: solo últimos 3 cargados)
 if (!empty($desde_cel)) {
-    $sql_lista = "SELECT p.*, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id WHERE COALESCE(p.en_cc, 0) = 0 ORDER BY p.fecha DESC, p.id DESC LIMIT 3";
+    $sql_lista = "SELECT p.*, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3";
 } else {
     $sql_lista = "SELECT p.*, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 200";
 }
@@ -657,11 +657,15 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <textarea name="observaciones" rows="1" style="resize: vertical; min-height: 20px;"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
             </div>
             
-            <div class="<?= $desde_cel ? 'botones-form-partes' : '' ?>" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div class="<?= $desde_cel ? 'botones-form-partes' : '' ?>" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;<?= $desde_cel ? ' justify-content: space-between;' : '' ?>">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary">Guardar</button>
                 <?php if ($desde_cel): ?>
                 <a href="<?= htmlspecialchars($form_action_url) ?>" class="btn btn-secondary">Cancelar</a>
-                <a href="<?= $es_nivel_0 ? 'logout.php' : 'gestionar_finca.php' ?>" class="btn btn-secondary">Salir</a>
+                <?php endif; ?>
+                </div>
+                <?php if ($desde_cel): ?>
+                <a href="<?= $es_nivel_0 ? 'logout.php' : 'gestionar_finca.php' ?>" class="btn btn-secondary" style="margin-left: auto;">Salir</a>
                 <?php endif; ?>
                 <?php if ($mensaje === 'Parte guardado.'): ?>
                     <div id="cartelMensaje" class="cartel-parte-guardado parte-guardado">Parte guardado.</div>
@@ -678,7 +682,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             </div>
         </form>
         
-        <h3 style="margin-top: 30px;"><?= $desde_cel ? 'Últimos 3 partes (sin cargar en CC)' : 'Listado de PDTs' ?></h3>
+        <h3 style="margin-top: 30px;"><?= $desde_cel ? 'Últimos 3 partes' : 'Listado de PDTs' ?></h3>
         <div class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
             <thead>

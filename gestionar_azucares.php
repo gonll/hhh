@@ -575,7 +575,7 @@ function fmtNum($n) {
         .modal-alta #alta_cantidad { -moz-appearance: textfield; appearance: textfield; }
     </style>
 </head>
-<body>
+<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
         <h2>Gestión de azúcares</h2>
 
@@ -912,10 +912,11 @@ function fmtNum($n) {
 
     <script>
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
+        if (e.key === 'Escape' || e.keyCode === 27 || e.which === 27) {
             var modalVenta = document.getElementById('modalVenta');
             var modalFactura = document.getElementById('modalFactura');
             var modalMovOp = document.getElementById('modalMovimientosOperacion');
+            var modalAlta = document.getElementById('modalAltaStock');
             if (modalMovOp && modalMovOp.classList.contains('activo')) {
                 cerrarModalMovimientosOperacion();
                 e.preventDefault();
@@ -923,13 +924,25 @@ function fmtNum($n) {
             }
             if (modalVenta && modalVenta.classList.contains('activo')) {
                 cerrarModalVenta();
+                e.preventDefault();
                 return;
             }
             if (modalFactura && modalFactura.classList.contains('activo')) {
                 cerrarModalFactura();
+                e.preventDefault();
                 return;
             }
-            window.location.href = 'index.php';
+            if (modalAlta && modalAlta.classList.contains('activo')) {
+                cerrarModalAltaStock();
+                e.preventDefault();
+                return;
+            }
+            if (history.length > 1) {
+                history.back();
+            } else {
+                window.location.href = 'index.php';
+            }
+            e.preventDefault();
         }
     });
     document.getElementById('btnAltaStock').addEventListener('click', function() {
