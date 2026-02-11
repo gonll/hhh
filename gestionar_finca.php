@@ -442,7 +442,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         $js_esc .= "location.href='".addslashes($url_esc_volver)."';return false;}";
         ?>
 <body<?= $desde_cel ? ' class="vista-partes-cel"' : '' ?> onkeydown="var e=event||window.event;<?= $js_esc ?>">
-    <script type="application/json" id="datos-usuarios-pdt"><?= json_encode(array_values($usuarios), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
     <div class="container">
         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
             <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?> <a href="<?= $desde_cel ? ($es_nivel_0 ? 'logout.php' : 'gestionar_finca.php') : 'index.php' ?>" id="linkVolverEsc" style="font-size: 14px; text-decoration: none;" title="Volver (ESC)">🚩</a></h2>
@@ -528,6 +527,53 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         </div>
                     </div>
                 </div>
+                <script>
+                (function(){
+                    var u = <?= json_encode(array_values($usuarios), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+                    var b = document.getElementById('buscadorUsuario');
+                    var r = document.getElementById('resultadosUsuario');
+                    var uid = document.getElementById('usuario_id');
+                    var nomSel = document.getElementById('nombreUsuarioSel');
+                    var divSel = document.getElementById('usuarioSeleccionado');
+                    if(!b||!r||!uid) return;
+                    var minC = document.body && document.body.classList.contains('vista-partes-cel') ? 1 : 2;
+                    function buscar(){
+                        var t = (b.value||'').toLowerCase().trim();
+                        if(t.length < minC){ r.style.display='none'; if(!t){ uid.value=''; if(divSel) divSel.style.display='none'; } return; }
+                        if(!u.length) return;
+                        var list = [];
+                        for(var i=0;i<u.length;i++){ var ap = (u[i].apellido||'').toLowerCase(); if(ap.indexOf(t)!==-1) list.push(u[i]); }
+                        if(!list.length){ r.innerHTML='<div class="usuario-item">No se encontraron usuarios</div>'; r.style.display='block'; return; }
+                        var html = '';
+                        for(var j=0;j<Math.min(10,list.length);j++){
+                            var x=list[j];
+                            var apEsc = (x.apellido||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+                            html += '<div class="usuario-item" data-id="'+x.id+'" data-nombre="'+apEsc+'">'+apEsc+'</div>';
+                        }
+                        r.innerHTML = html;
+                        r.style.display = 'block';
+                    }
+                    window.buscarPersonalPdt = buscar;
+                    b.oninput = buscar;
+                    b.onkeyup = buscar;
+                    r.onclick = function(e){
+                        var el = e.target;
+                        if(!el || !el.getAttribute('data-id')) return;
+                        if(el.className && el.className.indexOf('usuario-item')===-1) return;
+                        var id = el.getAttribute('data-id');
+                        var nom = el.getAttribute('data-nombre')||'';
+                        uid.value = id;
+                        b.value = nom;
+                        if(nomSel) nomSel.textContent = nom;
+                        if(divSel) divSel.style.display = 'block';
+                        r.style.display = 'none';
+                    };
+                    r.ontouchend = function(e){
+                        var el = e.target;
+                        if(el && el.getAttribute('data-id')){ e.preventDefault(); var id=el.getAttribute('data-id'); var nom=el.getAttribute('data-nombre')||''; uid.value=id; b.value=nom; if(nomSel) nomSel.textContent=nom; if(divSel) divSel.style.display='block'; r.style.display='none'; }
+                    };
+                })();
+                </script>
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 20px;">
                     <?php if (!$desde_cel): ?>
                     <a href="gestionar_tabla_salarial.php" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">ABM Tabla salarial</a>
@@ -1309,96 +1355,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             document.addEventListener('DOMContentLoaded', initGasoil);
         } else {
             initGasoil();
-        }
-    })();
-    </script>
-    <!-- Búsqueda de personal: script independiente para que funcione en servidor -->
-    <script>
-    (function() {
-        function getUsuarios() {
-            var el = document.getElementById('datos-usuarios-pdt');
-            if (!el) return [];
-            var raw = el.textContent || el.innerText || '';
-            if (!raw.trim()) return [];
-            try {
-                var j = JSON.parse(raw);
-                return Array.isArray(j) ? j : [];
-            } catch (e) { return []; }
-        }
-        var u = [];
-        var intentos = 0;
-        var maxIntentos = 50;
-        function initBusqueda() {
-            var buscador = document.getElementById('buscadorUsuario');
-            var resultados = document.getElementById('resultadosUsuario');
-            var usuarioId = document.getElementById('usuario_id');
-            var nombreSel = document.getElementById('nombreUsuarioSel');
-            var divSel = document.getElementById('usuarioSeleccionado');
-            if (!buscador || !resultados || !usuarioId) {
-                if (intentos < maxIntentos) {
-                    intentos++;
-                    setTimeout(initBusqueda, 150);
-                }
-                return;
-            }
-            u = getUsuarios();
-            var minLen = (document.body && document.body.classList.contains('vista-partes-cel')) ? 1 : 2;
-            function buscar() {
-                if (!resultados || !usuarioId) return;
-                var t = (buscador.value || '').toLowerCase().trim();
-                if (t.length < minLen) {
-                    resultados.style.display = 'none';
-                    if (!t) { usuarioId.value = ''; if (divSel) divSel.style.display = 'none'; }
-                    return;
-                }
-                if (!u.length) u = getUsuarios();
-                var list = u.filter(function(x) { return x.apellido && (x.apellido + '').toLowerCase().indexOf(t) !== -1; });
-                if (!list.length) {
-                    resultados.innerHTML = '<div class="usuario-item">No se encontraron usuarios</div>';
-                    resultados.style.display = 'block';
-                    return;
-                }
-                resultados.innerHTML = list.slice(0, 10).map(function(x) {
-                    var ap = (x.apellido || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-                    return '<div class="usuario-item" data-id="' + x.id + '" data-nombre="' + ap + '">' + (x.apellido || '') + '</div>';
-                }).join('');
-                resultados.style.display = 'block';
-            }
-            window.buscarPersonalPdt = buscar;
-            buscador.addEventListener('input', buscar);
-            buscador.addEventListener('keyup', buscar);
-            resultados.addEventListener('click', function(e) {
-                var el = e.target;
-                if (!el.classList || !el.classList.contains('usuario-item')) return;
-                var id = el.getAttribute('data-id');
-                var nom = el.getAttribute('data-nombre') || '';
-                if (!id) return;
-                usuarioId.value = id;
-                buscador.value = nom;
-                if (nombreSel) nombreSel.textContent = nom;
-                if (divSel) divSel.style.display = 'block';
-                resultados.style.display = 'none';
-            });
-            resultados.addEventListener('touchend', function(e) {
-                var el = e.target.closest ? e.target.closest('.usuario-item') : (e.target.classList && e.target.classList.contains('usuario-item') ? e.target : null);
-                if (el) {
-                    e.preventDefault();
-                    var id = el.getAttribute('data-id');
-                    var nom = el.getAttribute('data-nombre') || '';
-                    if (id) {
-                        usuarioId.value = id;
-                        buscador.value = nom;
-                        if (nombreSel) nombreSel.textContent = nom;
-                        if (divSel) divSel.style.display = 'block';
-                        resultados.style.display = 'none';
-                    }
-                }
-            }, { passive: false });
-        }
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initBusqueda);
-        } else {
-            initBusqueda();
         }
     })();
     </script>
