@@ -12,8 +12,8 @@ $id_prop = (int)$_GET['id'];
 
 $sql = "SELECT a.*, p.propiedad, p.consorcio, p.padron, p.detalle as prop_detalle, p.propietario_id,
                prop.apellido as prop_nom, prop.cuit as prop_cuit, prop.dni as prop_dni, prop.domicilio as prop_dom,
-               u1.apellido as inq1_nom, u1.dni as inq1_dni, u1.domicilio as inq1_dom,
-               u2.apellido as inq2_nom, u2.dni as inq2_dni,
+               u1.apellido as inq1_nom, u1.dni as inq1_dni, u1.domicilio as inq1_dom, u1.email as inq1_email,
+               u2.apellido as inq2_nom, u2.dni as inq2_dni, u2.email as inq2_email,
                c1.apellido as cod1_nom, c1.dni as cod1_dni, c1.domicilio as cod1_dom,
                c2.apellido as cod2_nom, c2.dni as cod2_dni, c2.domicilio as cod2_dom
         FROM alquileres a
@@ -53,6 +53,10 @@ $dom_propiedad = trim(strtoupper($c['propiedad'] ?? '') . ', ' . ($c['consorcio'
 $locatario_txt = strtoupper($c['inq1_nom']) . ", D.N.I. N° " . preg_replace('/\D/', '', $c['inq1_dni'] ?? '');
 if (!empty($c['inq2_nom'])) {
     $locatario_txt .= " y " . strtoupper($c['inq2_nom']) . ", D.N.I. N° " . preg_replace('/\D/', '', $c['inq2_dni'] ?? '');
+}
+$inquilino_mail = trim($c['inq1_email'] ?? '');
+if (empty($inquilino_mail) && !empty($c['inq2_email'])) {
+    $inquilino_mail = trim($c['inq2_email']);
 }
 
 // Fechas y meses
@@ -123,7 +127,7 @@ p { margin: 0 0 12pt; }
 
 <p><strong><?= htmlspecialchars($dom_propiedad) ?> <?= htmlspecialchars($locatario_txt) ?></strong></p>
 
-<p><strong>PARTES CONTRATANTES:</strong> Entre, por una parte <?= htmlspecialchars($loc_nom) ?>, <?= htmlspecialchars($loc_ident) ?> con domicilio en <?= htmlspecialchars($loc_dom) ?>, denominada en adelante la Locadora. Y por la otra parte <?= htmlspecialchars($locatario_txt) ?> con domicilio en <?= htmlspecialchars($dom_propiedad) ?>, denominado en adelante el Locatario, convienen celebrar el presente Contrato de locación para vivienda el cual se sujetará a los términos y condiciones que se detallan a continuación.</p>
+<p><strong>PARTES CONTRATANTES:</strong> Entre, por una parte <?= htmlspecialchars($loc_nom) ?>, <?= htmlspecialchars($loc_ident) ?> con domicilio en <?= htmlspecialchars($loc_dom) ?>, denominada en adelante la Locadora. Y por la otra parte <?= htmlspecialchars($locatario_txt) ?> con domicilio en <?= htmlspecialchars($dom_propiedad) ?><?= $inquilino_mail !== '' ? ', y mail para notificaciones ' . htmlspecialchars($inquilino_mail) : '' ?>, denominado en adelante el Locatario, convienen celebrar el presente Contrato de locación para vivienda el cual se sujetará a los términos y condiciones que se detallan a continuación.</p>
 
 <p><span class="clausula">PRIMERA, objeto:</span> La Locadora, en su carácter de única y exclusiva propietaria, da al Locatario en locación y éste acepta, el inmueble identificado como <?= htmlspecialchars($dom_propiedad) ?>, Padrón provincial Nº <?= htmlspecialchars($padron) ?>, cuyas comodidades y especificaciones son las siguientes: <?= $detalle ?>. El Locatario recibe en este acto el Inmueble de conformidad y en tal carácter en el estado de conservación, obligándose a devolverlo al final del contrato en iguales condiciones de conservación aseo y funcionamiento, enduido y recién pintado con satinol. A tal efecto el locador requerirá el monto del costo de la mano de obra y materiales necesarios para la pintura al locatario, no pudiendo este ultimo realizarlo por su cuenta.</p>
 

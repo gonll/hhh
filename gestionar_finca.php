@@ -708,66 +708,81 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     </div>
     
     <script>
-    const usuarios = <?= json_encode($usuarios) ?>;
-    const resumenHorasCCNo = <?= json_encode($resumen_horas_cc_no) ?>;
-    const tractorDesdeCambio = <?= json_encode($tractor_desde_cambio) ?>;
-    const buscador = document.getElementById('buscadorUsuario');
-    const resultados = document.getElementById('resultadosUsuario');
-    const usuarioIdInput = document.getElementById('usuario_id');
-    const usuarioSeleccionado = document.getElementById('usuarioSeleccionado');
-    const nombreUsuarioSel = document.getElementById('nombreUsuarioSel');
-    const tipoHoras = document.getElementById('tipo_horas');
-    const tractorGroup = document.getElementById('tractorGroup');
-    const tractorSelect = document.getElementById('tractor');
+    (function() {
+        // Esperar a que el DOM esté completamente cargado
+        function init() {
+            try {
+                const usuarios = <?= json_encode($usuarios) ?>;
+                const resumenHorasCCNo = <?= json_encode($resumen_horas_cc_no) ?>;
+                const tractorDesdeCambio = <?= json_encode($tractor_desde_cambio) ?>;
+                const buscador = document.getElementById('buscadorUsuario');
+                const resultados = document.getElementById('resultadosUsuario');
+                const usuarioIdInput = document.getElementById('usuario_id');
+                const usuarioSeleccionado = document.getElementById('usuarioSeleccionado');
+                const nombreUsuarioSel = document.getElementById('nombreUsuarioSel');
+                const tipoHoras = document.getElementById('tipo_horas');
+                const tractorGroup = document.getElementById('tractorGroup');
+                const tractorSelect = document.getElementById('tractor');
+                
+                // Verificar que los elementos críticos existan
+                if (!buscador || !resultados || !usuarioIdInput) {
+                    console.error('Error: No se encontraron elementos del buscador de usuarios');
+                    return;
+                }
+                
+                if (!Array.isArray(usuarios)) {
+                    console.error('Error: usuarios no es un array válido', usuarios);
+                    return;
+                }
     
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            e.preventDefault();
-            <?php if ($desde_cel): ?>
-            // Partes desde cel: volver al formulario que lo llamó (página anterior)
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.href = <?= $es_nivel_0 ? "'logout.php'" : "'gestionar_finca.php'" ?>;
-            }
-            <?php else: ?>
-            window.location.href = 'index.php';
-            <?php endif; ?>
-        }
-    });
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        <?php if ($desde_cel): ?>
+                        // Partes desde cel: volver al formulario que lo llamó (página anterior)
+                        if (window.history.length > 1) {
+                            window.history.back();
+                        } else {
+                            window.location.href = <?= $es_nivel_0 ? "'logout.php'" : "'gestionar_finca.php'" ?>;
+                        }
+                        <?php else: ?>
+                        window.location.href = 'index.php';
+                        <?php endif; ?>
+                    }
+                });
+                
+                <?php if ($pdt_edit): ?>
+                // Si estamos editando, mostrar el usuario seleccionado
+                const usuarioEdit = usuarios.find(u => u.id == <?= $pdt_edit['usuario_id'] ?>);
+                if (usuarioEdit && buscador && nombreUsuarioSel && usuarioSeleccionado) {
+                    buscador.value = usuarioEdit.apellido;
+                    nombreUsuarioSel.textContent = usuarioEdit.apellido;
+                    usuarioSeleccionado.style.display = 'block';
+                }
+                // Mostrar grupo de tractor y campos adicionales si corresponde
+                var gasoilGroupEdit = document.getElementById('gasoilGroup');
+                var cambioAceiteGroupEdit = document.getElementById('cambioAceiteGroup');
+                var labelCantidadEdit = document.getElementById('labelCantidad');
+                var cantGasoilInputEdit = document.getElementById('cant_gasoil');
+                if (tractorGroup && tractorSelect && '<?= $pdt_edit['tipo_horas'] ?>' === 'Horas tractos') {
+                    tractorGroup.style.display = 'block';
+                    tractorSelect.required = true;
+                    if (gasoilGroupEdit) gasoilGroupEdit.style.display = 'block';
+                    if (cambioAceiteGroupEdit) cambioAceiteGroupEdit.style.display = 'block';
+                    if (labelCantidadEdit) labelCantidadEdit.textContent = 'Cantidad horas *';
+                    if (cantGasoilInputEdit) cantGasoilInputEdit.required = true;
+                } else if (tractorGroup) {
+                    tractorGroup.style.display = 'none';
+                    if (gasoilGroupEdit) gasoilGroupEdit.style.display = 'none';
+                    if (cambioAceiteGroupEdit) cambioAceiteGroupEdit.style.display = 'none';
+                    if (cantGasoilInputEdit) cantGasoilInputEdit.required = false;
+                }
+                <?php endif; ?>
     
-    <?php if ($pdt_edit): ?>
-        // Si estamos editando, mostrar el usuario seleccionado
-        const usuarioEdit = usuarios.find(u => u.id == <?= $pdt_edit['usuario_id'] ?>);
-        if (usuarioEdit) {
-            buscador.value = usuarioEdit.apellido;
-            nombreUsuarioSel.textContent = usuarioEdit.apellido;
-            usuarioSeleccionado.style.display = 'block';
-        }
-        // Mostrar grupo de tractor y campos adicionales si corresponde
-        var gasoilGroupEdit = document.getElementById('gasoilGroup');
-        var cambioAceiteGroupEdit = document.getElementById('cambioAceiteGroup');
-        var labelCantidadEdit = document.getElementById('labelCantidad');
-        var cantGasoilInputEdit = document.getElementById('cant_gasoil');
-        if ('<?= $pdt_edit['tipo_horas'] ?>' === 'Horas tractos') {
-            tractorGroup.style.display = 'block';
-            tractorSelect.required = true;
-            if (gasoilGroupEdit) gasoilGroupEdit.style.display = 'block';
-            if (cambioAceiteGroupEdit) cambioAceiteGroupEdit.style.display = 'block';
-            if (labelCantidadEdit) labelCantidadEdit.textContent = 'Cantidad horas *';
-            if (cantGasoilInputEdit) cantGasoilInputEdit.required = true;
-        } else {
-            tractorGroup.style.display = 'none';
-            if (gasoilGroupEdit) gasoilGroupEdit.style.display = 'none';
-            if (cambioAceiteGroupEdit) cambioAceiteGroupEdit.style.display = 'none';
-            if (cantGasoilInputEdit) cantGasoilInputEdit.required = false;
-        }
-    <?php endif; ?>
-    
-    // Buscador de usuarios (mínimo 1 carácter en vista cel para mejor uso en móvil)
-    var esVistaCel = document.body.classList.contains('vista-partes-cel');
-    var minCaracteresBusqueda = esVistaCel ? 1 : 2;
-    function ejecutarBusquedaUsuarios() {
+                // Buscador de usuarios (mínimo 1 carácter en vista cel para mejor uso en móvil)
+                var esVistaCel = document.body.classList.contains('vista-partes-cel');
+                var minCaracteresBusqueda = esVistaCel ? 1 : 2;
+                function ejecutarBusquedaUsuarios() {
         const termino = buscador.value.toLowerCase().trim();
         if (termino.length < minCaracteresBusqueda) {
             resultados.style.display = 'none';
@@ -792,10 +807,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         ).join('');
         resultados.style.display = 'block';
     }
-    buscador.addEventListener('input', ejecutarBusquedaUsuarios);
-    buscador.addEventListener('keyup', function() { if (esVistaCel) ejecutarBusquedaUsuarios(); });
+                buscador.addEventListener('input', ejecutarBusquedaUsuarios);
+                buscador.addEventListener('keyup', function() { if (esVistaCel) ejecutarBusquedaUsuarios(); });
     
-    function filtrarGridPorUsuario(usuarioId) {
+                function filtrarGridPorUsuario(usuarioId) {
         const filas = document.querySelectorAll('tr.fila-pdt');
         const id = usuarioId ? String(usuarioId).trim() : '';
         filas.forEach(function(tr) {
@@ -803,7 +818,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         });
     }
 
-    function actualizarResumenHorasUsuario() {
+                function actualizarResumenHorasUsuario() {
         var id = usuarioIdInput.value;
         var el = document.getElementById('resumenHorasUsuario');
         var btnCC = document.getElementById('btnCargarCC');
@@ -818,7 +833,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         el.textContent = 'Horas Comunes (CC=NO): ' + fmt(r.horas_comunes) + ' | Horas tractor (CC=NO): ' + fmt(r.horas_tractor);
     }
 
-    function seleccionarUsuarioDesdeItem(item) {
+                function seleccionarUsuarioDesdeItem(item) {
         if (!item || !item.classList.contains('usuario-item')) return;
         const id = item.getAttribute('data-id');
         const nombre = item.getAttribute('data-nombre');
@@ -831,25 +846,25 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         filtrarGridPorUsuario(id);
         actualizarResumenHorasUsuario();
     }
-    resultados.addEventListener('click', function(e) {
+                resultados.addEventListener('click', function(e) {
         if (e.target.classList.contains('usuario-item')) {
             e.preventDefault();
             seleccionarUsuarioDesdeItem(e.target);
         }
-    });
-    resultados.addEventListener('touchend', function(e) {
-        var item = e.target.closest && e.target.closest('.usuario-item') || (e.target.classList && e.target.classList.contains('usuario-item') ? e.target : null);
-        if (item) {
-            e.preventDefault();
-            seleccionarUsuarioDesdeItem(item);
-        }
-    }, { passive: false });
+                });
+                resultados.addEventListener('touchend', function(e) {
+                    var item = e.target.closest && e.target.closest('.usuario-item') || (e.target.classList && e.target.classList.contains('usuario-item') ? e.target : null);
+                    if (item) {
+                        e.preventDefault();
+                        seleccionarUsuarioDesdeItem(item);
+                    }
+                }, { passive: false });
 
-    // Botón Cargar en cuenta corriente: enviar POST a cargar_pdt_cc.php (no se puede anidar otro form)
-    var btnCargarCC = document.getElementById('btnCargarCC');
-    if (btnCargarCC) {
-        btnCargarCC.addEventListener('click', function() {
-            var uid = usuarioIdInput.value;
+                // Botón Cargar en cuenta corriente: enviar POST a cargar_pdt_cc.php (no se puede anidar otro form)
+                var btnCargarCC = document.getElementById('btnCargarCC');
+                if (btnCargarCC) {
+                    btnCargarCC.addEventListener('click', function() {
+                        var uid = usuarioIdInput.value;
             if (!uid) return;
             if (!confirm('¿Cargar en cuenta corriente las horas con CC=NO de este usuario? Se generarán los movimientos con fecha de hoy y comprobante Trabajo.')) return;
             var f = document.createElement('form');
@@ -862,15 +877,15 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             inp.value = uid;
             f.appendChild(inp);
             document.body.appendChild(f);
-            f.submit();
-        });
-    }
+                        f.submit();
+                    });
+                }
 
-    // Al cargar, si ya hay un usuario seleccionado (ej. edición o tras guardar), filtrar la grid y actualizar resumen
-    if (usuarioIdInput.value) {
-        filtrarGridPorUsuario(usuarioIdInput.value);
-        actualizarResumenHorasUsuario();
-    }
+                // Al cargar, si ya hay un usuario seleccionado (ej. edición o tras guardar), filtrar la grid y actualizar resumen
+                if (usuarioIdInput.value) {
+                    filtrarGridPorUsuario(usuarioIdInput.value);
+                    actualizarResumenHorasUsuario();
+                }
     var enfocarTipoTrabajo = <?= (!empty($preseleccionar_usuario_id) && !$pdt_edit) ? 'true' : 'false' ?>;
 
     // Modal observaciones: clic en fila con observaciones (no en botones)
@@ -892,12 +907,12 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         modalObs && modalObs.addEventListener('click', function(e) { if (e.target === modalObs) cerrarModalObs(); });
     }
 
-    // Ocultar resultados al hacer clic fuera
-    document.addEventListener('click', function(e) {
-        if (!buscador.contains(e.target) && !resultados.contains(e.target)) {
-            resultados.style.display = 'none';
-        }
-    });
+                // Ocultar resultados al hacer clic fuera
+                document.addEventListener('click', function(e) {
+                    if (buscador && resultados && !buscador.contains(e.target) && !resultados.contains(e.target)) {
+                        resultados.style.display = 'none';
+                    }
+                });
     
     const gasoilGroup = document.getElementById('gasoilGroup');
     const cambioAceiteGroup = document.getElementById('cambioAceiteGroup');
@@ -965,26 +980,26 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     
     tipoHoras.addEventListener('change', manejarCambioTipoHoras);
     
-    // Toggle formulario carga gasoil en cisterna (touch + click para móvil y desktop)
-    const formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
-    window.toggleCargaGasoilForm = function() {
-        if (formCargaGasoilSisterna) formCargaGasoilSisterna.style.display = formCargaGasoilSisterna.style.display === 'none' ? 'block' : 'none';
-    };
-    var btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
-    if (btnCargaGasoilSisterna && formCargaGasoilSisterna) {
-        var ultimoTouchGasoil = 0;
-        btnCargaGasoilSisterna.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            ultimoTouchGasoil = Date.now();
-            toggleCargaGasoilForm();
-        }, { passive: false });
-        btnCargaGasoilSisterna.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (Date.now() - ultimoTouchGasoil < 400) return;
-            toggleCargaGasoilForm();
-        });
-    }
+                // Toggle formulario carga gasoil en cisterna (touch + click para móvil y desktop)
+                const formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
+                window.toggleCargaGasoilForm = function() {
+                    if (formCargaGasoilSisterna) formCargaGasoilSisterna.style.display = formCargaGasoilSisterna.style.display === 'none' ? 'block' : 'none';
+                };
+                var btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
+                if (btnCargaGasoilSisterna && formCargaGasoilSisterna) {
+                    var ultimoTouchGasoil = 0;
+                    btnCargaGasoilSisterna.addEventListener('touchend', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        ultimoTouchGasoil = Date.now();
+                        toggleCargaGasoilForm();
+                    }, { passive: false });
+                    btnCargaGasoilSisterna.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (Date.now() - ultimoTouchGasoil < 400) return;
+                        toggleCargaGasoilForm();
+                    });
+                }
     
     // Guardar valores cuando cambian los campos
     function actualizarTractorDesdeCambioAceite() {
@@ -1083,15 +1098,27 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         tipoHoras.focus();
     }
 
-    // Cartel "Parte guardado": mostrarlo 1 segundo y luego ocultarlo
-    (function() {
-        var cartel = document.getElementById('cartelMensaje');
-        if (cartel && cartel.classList.contains('parte-guardado')) {
-            setTimeout(function() {
-                cartel.style.transition = 'opacity 0.3s';
-                cartel.style.opacity = '0';
-                setTimeout(function() { cartel.remove(); }, 300);
-            }, 1000);
+                // Cartel "Parte guardado": mostrarlo 1 segundo y luego ocultarlo
+                (function() {
+                    var cartel = document.getElementById('cartelMensaje');
+                    if (cartel && cartel.classList.contains('parte-guardado')) {
+                        setTimeout(function() {
+                            cartel.style.transition = 'opacity 0.3s';
+                            cartel.style.opacity = '0';
+                            setTimeout(function() { cartel.remove(); }, 300);
+                        }, 1000);
+                    }
+                })();
+            } catch (e) {
+                console.error('Error al inicializar gestión finca:', e);
+            }
+        }
+        
+        // Ejecutar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
         }
     })();
     </script>
