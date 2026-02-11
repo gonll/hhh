@@ -442,7 +442,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         $js_esc .= "location.href='".addslashes($url_esc_volver)."';return false;}";
         ?>
 <body<?= $desde_cel ? ' class="vista-partes-cel"' : '' ?> onkeydown="var e=event||window.event;<?= $js_esc ?>">
-    <div id="datos-usuarios-pdt" style="display:none" data-json="<?= htmlspecialchars(json_encode(array_values($usuarios)), ENT_QUOTES, 'UTF-8') ?>"></div>
+    <script type="application/json" id="datos-usuarios-pdt"><?= json_encode(array_values($usuarios), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
     <div class="container">
         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
             <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?> <a href="<?= $desde_cel ? ($es_nivel_0 ? 'logout.php' : 'gestionar_finca.php') : 'index.php' ?>" id="linkVolverEsc" style="font-size: 14px; text-decoration: none;" title="Volver (ESC)">🚩</a></h2>
@@ -520,7 +520,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <div class="form-group buscador-usuario-container">
                     <label>Personal *</label>
                     <div class="buscador-usuario">
-                        <input type="text" id="buscadorUsuario" placeholder="Buscar..." autocomplete="off" value="<?= htmlspecialchars($nombre_personal_mostrar) ?>">
+                        <input type="text" id="buscadorUsuario" placeholder="Buscar..." autocomplete="off" value="<?= htmlspecialchars($nombre_personal_mostrar) ?>" oninput="if(window.buscarPersonalPdt)window.buscarPersonalPdt();" onkeyup="if(window.buscarPersonalPdt)window.buscarPersonalPdt();">
                         <input type="hidden" name="usuario_id" id="usuario_id" value="<?= $pdt_edit ? $pdt_edit['usuario_id'] : ($preseleccionar_usuario_id ?? '') ?>" required>
                         <div id="resultadosUsuario"></div>
                         <div id="usuarioSeleccionado" style="margin-top: 5px; padding: 3px 5px; background: #e7f3ff; border-radius: 4px; font-size: 11px; <?= ($nombre_personal_mostrar !== '') ? '' : 'display: none;' ?>">
@@ -1317,15 +1317,17 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     (function() {
         function getUsuarios() {
             var el = document.getElementById('datos-usuarios-pdt');
-            if (!el || !el.getAttribute('data-json')) return [];
+            if (!el) return [];
+            var raw = el.textContent || el.innerText || '';
+            if (!raw.trim()) return [];
             try {
-                var j = JSON.parse(el.getAttribute('data-json'));
+                var j = JSON.parse(raw);
                 return Array.isArray(j) ? j : [];
             } catch (e) { return []; }
         }
-        var u = getUsuarios();
+        var u = [];
         var intentos = 0;
-        var maxIntentos = 30;
+        var maxIntentos = 50;
         function initBusqueda() {
             var buscador = document.getElementById('buscadorUsuario');
             var resultados = document.getElementById('resultadosUsuario');
@@ -1335,19 +1337,21 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             if (!buscador || !resultados || !usuarioId) {
                 if (intentos < maxIntentos) {
                     intentos++;
-                    setTimeout(initBusqueda, 100);
+                    setTimeout(initBusqueda, 150);
                 }
                 return;
             }
-            if (u.length === 0) u = getUsuarios();
+            u = getUsuarios();
             var minLen = (document.body && document.body.classList.contains('vista-partes-cel')) ? 1 : 2;
             function buscar() {
+                if (!resultados || !usuarioId) return;
                 var t = (buscador.value || '').toLowerCase().trim();
                 if (t.length < minLen) {
                     resultados.style.display = 'none';
                     if (!t) { usuarioId.value = ''; if (divSel) divSel.style.display = 'none'; }
                     return;
                 }
+                if (!u.length) u = getUsuarios();
                 var list = u.filter(function(x) { return x.apellido && (x.apellido + '').toLowerCase().indexOf(t) !== -1; });
                 if (!list.length) {
                     resultados.innerHTML = '<div class="usuario-item">No se encontraron usuarios</div>';
@@ -1360,6 +1364,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }).join('');
                 resultados.style.display = 'block';
             }
+            window.buscarPersonalPdt = buscar;
             buscador.addEventListener('input', buscar);
             buscador.addEventListener('keyup', buscar);
             resultados.addEventListener('click', function(e) {
