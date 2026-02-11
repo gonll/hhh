@@ -1183,47 +1183,67 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     
     // Inicializar botón carga gasoil de forma completamente independiente
     // Esto asegura que funcione incluso si hay errores en otras partes del código
+    // Funciona tanto en modo normal como responsive (partes desde cel)
     (function initCargaGasoil() {
+        var formCargaGasoilSisterna = null;
+        var btnCargaGasoilSisterna = null;
+        var ultimoTouchGasoil = 0;
+        var intentos = 0;
+        var maxIntentos = 50; // 5 segundos máximo
+        
         function initGasoil() {
             try {
-                var formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
-                var btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
+                formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
+                btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
                 
                 if (!formCargaGasoilSisterna || !btnCargaGasoilSisterna) {
-                    console.warn('Elementos de carga gasoil no encontrados, reintentando...');
-                    setTimeout(initGasoil, 100);
-                    return;
+                    intentos++;
+                    if (intentos < maxIntentos) {
+                        setTimeout(initGasoil, 100);
+                        return;
+                    } else {
+                        console.error('No se encontraron elementos de carga gasoil después de ' + maxIntentos + ' intentos');
+                        return;
+                    }
                 }
                 
                 // Función global para toggle del formulario
                 window.toggleCargaGasoilForm = function() {
-                    if (formCargaGasoilSisterna) {
-                        var estaVisible = formCargaGasoilSisterna.style.display !== 'none' && formCargaGasoilSisterna.style.display !== '';
-                        formCargaGasoilSisterna.style.display = estaVisible ? 'none' : 'block';
+                    if (!formCargaGasoilSisterna) {
+                        formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
+                        if (!formCargaGasoilSisterna) return;
                     }
+                    var estilo = window.getComputedStyle(formCargaGasoilSisterna);
+                    var estaVisible = estilo.display !== 'none' && formCargaGasoilSisterna.style.display !== 'none';
+                    formCargaGasoilSisterna.style.display = estaVisible ? 'none' : 'block';
                 };
                 
-                var ultimoTouchGasoil = 0;
+                // Remover listeners anteriores si existen (por si se ejecuta múltiples veces)
+                var nuevoBtn = btnCargaGasoilSisterna.cloneNode(true);
+                btnCargaGasoilSisterna.parentNode.replaceChild(nuevoBtn, btnCargaGasoilSisterna);
+                btnCargaGasoilSisterna = nuevoBtn;
                 
-                // Listener para touch (móvil)
+                // Listener para touch (móvil/responsive)
                 btnCargaGasoilSisterna.addEventListener('touchend', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     ultimoTouchGasoil = Date.now();
-                    toggleCargaGasoilForm();
+                    window.toggleCargaGasoilForm();
                 }, { passive: false });
                 
                 // Listener para click (desktop)
                 btnCargaGasoilSisterna.addEventListener('click', function(e) {
                     e.preventDefault();
+                    e.stopPropagation();
                     // Evitar doble ejecución si ya se ejecutó touchend recientemente
                     if (Date.now() - ultimoTouchGasoil < 400) return;
-                    toggleCargaGasoilForm();
+                    window.toggleCargaGasoilForm();
                 });
                 
                 console.log('Botón carga gasoil inicializado correctamente');
             } catch (err) {
                 console.error('Error al inicializar botón carga gasoil:', err);
+                console.error('Stack:', err.stack);
             }
         }
         
