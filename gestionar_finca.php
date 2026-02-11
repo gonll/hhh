@@ -433,7 +433,15 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         <?php endif; ?>
     </style>
 </head>
-<body<?= $desde_cel ? ' class="vista-partes-cel"' : '' ?>>
+<?php
+        $url_esc_volver = $desde_cel ? ($es_nivel_0 ? 'logout.php' : 'gestionar_finca.php') : 'index.php';
+        $js_esc = "if((e.keyCode||e.which)==27){var f=document.getElementById('formCargaGasoilSisterna');if(f&&f.style.display!='none'){f.style.display='none';return false;}";
+        if ($desde_cel) {
+            $js_esc .= "if(history.length>1){history.back();return false;}";
+        }
+        $js_esc .= "location.href='".addslashes($url_esc_volver)."';return false;}";
+        ?>
+<body<?= $desde_cel ? ' class="vista-partes-cel"' : '' ?> onkeydown="var e=event||window.event;<?= $js_esc ?>">
     <div class="container">
         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
             <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?> <a href="<?= $desde_cel ? ($es_nivel_0 ? 'logout.php' : 'gestionar_finca.php') : 'index.php' ?>" id="linkVolverEsc" style="font-size: 14px; text-decoration: none;" title="Volver (ESC)">🚩</a></h2>
@@ -502,7 +510,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             }
         }
         ?>
-        <form method="POST" id="formPDT" action="<?= htmlspecialchars($form_action_url) ?>">
+        <form method="POST" id="formPDT" action="<?= htmlspecialchars($form_action_url) ?>" onkeydown="var e=event||window.event;if((e.keyCode||e.which)==27){var f=document.getElementById('formCargaGasoilSisterna');if(f&&f.style.display!='none'){f.style.display='none';return false;}<?php if ($desde_cel): ?>if(history.length>1){history.back();return false;}<?php endif; ?>location.href='<?= addslashes($url_esc_volver) ?>';return false;}">
             <?php if ($pdt_edit): ?>
                 <input type="hidden" name="pdt_id" value="<?= $pdt_edit['id'] ?>">
             <?php endif; ?>
