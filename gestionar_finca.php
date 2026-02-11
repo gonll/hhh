@@ -713,9 +713,15 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         var urlVolver = '<?= $desde_cel ? ($es_nivel_0 ? "logout.php" : "gestionar_finca.php") : "index.php" ?>';
         var desdeCel = <?= $desde_cel ? 'true' : 'false' ?>;
         
+        function esTeclaEsc(ev) {
+            if (!ev) return false;
+            var k = ev.key;
+            var c = ev.keyCode;
+            return k === 'Escape' || k === 'Esc' || c === 27;
+        }
+        
         function manejarEsc(ev) {
-            var key = ev.key || ev.keyCode;
-            if (key !== 'Escape' && key !== 'Esc' && key !== 27) return;
+            if (!esTeclaEsc(ev)) return;
             ev.preventDefault();
             ev.stopPropagation();
             var formGasoil = document.getElementById('formCargaGasoilSisterna');
@@ -730,12 +736,28 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             }
         }
         
-        if (document.addEventListener) {
-            document.addEventListener('keydown', manejarEsc, true);
-            window.addEventListener('keydown', manejarEsc, true);
-        } else if (document.attachEvent) {
-            document.attachEvent('onkeydown', manejarEsc);
-            window.attachEvent('onkeydown', manejarEsc);
+        function registrarEsc() {
+            if (document.addEventListener) {
+                document.addEventListener('keydown', manejarEsc, true);
+                document.addEventListener('keyup', manejarEsc, true);
+                window.addEventListener('keydown', manejarEsc, true);
+                window.addEventListener('keyup', manejarEsc, true);
+                if (document.body) {
+                    document.body.addEventListener('keydown', manejarEsc, true);
+                    document.body.addEventListener('keyup', manejarEsc, true);
+                }
+            } else if (document.attachEvent) {
+                document.attachEvent('onkeydown', manejarEsc);
+                document.attachEvent('onkeyup', manejarEsc);
+                window.attachEvent('onkeydown', manejarEsc);
+                window.attachEvent('onkeyup', manejarEsc);
+            }
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', registrarEsc);
+        } else {
+            registrarEsc();
         }
         
         // Clic en banderita = mismo efecto que ESC (ejecutar cuando el DOM esté listo)
