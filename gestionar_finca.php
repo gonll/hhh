@@ -442,9 +442,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         $js_esc .= "location.href='".addslashes($url_esc_volver)."';return false;}";
         ?>
 <body<?= $desde_cel ? ' class="vista-partes-cel"' : '' ?> onkeydown="var e=event||window.event;<?= $js_esc ?>">
-    <script>
-    window.PDT_USUARIOS = <?= json_encode(array_values($usuarios), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
-    </script>
+    <div id="datos-usuarios-pdt" style="display:none" data-json="<?= htmlspecialchars(json_encode(array_values($usuarios)), ENT_QUOTES, 'UTF-8') ?>"></div>
     <div class="container">
         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
             <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?> <a href="<?= $desde_cel ? ($es_nivel_0 ? 'logout.php' : 'gestionar_finca.php') : 'index.php' ?>" id="linkVolverEsc" style="font-size: 14px; text-decoration: none;" title="Volver (ESC)">🚩</a></h2>
@@ -1317,16 +1315,32 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     <!-- Búsqueda de personal: script independiente para que funcione en servidor -->
     <script>
     (function() {
-        var u = window.PDT_USUARIOS;
-        if (!u || !Array.isArray(u)) return;
+        function getUsuarios() {
+            var el = document.getElementById('datos-usuarios-pdt');
+            if (!el || !el.getAttribute('data-json')) return [];
+            try {
+                var j = JSON.parse(el.getAttribute('data-json'));
+                return Array.isArray(j) ? j : [];
+            } catch (e) { return []; }
+        }
+        var u = getUsuarios();
+        var intentos = 0;
+        var maxIntentos = 30;
         function initBusqueda() {
             var buscador = document.getElementById('buscadorUsuario');
             var resultados = document.getElementById('resultadosUsuario');
             var usuarioId = document.getElementById('usuario_id');
             var nombreSel = document.getElementById('nombreUsuarioSel');
             var divSel = document.getElementById('usuarioSeleccionado');
-            if (!buscador || !resultados || !usuarioId) return;
-            var minLen = document.body && document.body.classList.contains('vista-partes-cel') ? 1 : 2;
+            if (!buscador || !resultados || !usuarioId) {
+                if (intentos < maxIntentos) {
+                    intentos++;
+                    setTimeout(initBusqueda, 100);
+                }
+                return;
+            }
+            if (u.length === 0) u = getUsuarios();
+            var minLen = (document.body && document.body.classList.contains('vista-partes-cel')) ? 1 : 2;
             function buscar() {
                 var t = (buscador.value || '').toLowerCase().trim();
                 if (t.length < minLen) {
@@ -1347,7 +1361,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 resultados.style.display = 'block';
             }
             buscador.addEventListener('input', buscar);
-            buscador.addEventListener('keyup', function() { if (minLen === 1) buscar(); });
+            buscador.addEventListener('keyup', buscar);
             resultados.addEventListener('click', function(e) {
                 var el = e.target;
                 if (!el.classList || !el.classList.contains('usuario-item')) return;
