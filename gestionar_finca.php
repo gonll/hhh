@@ -708,6 +708,37 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     </div>
     
     <script>
+    // ESC: siempre activo, independiente del resto del script (funciona en servidor y local)
+    (function() {
+        var urlEsc = 'index.php';
+        <?php if ($desde_cel): ?>
+        urlEsc = <?= $es_nivel_0 ? "'logout.php'" : "'gestionar_finca.php'" ?>;
+        <?php endif; ?>
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                e.preventDefault();
+                e.stopPropagation();
+                var formCargaGasoil = document.getElementById('formCargaGasoilSisterna');
+                if (formCargaGasoil) {
+                    var estilo = window.getComputedStyle ? window.getComputedStyle(formCargaGasoil) : formCargaGasoil.style;
+                    if (estilo && estilo.display !== 'none') {
+                        formCargaGasoil.style.display = 'none';
+                        return;
+                    }
+                }
+                <?php if ($desde_cel): ?>
+                if (window.history.length > 1) {
+                    window.history.back();
+                } else {
+                    window.location.href = urlEsc;
+                }
+                <?php else: ?>
+                window.location.href = urlEsc;
+                <?php endif; ?>
+            }
+        }, true);
+    })();
+    
     (function() {
         // Esperar a que el DOM esté completamente cargado
         function init() {
@@ -748,31 +779,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     });
                 }
     
-                // Listener ESC para cerrar formulario de carga de gasoil o volver
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape') {
-                        var formCargaGasoil = document.getElementById('formCargaGasoilSisterna');
-                        // Si el formulario de carga de gasoil está visible, cerrarlo primero
-                        if (formCargaGasoil && formCargaGasoil.style.display !== 'none') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            formCargaGasoil.style.display = 'none';
-                            return;
-                        }
-                        // Si no, comportamiento normal de ESC
-                        e.preventDefault();
-                        <?php if ($desde_cel): ?>
-                        // Partes desde cel: volver al formulario que lo llamó (página anterior)
-                        if (window.history.length > 1) {
-                            window.history.back();
-                        } else {
-                            window.location.href = <?= $es_nivel_0 ? "'logout.php'" : "'gestionar_finca.php'" ?>;
-                        }
-                        <?php else: ?>
-                        window.location.href = 'index.php';
-                        <?php endif; ?>
-                    }
-                });
                 
                 <?php if ($pdt_edit): ?>
                 // Si estamos editando, mostrar el usuario seleccionado
