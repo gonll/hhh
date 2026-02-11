@@ -434,6 +434,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .vista-partes-cel #resultadosUsuario .usuario-item { min-height: 44px; display: flex; align-items: center; padding: 10px 8px; cursor: pointer; -webkit-tap-highlight-color: rgba(0,0,0,0.08); }
         /* Bloque gasoil en cel: asegurar que el formulario se muestre encima */
         .vista-partes-cel #formCargaGasoilSisterna { position: relative; z-index: 50; }
+        /* Sección Últimos 3 partes: visible y con scroll en cel */
+        .vista-partes-cel #seccion-ultimos-tres-partes { margin-top: 24px; padding-top: 12px; border-top: 1px solid #dee2e6; }
+        .vista-partes-cel #seccion-ultimos-tres-partes .wrap-tabla-pdt { max-height: 42vh; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .vista-partes-cel #seccion-ultimos-tres-partes h3 { margin-top: 0; margin-bottom: 8px; font-size: 1rem; }
         @media (max-width: 480px) {
             .vista-partes-cel .form-row { gap: 12px; }
         }
@@ -643,7 +647,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 
                 <div class="form-group" id="cantidadHorasGroup">
                     <label id="labelCantidad">Cantidad *</label>
-                    <input type="number" name="horas" id="horas" step="1" min="0" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '0' ?>" required autocomplete="off">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="horas" id="horas" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '0' ?>" required autocomplete="off">
                 </div>
                 
                 <div class="form-group" id="gasoilGroup" style="display: none;">
@@ -689,6 +693,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             </div>
         </form>
         
+        <?php if ($desde_cel): ?><div id="seccion-ultimos-tres-partes"><?php endif; ?>
         <h3 style="margin-top: 30px;"><?= $desde_cel ? 'Últimos 3 partes' : 'Listado de PDTs' ?></h3>
         <div class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
@@ -787,6 +792,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             </tbody>
         </table>
         </div>
+        <?php if ($desde_cel): ?></div><?php endif; ?>
         
         <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
             <?php if ($desde_cel): ?>
@@ -1224,14 +1230,25 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
                 if (fechaInput) fechaInput.addEventListener('change', guardarValores);
                 if (horasInput) {
-                    horasInput.addEventListener('blur', guardarValores);
+                    horasInput.addEventListener('blur', function() {
+                        if (horasInput.value.trim() === '') horasInput.value = '0';
+                        guardarValores();
+                    });
                     function seleccionarCantidad() {
                         var el = horasInput;
                         el.select();
-                        if (el.setSelectionRange && (el.value === '0' || el.value === '')) el.setSelectionRange(0, (el.value || '').length);
+                        if (el.setSelectionRange) el.setSelectionRange(0, (el.value || '').length);
                     }
-                    horasInput.addEventListener('focus', function() { setTimeout(seleccionarCantidad, 0); });
-                    horasInput.addEventListener('click', function() { setTimeout(seleccionarCantidad, 0); });
+                    horasInput.addEventListener('focus', function() { setTimeout(seleccionarCantidad, 50); });
+                    horasInput.addEventListener('click', function() { setTimeout(seleccionarCantidad, 50); });
+                    horasInput.addEventListener('keydown', function(e) {
+                        if (horasInput.value === '0' && /^[0-9]$/.test(e.key)) {
+                            horasInput.value = '';
+                        }
+                    });
+                    horasInput.addEventListener('input', function() {
+                        this.value = this.value.replace(/[^0-9]/g, '');
+                    });
                 }
                 if (cantGasoilInput) cantGasoilInput.addEventListener('blur', guardarValores);
                 if (cambioAceiteInput) cambioAceiteInput.addEventListener('change', guardarValores);
