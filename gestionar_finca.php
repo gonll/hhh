@@ -712,9 +712,24 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         // Esperar a que el DOM esté completamente cargado
         function init() {
             try {
-                const usuarios = <?= json_encode($usuarios) ?>;
-                const resumenHorasCCNo = <?= json_encode($resumen_horas_cc_no) ?>;
-                const tractorDesdeCambio = <?= json_encode($tractor_desde_cambio) ?>;
+                // Intentar obtener datos de PHP de forma segura
+                var usuarios = [];
+                var resumenHorasCCNo = {};
+                var tractorDesdeCambio = {};
+                try {
+                    usuarios = <?= json_encode($usuarios, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?> || [];
+                    resumenHorasCCNo = <?= json_encode($resumen_horas_cc_no, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?> || {};
+                    tractorDesdeCambio = <?= json_encode($tractor_desde_cambio, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?> || {};
+                } catch (e) {
+                    console.error('Error al parsear datos de PHP:', e);
+                }
+                
+                // Asegurar que usuarios sea un array
+                if (!Array.isArray(usuarios)) {
+                    console.warn('usuarios no es un array, convirtiendo...', typeof usuarios);
+                    usuarios = [];
+                }
+                
                 const buscador = document.getElementById('buscadorUsuario');
                 const resultados = document.getElementById('resultadosUsuario');
                 const usuarioIdInput = document.getElementById('usuario_id');
@@ -726,15 +741,25 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 
                 // Verificar que los elementos críticos existan (no retornar, solo registrar error)
                 if (!buscador || !resultados || !usuarioIdInput) {
-                    console.error('Error: No se encontraron elementos del buscador de usuarios');
-                }
-                
-                if (!Array.isArray(usuarios)) {
-                    console.error('Error: usuarios no es un array válido', usuarios);
+                    console.error('Error: No se encontraron elementos del buscador de usuarios', {
+                        buscador: !!buscador,
+                        resultados: !!resultados,
+                        usuarioIdInput: !!usuarioIdInput
+                    });
                 }
     
+                // Listener ESC para cerrar formulario de carga de gasoil o volver
                 document.addEventListener('keydown', function(e) {
                     if (e.key === 'Escape') {
+                        var formCargaGasoil = document.getElementById('formCargaGasoilSisterna');
+                        // Si el formulario de carga de gasoil está visible, cerrarlo primero
+                        if (formCargaGasoil && formCargaGasoil.style.display !== 'none') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            formCargaGasoil.style.display = 'none';
+                            return;
+                        }
+                        // Si no, comportamiento normal de ESC
                         e.preventDefault();
                         <?php if ($desde_cel): ?>
                         // Partes desde cel: volver al formulario que lo llamó (página anterior)
@@ -781,35 +806,51 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 var esVistaCel = document.body.classList.contains('vista-partes-cel');
                 var minCaracteresBusqueda = esVistaCel ? 1 : 2;
                 function ejecutarBusquedaUsuarios() {
-        const termino = buscador.value.toLowerCase().trim();
-        if (termino.length < minCaracteresBusqueda) {
-            resultados.style.display = 'none';
-            if (termino === '') {
-                usuarioIdInput.value = '';
-                usuarioSeleccionado.style.display = 'none';
-                filtrarGridPorUsuario('');
-                actualizarResumenHorasUsuario();
-            }
-            return;
-        }
-        const filtrados = usuarios.filter(u =>
-            u.apellido.toLowerCase().includes(termino)
-        );
-        if (filtrados.length === 0) {
-            resultados.innerHTML = '<div class="usuario-item">No se encontraron usuarios</div>';
-            resultados.style.display = 'block';
-            return;
-        }
-        resultados.innerHTML = filtrados.slice(0, 10).map(u =>
-            '<div class="usuario-item" data-id="' + u.id + '" data-nombre="' + u.apellido + '">' + u.apellido + '</div>'
-        ).join('');
-        resultados.style.display = 'block';
-    }
-                // Solo agregar listeners si los elementos existen
-                if (buscador && resultados && Array.isArray(usuarios)) {
-                    buscador.addEventListener('input', ejecutarBusquedaUsuarios);
-                    buscador.addEventListener('keyup', function() { if (esVistaCel) ejecutarBusquedaUsuarios(); });
+                    if (!buscador || !resultados || !usuarioIdInput || !Array.isArray(usuarios)) return;
+                    const termino = buscador.value.toLowerCase().trim();
+                    if (termino.length < minCaracteresBusqueda) {
+                        resultados.style.display = 'none';
+                        if (termino === '') {
+                            usuarioIdInput.value = '';
+                            if (usuarioSeleccionado) usuarioSeleccionado.style.display = 'none';
+                            filtrarGridPorUsuario('');
+                            actualizarResumenHorasUsuario();
+                        }
+                        return;
+                    }
+                    const filtrados = usuarios.filter(u =>
+                        u.apellido && u.apellido.toLowerCase().includes(termino)
+                    );
+                    if (filtrados.length === 0) {
+                        resultados.innerHTML = '<div class="usuario-item">No se encontraron usuarios</div>';
+                        resultados.style.display = 'block';
+                        return;
+                    }
+                    resultados.innerHTML = filtrados.slice(0, 10).map(u =>
+                        '<div class="usuario-item" data-id="' + u.id + '" data-nombre="' + (u.apellido || '') + '">' + (u.apellido || '') + '</div>'
+                    ).join('');
+                    resultados.style.display = 'block';
                 }
+                // Solo agregar listeners si los elementos existen
+                // Ejecutar de forma independiente para asegurar que siempre funcione
+                (function() {
+                    try {
+                        if (buscador && resultados && Array.isArray(usuarios) && usuarios.length > 0) {
+                            buscador.addEventListener('input', ejecutarBusquedaUsuarios);
+                            buscador.addEventListener('keyup', function() { 
+                                if (esVistaCel) ejecutarBusquedaUsuarios(); 
+                            });
+                        } else {
+                            console.warn('Buscador no inicializado:', {
+                                buscador: !!buscador,
+                                resultados: !!resultados,
+                                usuarios: Array.isArray(usuarios) ? usuarios.length : 'no es array'
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Error al inicializar buscador:', err);
+                    }
+                })();
     
                 function filtrarGridPorUsuario(usuarioId) {
                     const filas = document.querySelectorAll('tr.fila-pdt');
@@ -820,33 +861,35 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
 
                 function actualizarResumenHorasUsuario() {
-        var id = usuarioIdInput.value;
-        var el = document.getElementById('resumenHorasUsuario');
-        var btnCC = document.getElementById('btnCargarCC');
-        if (!el) return;
-        if (btnCC) btnCC.disabled = !id;
-        if (!id) {
-            el.textContent = 'Seleccione un usuario para ver el resumen (horas con CC=NO)';
-            return;
-        }
-        var r = resumenHorasCCNo[id] || { horas_comunes: 0, horas_tractor: 0 };
-        var fmt = function(n) { return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); };
-        el.textContent = 'Horas Comunes (CC=NO): ' + fmt(r.horas_comunes) + ' | Horas tractor (CC=NO): ' + fmt(r.horas_tractor);
-    }
+                    if (!usuarioIdInput) return;
+                    var id = usuarioIdInput.value;
+                    var el = document.getElementById('resumenHorasUsuario');
+                    var btnCC = document.getElementById('btnCargarCC');
+                    if (!el) return;
+                    if (btnCC) btnCC.disabled = !id;
+                    if (!id) {
+                        el.textContent = 'Seleccione un usuario para ver el resumen (horas con CC=NO)';
+                        return;
+                    }
+                    var r = resumenHorasCCNo[id] || { horas_comunes: 0, horas_tractor: 0 };
+                    var fmt = function(n) { return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); };
+                    el.textContent = 'Horas Comunes (CC=NO): ' + fmt(r.horas_comunes) + ' | Horas tractor (CC=NO): ' + fmt(r.horas_tractor);
+                }
 
                 function seleccionarUsuarioDesdeItem(item) {
-        if (!item || !item.classList.contains('usuario-item')) return;
-        const id = item.getAttribute('data-id');
-        const nombre = item.getAttribute('data-nombre');
-        if (!id) return;
-        usuarioIdInput.value = id;
-        buscador.value = nombre;
-        nombreUsuarioSel.textContent = nombre;
-        usuarioSeleccionado.style.display = 'block';
-        resultados.style.display = 'none';
-        filtrarGridPorUsuario(id);
-        actualizarResumenHorasUsuario();
-    }
+                    if (!item || !item.classList.contains('usuario-item')) return;
+                    if (!usuarioIdInput || !buscador || !nombreUsuarioSel || !usuarioSeleccionado || !resultados) return;
+                    const id = item.getAttribute('data-id');
+                    const nombre = item.getAttribute('data-nombre');
+                    if (!id) return;
+                    usuarioIdInput.value = id;
+                    buscador.value = nombre;
+                    nombreUsuarioSel.textContent = nombre;
+                    usuarioSeleccionado.style.display = 'block';
+                    resultados.style.display = 'none';
+                    filtrarGridPorUsuario(id);
+                    actualizarResumenHorasUsuario();
+                }
                 if (resultados) {
                     resultados.addEventListener('click', function(e) {
                         if (e.target.classList.contains('usuario-item')) {
@@ -994,25 +1037,35 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
     
                 // Toggle formulario carga gasoil en cisterna (touch + click para móvil y desktop)
-                const formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
-                window.toggleCargaGasoilForm = function() {
-                    if (formCargaGasoilSisterna) formCargaGasoilSisterna.style.display = formCargaGasoilSisterna.style.display === 'none' ? 'block' : 'none';
-                };
-                var btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
-                if (btnCargaGasoilSisterna && formCargaGasoilSisterna) {
-                    var ultimoTouchGasoil = 0;
-                    btnCargaGasoilSisterna.addEventListener('touchend', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        ultimoTouchGasoil = Date.now();
-                        toggleCargaGasoilForm();
-                    }, { passive: false });
-                    btnCargaGasoilSisterna.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        if (Date.now() - ultimoTouchGasoil < 400) return;
-                        toggleCargaGasoilForm();
-                    });
-                }
+                // Ejecutar de forma independiente para asegurar que siempre funcione
+                (function() {
+                    try {
+                        const formCargaGasoilSisterna = document.getElementById('formCargaGasoilSisterna');
+                        window.toggleCargaGasoilForm = function() {
+                            if (formCargaGasoilSisterna) {
+                                var estaVisible = formCargaGasoilSisterna.style.display !== 'none';
+                                formCargaGasoilSisterna.style.display = estaVisible ? 'none' : 'block';
+                            }
+                        };
+                        var btnCargaGasoilSisterna = document.getElementById('btnCargaGasoilSisterna');
+                        if (btnCargaGasoilSisterna && formCargaGasoilSisterna) {
+                            var ultimoTouchGasoil = 0;
+                            btnCargaGasoilSisterna.addEventListener('touchend', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                ultimoTouchGasoil = Date.now();
+                                toggleCargaGasoilForm();
+                            }, { passive: false });
+                            btnCargaGasoilSisterna.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                if (Date.now() - ultimoTouchGasoil < 400) return;
+                                toggleCargaGasoilForm();
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Error al inicializar botón carga gasoil:', err);
+                    }
+                })();
                 
                 // Guardar valores cuando cambian los campos
                 function actualizarTractorDesdeCambioAceite() {
@@ -1141,8 +1194,12 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         }, 1000);
                     }
                 })();
+                
+                // Debug: confirmar que el código se ejecutó
+                console.log('Gestión finca inicializada correctamente');
             } catch (e) {
                 console.error('Error al inicializar gestión finca:', e);
+                console.error('Stack:', e.stack);
             }
         }
         

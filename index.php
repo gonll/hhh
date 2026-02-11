@@ -224,7 +224,6 @@ if ($nivelAcceso === 3) {
             <div>
                 <?php if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
                     <a href="gestionar_accesos.php" style="color:#007bff; font-size:9px; margin-right:6px;">Accesos</a>
-                    <span style="font-size:12px; margin-right:6px;">🚩</span>
                     <a href="respaldar_bd.php" style="color:#28a745; font-size:9px; margin-right:6px;">Respaldar</a>
                 <?php endif; ?>
                 <a href="logout.php" style="color:#dc3545; font-size:9px;">Salir</a>
