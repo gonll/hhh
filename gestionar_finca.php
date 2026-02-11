@@ -647,7 +647,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 
                 <div class="form-group" id="cantidadHorasGroup">
                     <label id="labelCantidad">Cantidad *</label>
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="horas" id="horas" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '0' ?>" required autocomplete="off">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="horas" id="horas" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '' ?>" placeholder="0" required autocomplete="off">
                 </div>
                 
                 <div class="form-group" id="gasoilGroup" style="display: none;">
@@ -693,6 +693,15 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             </div>
         </form>
         
+        <?php
+        if ($desde_cel) {
+            $lista_pdt_cel = [];
+            $r3 = @mysqli_query($conexion, "SELECT p.*, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3");
+            if ($r3) {
+                while ($f = mysqli_fetch_assoc($r3)) { $lista_pdt_cel[] = $f; }
+            }
+        }
+        ?>
         <?php if ($desde_cel): ?><div id="seccion-ultimos-tres-partes"><?php endif; ?>
         <h3 style="margin-top: 30px;"><?= $desde_cel ? 'Últimos 3 partes' : 'Listado de PDTs' ?></h3>
         <div class="wrap-tabla-pdt">
@@ -1230,10 +1239,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
                 if (fechaInput) fechaInput.addEventListener('change', guardarValores);
                 if (horasInput) {
-                    horasInput.addEventListener('blur', function() {
-                        if (horasInput.value.trim() === '') horasInput.value = '0';
-                        guardarValores();
-                    });
+                    horasInput.addEventListener('blur', guardarValores);
                     function seleccionarCantidad() {
                         var el = horasInput;
                         el.select();
