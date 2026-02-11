@@ -436,7 +436,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
 <body<?= $desde_cel ? ' class="vista-partes-cel"' : '' ?>>
     <div class="container">
         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
-            <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?></h2>
+            <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?> <a href="<?= $desde_cel ? ($es_nivel_0 ? 'logout.php' : 'gestionar_finca.php') : 'index.php' ?>" id="linkVolverEsc" style="font-size: 14px; text-decoration: none;" title="Volver (ESC)">🚩</a></h2>
             <div style="text-align: right; flex-shrink: 0;">
                 <div style="margin-bottom: 6px;">
                     <button type="button" id="btnCargaGasoilSisterna" class="btn btn-secondary" style="font-size: 12px;">Carga gasoil en cisterna</button>
@@ -708,35 +708,55 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     </div>
     
     <script>
-    // ESC: siempre activo, independiente del resto del script (funciona en servidor y local)
+    // ESC: volver al formulario principal. Funciona en servidor y local.
     (function() {
-        var urlEsc = 'index.php';
-        <?php if ($desde_cel): ?>
-        urlEsc = <?= $es_nivel_0 ? "'logout.php'" : "'gestionar_finca.php'" ?>;
-        <?php endif; ?>
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' || e.key === 'Esc') {
-                e.preventDefault();
-                e.stopPropagation();
-                var formCargaGasoil = document.getElementById('formCargaGasoilSisterna');
-                if (formCargaGasoil) {
-                    var estilo = window.getComputedStyle ? window.getComputedStyle(formCargaGasoil) : formCargaGasoil.style;
-                    if (estilo && estilo.display !== 'none') {
-                        formCargaGasoil.style.display = 'none';
-                        return;
-                    }
-                }
-                <?php if ($desde_cel): ?>
-                if (window.history.length > 1) {
-                    window.history.back();
-                } else {
-                    window.location.href = urlEsc;
-                }
-                <?php else: ?>
-                window.location.href = urlEsc;
-                <?php endif; ?>
+        var urlVolver = '<?= $desde_cel ? ($es_nivel_0 ? "logout.php" : "gestionar_finca.php") : "index.php" ?>';
+        var desdeCel = <?= $desde_cel ? 'true' : 'false' ?>;
+        
+        function manejarEsc(ev) {
+            var key = ev.key || ev.keyCode;
+            if (key !== 'Escape' && key !== 'Esc' && key !== 27) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            var formGasoil = document.getElementById('formCargaGasoilSisterna');
+            if (formGasoil && formGasoil.style && formGasoil.style.display !== 'none') {
+                formGasoil.style.display = 'none';
+                return;
             }
-        }, true);
+            if (desdeCel && window.history && window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = urlVolver;
+            }
+        }
+        
+        if (document.addEventListener) {
+            document.addEventListener('keydown', manejarEsc, true);
+            window.addEventListener('keydown', manejarEsc, true);
+        } else if (document.attachEvent) {
+            document.attachEvent('onkeydown', manejarEsc);
+            window.attachEvent('onkeydown', manejarEsc);
+        }
+        
+        // Clic en banderita = mismo efecto que ESC (ejecutar cuando el DOM esté listo)
+        function initBanderita() {
+            var linkVolver = document.getElementById('linkVolverEsc');
+            if (linkVolver && linkVolver.addEventListener) {
+                linkVolver.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (desdeCel && window.history && window.history.length > 1) {
+                        window.history.back();
+                    } else {
+                        window.location.href = urlVolver;
+                    }
+                });
+            }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initBanderita);
+        } else {
+            initBanderita();
+        }
     })();
     
     (function() {
