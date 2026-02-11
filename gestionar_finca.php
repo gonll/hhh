@@ -643,7 +643,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 
                 <div class="form-group" id="cantidadHorasGroup">
                     <label id="labelCantidad">Cantidad *</label>
-                    <input type="number" name="horas" id="horas" step="1" min="0" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '0' ?>" required>
+                    <input type="number" name="horas" id="horas" step="1" min="0" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '0' ?>" required autocomplete="off">
                 </div>
                 
                 <div class="form-group" id="gasoilGroup" style="display: none;">
@@ -1225,7 +1225,13 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 if (fechaInput) fechaInput.addEventListener('change', guardarValores);
                 if (horasInput) {
                     horasInput.addEventListener('blur', guardarValores);
-                    horasInput.addEventListener('focus', function() { this.select(); });
+                    function seleccionarCantidad() {
+                        var el = horasInput;
+                        el.select();
+                        if (el.setSelectionRange && (el.value === '0' || el.value === '')) el.setSelectionRange(0, (el.value || '').length);
+                    }
+                    horasInput.addEventListener('focus', function() { setTimeout(seleccionarCantidad, 0); });
+                    horasInput.addEventListener('click', function() { setTimeout(seleccionarCantidad, 0); });
                 }
                 if (cantGasoilInput) cantGasoilInput.addEventListener('blur', guardarValores);
                 if (cambioAceiteInput) cambioAceiteInput.addEventListener('change', guardarValores);
