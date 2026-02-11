@@ -442,12 +442,15 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         $js_esc .= "location.href='".addslashes($url_esc_volver)."';return false;}";
         ?>
 <body<?= $desde_cel ? ' class="vista-partes-cel"' : '' ?> onkeydown="var e=event||window.event;<?= $js_esc ?>">
+    <script>
+    window.PDT_USUARIOS = <?= json_encode(array_values($usuarios), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+    </script>
     <div class="container">
         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
             <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?> <a href="<?= $desde_cel ? ($es_nivel_0 ? 'logout.php' : 'gestionar_finca.php') : 'index.php' ?>" id="linkVolverEsc" style="font-size: 14px; text-decoration: none;" title="Volver (ESC)">🚩</a></h2>
             <div style="text-align: right; flex-shrink: 0;">
                 <div style="margin-bottom: 6px;">
-                    <button type="button" id="btnCargaGasoilSisterna" class="btn btn-secondary" style="font-size: 12px;">Carga gasoil en cisterna</button>
+                    <button type="button" id="btnCargaGasoilSisterna" class="btn btn-secondary" style="font-size: 12px;" onclick="var f=document.getElementById('formCargaGasoilSisterna');if(f){f.style.display=(f.style.display==='block')?'none':'block';}" ontouchend="var f=document.getElementById('formCargaGasoilSisterna');if(f){f.style.display=(f.style.display==='block')?'none':'block';}event.preventDefault();">Carga gasoil en cisterna</button>
                 </div>
                 <div style="font-size: 13px;">
                     <strong>Gestión de gasoil</strong><br>
@@ -1308,6 +1311,75 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             document.addEventListener('DOMContentLoaded', initGasoil);
         } else {
             initGasoil();
+        }
+    })();
+    </script>
+    <!-- Búsqueda de personal: script independiente para que funcione en servidor -->
+    <script>
+    (function() {
+        var u = window.PDT_USUARIOS;
+        if (!u || !Array.isArray(u)) return;
+        function initBusqueda() {
+            var buscador = document.getElementById('buscadorUsuario');
+            var resultados = document.getElementById('resultadosUsuario');
+            var usuarioId = document.getElementById('usuario_id');
+            var nombreSel = document.getElementById('nombreUsuarioSel');
+            var divSel = document.getElementById('usuarioSeleccionado');
+            if (!buscador || !resultados || !usuarioId) return;
+            var minLen = document.body && document.body.classList.contains('vista-partes-cel') ? 1 : 2;
+            function buscar() {
+                var t = (buscador.value || '').toLowerCase().trim();
+                if (t.length < minLen) {
+                    resultados.style.display = 'none';
+                    if (!t) { usuarioId.value = ''; if (divSel) divSel.style.display = 'none'; }
+                    return;
+                }
+                var list = u.filter(function(x) { return x.apellido && (x.apellido + '').toLowerCase().indexOf(t) !== -1; });
+                if (!list.length) {
+                    resultados.innerHTML = '<div class="usuario-item">No se encontraron usuarios</div>';
+                    resultados.style.display = 'block';
+                    return;
+                }
+                resultados.innerHTML = list.slice(0, 10).map(function(x) {
+                    var ap = (x.apellido || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                    return '<div class="usuario-item" data-id="' + x.id + '" data-nombre="' + ap + '">' + (x.apellido || '') + '</div>';
+                }).join('');
+                resultados.style.display = 'block';
+            }
+            buscador.addEventListener('input', buscar);
+            buscador.addEventListener('keyup', function() { if (minLen === 1) buscar(); });
+            resultados.addEventListener('click', function(e) {
+                var el = e.target;
+                if (!el.classList || !el.classList.contains('usuario-item')) return;
+                var id = el.getAttribute('data-id');
+                var nom = el.getAttribute('data-nombre') || '';
+                if (!id) return;
+                usuarioId.value = id;
+                buscador.value = nom;
+                if (nombreSel) nombreSel.textContent = nom;
+                if (divSel) divSel.style.display = 'block';
+                resultados.style.display = 'none';
+            });
+            resultados.addEventListener('touchend', function(e) {
+                var el = e.target.closest ? e.target.closest('.usuario-item') : (e.target.classList && e.target.classList.contains('usuario-item') ? e.target : null);
+                if (el) {
+                    e.preventDefault();
+                    var id = el.getAttribute('data-id');
+                    var nom = el.getAttribute('data-nombre') || '';
+                    if (id) {
+                        usuarioId.value = id;
+                        buscador.value = nom;
+                        if (nombreSel) nombreSel.textContent = nom;
+                        if (divSel) divSel.style.display = 'block';
+                        resultados.style.display = 'none';
+                    }
+                }
+            }, { passive: false });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initBusqueda);
+        } else {
+            initBusqueda();
         }
     })();
     </script>
