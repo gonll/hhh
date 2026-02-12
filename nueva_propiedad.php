@@ -7,10 +7,16 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
 }
 $ultima_ciudad = '';
 $ultimo_consorcio = '';
-$r = @mysqli_query($conexion, "SELECT ciudad, consorcio FROM propiedades ORDER BY propiedad_id DESC LIMIT 1");
+$ultimo_propietario_id = '';
+$ultimo_propietario_nombre = '';
+$r = @mysqli_query($conexion, "SELECT p.ciudad, p.consorcio, p.propietario_id, u.apellido AS propietario_nombre FROM propiedades p LEFT JOIN usuarios u ON p.propietario_id = u.id ORDER BY p.propiedad_id DESC LIMIT 1");
 if ($r && $row = mysqli_fetch_assoc($r)) {
     $ultima_ciudad   = htmlspecialchars($row['ciudad'] ?? '');
     $ultimo_consorcio = htmlspecialchars($row['consorcio'] ?? '');
+    if (!empty($row['propietario_id'])) {
+        $ultimo_propietario_id = (int)$row['propietario_id'];
+        $ultimo_propietario_nombre = htmlspecialchars($row['propietario_nombre'] ?? '');
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -63,8 +69,8 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
 
         <div class="buscador-contenedor">
             <label>Propietario *</label>
-            <input type="text" id="bus_propietario" placeholder="BUSCAR USUARIO..." onkeyup="buscarPropietario(this.value)" autocomplete="off">
-            <input type="hidden" name="propietario_id" id="propietario_id" value="">
+            <input type="text" id="bus_propietario" placeholder="BUSCAR USUARIO..." onkeyup="buscarPropietario(this.value)" autocomplete="off" value="<?= $ultimo_propietario_nombre ?>">
+            <input type="hidden" name="propietario_id" id="propietario_id" value="<?= $ultimo_propietario_id ?>">
             <div id="sug_propietario" class="sugerencias"></div>
         </div>
         

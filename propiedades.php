@@ -9,6 +9,14 @@ $sql = "SELECT p.*, u.apellido as nombre_inquilino, a.fecha_inicio as inicio, a.
 $resultado = mysqli_query($conexion, $sql);
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
 $soloLectura = ($nivelAcceso < 2);
+
+$sumas_consorcios = array();
+$r_consorcios = mysqli_query($conexion, "SELECT consorcio, COALESCE(SUM(porcentaje), 0) AS total FROM propiedades WHERE porcentaje IS NOT NULL AND consorcio IS NOT NULL AND consorcio != '' GROUP BY consorcio ORDER BY consorcio ASC");
+if ($r_consorcios) {
+    while ($row_cons = mysqli_fetch_assoc($r_consorcios)) {
+        $sumas_consorcios[$row_cons['consorcio']] = (float)$row_cons['total'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -84,12 +92,15 @@ $soloLectura = ($nivelAcceso < 2);
         .disponible { color: #999; font-style: italic; }
     </style>
 </head>
-<body>
+<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){e.preventDefault();window.location.href='index.php';return false;}">
 
 <div class="contenedor">
     <div class="encabezado">
         <h2>Gestión de Propiedades</h2>
-        <div style="display:flex; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <?php foreach ($sumas_consorcios as $cons => $suma): ?>
+            <span style="background:#e7f3ff; color:#007bff; padding:4px 8px; border-radius:3px; font-weight:bold; font-size:9px; border:1px solid #007bff; white-space:nowrap;"><?= htmlspecialchars($cons) ?>: <?= number_format($suma, 3, ',', '.') ?>%</span>
+            <?php endforeach; ?>
             <a href="imprimir_propiedades.php" target="_blank" style="background:#007bff; color:white; padding:5px 10px; border-radius:3px; text-decoration:none; font-weight:bold; font-size:10px;">🖨️ Imprimir</a>
             <?php if (!$soloLectura): ?>
                 <a href="nueva_propiedad.php" style="background:#28a745; color:white; padding:5px 10px; border-radius:3px; text-decoration:none; font-weight:bold; font-size:10px;">+ NUEVA</a>
@@ -232,11 +243,22 @@ function finalizarContrato(idProp) {
 function imprimirContrato(idProp) {
     window.open('generar_word_contrato.php?id=' + idProp, '_blank');
 }
+function volverPrincipal() {
+    window.location.href = 'index.php';
+}
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        window.location.href = 'index.php';
+    if (e.key === 'Escape' || e.keyCode === 27 || e.which === 27) {
+        e.preventDefault();
+        e.stopPropagation();
+        volverPrincipal();
     }
-});
+}, true);
+window.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' || e.keyCode === 27 || e.which === 27) {
+        e.preventDefault();
+        volverPrincipal();
+    }
+}, true);
 </script>
 <?php include 'timeout_sesion_inc.php'; ?>
 </body>
