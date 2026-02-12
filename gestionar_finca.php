@@ -69,21 +69,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (mysqli_query($conexion, $sql_ins)) {
                 $mensaje = 'Carga de gasoil en cisterna registrada.';
             } else {
-                $mensaje = 'Error al registrar carga: ' . mysqli_error($conexion);
+                $mensaje = 'Falta dato o corregir.';
             }
         } else {
-            $mensaje = 'Error: fecha y cantidad (mayor a 0) son obligatorios para la carga.';
+            $mensaje = 'Falta dato o corregir.';
         }
     }
     if (isset($_POST['guardar'])) {
         $usuario_id = (int)($_POST['usuario_id'] ?? 0);
         if ($usuario_id < 1) {
-            $mensaje = 'Error: debe seleccionar un usuario en Personal (busque y elija de la lista).';
+            $mensaje = 'Falta dato o corregir.';
         } else {
             // Comprobar que el usuario existe (evitar error de clave foránea)
             $check = mysqli_query($conexion, "SELECT id FROM usuarios WHERE id = $usuario_id LIMIT 1");
             if (!$check || mysqli_num_rows($check) === 0) {
-                $mensaje = 'Error: el usuario seleccionado no existe en el sistema. Busque y elija otro en Personal.';
+                $mensaje = 'Falta dato o corregir.';
             } else {
         $tipo_horas = mysqli_real_escape_string($conexion, $_POST['tipo_horas'] ?? 'Horas Comunes');
         $tractor = ($tipo_horas === 'Horas tractos' && !empty($_POST['tractor']))
@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         if ($error_campo !== '') {
-            $mensaje = 'Error: ' . $error_campo;
+            $mensaje = 'Falta dato o corregir.';
         } else {
         $fecha = mysqli_real_escape_string($conexion, $fecha);
         $horas = (int)$horas;
@@ -158,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mensaje = 'Parte guardado.';
                 $preseleccionar_usuario_id = $usuario_id;
             } else {
-                $mensaje = 'Error al modificar: ' . mysqli_error($conexion);
+                $mensaje = 'Falta dato o corregir.';
             }
         } else {
             // Alta - en_cc siempre empieza en 0
@@ -175,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mensaje = 'Parte guardado.';
                 $preseleccionar_usuario_id = $usuario_id;
             } else {
-                $mensaje = 'Error al guardar: ' . mysqli_error($conexion);
+                $mensaje = 'Falta dato o corregir.';
             }
         }
         }
@@ -188,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (mysqli_query($conexion, $sql)) {
             $mensaje = 'Parte diario de trabajo eliminado correctamente.';
         } else {
-            $mensaje = 'Error al eliminar: ' . mysqli_error($conexion);
+            $mensaje = 'Falta dato o corregir.';
         }
     } elseif (isset($_POST['cargar_cc'])) {
         $pdt_id = (int)$_POST['pdt_id'];
@@ -196,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (mysqli_query($conexion, $sql)) {
             $mensaje = 'PDT marcado como cargado en cuenta corriente.';
         } else {
-            $mensaje = 'Error al marcar en CC: ' . mysqli_error($conexion);
+            $mensaje = 'Falta dato o corregir.';
         }
     } elseif (isset($_POST['editar'])) {
         $pdt_id = (int)$_POST['pdt_id'];
@@ -492,11 +492,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             elseif ($_GET['cc'] === 'sin_usuario') $mensaje = 'Seleccione un usuario.';
             elseif ($_GET['cc'] === 'sin_datos') $mensaje = 'No hay datos para cargar.';
             elseif ($_GET['cc'] === 'sin_tabla_salarial') $mensaje = 'Configure la tabla salarial (valores hora común y hora tractor) antes de cargar.';
-            elseif ($_GET['cc'] === 'error') $mensaje = 'Error al cargar en CC: ' . (isset($_GET['msg']) ? $_GET['msg'] : 'consulte con el administrador.');
+            elseif ($_GET['cc'] === 'error') $mensaje = 'Falta dato o corregir.';
         }
         ?>
         <?php if ($mensaje && $mensaje !== 'Parte guardado.'): ?>
-            <div class="mensaje <?= strpos($mensaje, 'Error') !== false ? 'error' : 'ok' ?>">
+            <div class="mensaje <?= (strpos($mensaje, 'Error') !== false || strpos($mensaje, 'Falta dato') !== false) ? 'error' : 'ok' ?>">
                 <?= htmlspecialchars($mensaje) ?>
             </div>
         <?php endif; ?>
@@ -694,16 +694,43 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         </form>
         
         <?php
-        if ($desde_cel) {
-            $lista_pdt_cel = [];
-            $r3 = @mysqli_query($conexion, "SELECT p.*, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3");
-            if ($r3) {
-                while ($f = mysqli_fetch_assoc($r3)) { $lista_pdt_cel[] = $f; }
+        if (defined('DESDE_CEL') && DESDE_CEL && isset($conexion)) {
+            $ultimos3 = array();
+            $qr = mysqli_query($conexion, "SELECT p.id, p.usuario_id, p.tipo_horas, p.tractor, p.fecha, p.horas, p.cant_gasoil, p.cambio_aceite, p.en_cc, p.observaciones, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3");
+            if ($qr) {
+                while ($f = mysqli_fetch_assoc($qr)) { $ultimos3[] = $f; }
             }
+            echo '<div id="seccion-ultimos-tres-partes" style="display:block; margin-top:24px; padding-top:12px; border-top:1px solid #dee2e6;">';
+            echo '<h3 style="margin-top:0; margin-bottom:8px; font-size:1rem;">Últimos 3 partes</h3>';
+            echo '<div class="wrap-tabla-pdt" style="max-height:42vh; overflow:auto; -webkit-overflow-scrolling:touch;"><table class="tabla-listado-pdt"><thead><tr>';
+            echo '<th class="col-id">ID</th><th class="col-personal">Personal</th><th class="col-tipo">Tipo</th><th class="col-tractor">Tractor</th><th class="col-fecha">Fecha</th><th class="col-cantidad">Cant.</th><th class="col-gasoil">Gasoil</th><th class="col-cambio">C.aceite</th><th class="col-cc">CC</th><th class="col-acciones">Acciones</th></tr></thead><tbody>';
+            if (count($ultimos3) > 0) {
+                foreach ($ultimos3 as $pdt) {
+                    $tiene_obs = !empty(trim($pdt['observaciones'] ?? ''));
+                    $cls = $tiene_obs ? ' fila-con-observaciones' : '';
+                    echo '<tr class="fila-pdt'.$cls.'" data-usuario-id="'.(int)$pdt['usuario_id'].'">';
+                    echo '<td class="col-id">'.(int)$pdt['id'].'</td>';
+                    echo '<td class="col-personal">'.htmlspecialchars($pdt['usuario_nombre']).'</td>';
+                    echo '<td class="col-tipo">'.htmlspecialchars($pdt['tipo_horas']).'</td>';
+                    echo '<td class="col-tractor">'.htmlspecialchars($pdt['tractor'] ?? '-').'</td>';
+                    echo '<td class="col-fecha">'.date('d/m/Y', strtotime($pdt['fecha'])).'</td>';
+                    echo '<td class="col-cantidad">'.number_format($pdt['horas'], 2, ',', '.').'</td>';
+                    echo '<td class="col-gasoil">'.(isset($pdt['cant_gasoil']) && $pdt['cant_gasoil'] !== null ? number_format($pdt['cant_gasoil'], 2, ',', '.') : '-').'</td>';
+                    echo '<td class="col-cambio">'.((isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-').'</td>';
+                    echo '<td class="col-cc" style="font-weight:bold;'.((isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color:#28a745;' : 'color:#dc3545;').'">'.((isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO').'</td>';
+                    echo '<td class="col-acciones"><div class="acciones-botones">';
+                    echo '<form method="POST" style="display:inline;"><input type="hidden" name="pdt_id" value="'.$pdt['id'].'"><button type="submit" name="editar" class="btn btn-secondary">Modificar</button></form> ';
+                    echo '<form method="POST" style="display:inline;"><input type="hidden" name="pdt_id" value="'.$pdt['id'].'"><button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm(\'¿Eliminar este PDT?\')">Eliminar</button></form>';
+                    echo '</div></td></tr>';
+                }
+            } else {
+                echo '<tr><td colspan="10" style="text-align:center; padding:15px; color:#666; font-size:11px;">No hay partes diarios de trabajo registrados.</td></tr>';
+            }
+            echo '</tbody></table></div></div>';
         }
         ?>
-        <?php if ($desde_cel): ?><div id="seccion-ultimos-tres-partes"><?php endif; ?>
-        <h3 style="margin-top: 30px;"><?= $desde_cel ? 'Últimos 3 partes' : 'Listado de PDTs' ?></h3>
+        <?php if (!$desde_cel): ?>
+        <h3 style="margin-top: 30px;">Listado de PDTs</h3>
         <div class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
             <thead>
@@ -721,42 +748,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 </tr>
             </thead>
             <tbody>
-                <?php if ($desde_cel): ?>
-                <?php if (count($lista_pdt_cel) > 0): ?>
-                    <?php foreach ($lista_pdt_cel as $pdt): ?>
-                        <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
-<tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
-                                                            <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
-                            <td class="col-personal"><?= htmlspecialchars($pdt['usuario_nombre']) ?></td>
-                            <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 20 ? mb_substr($t, 0, 20) . '…' : $t; ?></td>
-                            <td class="col-tractor"><?= htmlspecialchars($pdt['tractor'] ?? '-') ?></td>
-                            <td class="col-fecha" title="<?= date('d/m/Y', strtotime($pdt['fecha'])) ?>"><?php $f = date('d/m/Y', strtotime($pdt['fecha'])); echo mb_strlen($f) > 20 ? mb_substr($f, 0, 20) . '…' : $f; ?></td>
-                            <td class="col-cantidad"><?= number_format($pdt['horas'], 2, ',', '.') ?></td>
-                            <td class="col-gasoil"><?= isset($pdt['cant_gasoil']) && $pdt['cant_gasoil'] !== null ? number_format($pdt['cant_gasoil'], 2, ',', '.') : '-' ?></td>
-                            <td class="col-cambio"><?= (isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-' ?></td>
-                            <td class="col-cc" style="font-weight: bold; <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color: #28a745;' : 'color: #dc3545;' ?>">
-                                <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO' ?>
-                            </td>
-                            <td class="col-acciones">
-                                <div class="acciones-botones">
-                                    <form method="POST" style="display: inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
-                                        <button type="submit" name="editar" class="btn btn-secondary">Modificar</button>
-                                    </form>
-                                    <form method="POST" style="display: inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
-                                        <button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm('¿Eliminar este PDT?')">Eliminar</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="10" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
-                    </tr>
-                <?php endif; ?>
-                <?php else: ?>
                 <?php if ($res_lista && mysqli_num_rows($res_lista) > 0): ?>
                     <?php while ($pdt = mysqli_fetch_assoc($res_lista)): ?>
                         <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
@@ -797,11 +788,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         <td colspan="10" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
-                <?php endif; ?>
             </tbody>
         </table>
         </div>
-        <?php if ($desde_cel): ?></div><?php endif; ?>
+        <?php endif; ?>
         
         <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
             <?php if ($desde_cel): ?>

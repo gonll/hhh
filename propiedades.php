@@ -5,7 +5,7 @@ $sql = "SELECT p.*, u.apellido as nombre_inquilino, a.fecha_inicio as inicio, a.
         FROM propiedades p 
         LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
         LEFT JOIN usuarios u ON a.inquilino1_id = u.id 
-        ORDER BY p.propiedad ASC";
+        ORDER BY p.consorcio ASC, p.propiedad ASC";
 $resultado = mysqli_query($conexion, $sql);
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
 $soloLectura = ($nivelAcceso < 2);
@@ -89,9 +89,12 @@ $soloLectura = ($nivelAcceso < 2);
 <div class="contenedor">
     <div class="encabezado">
         <h2>Gestión de Propiedades</h2>
-        <?php if (!$soloLectura): ?>
-            <a href="nueva_propiedad.php" style="background:#28a745; color:white; padding:5px 10px; border-radius:3px; text-decoration:none; font-weight:bold; font-size:10px;">+ NUEVA</a>
-        <?php endif; ?>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <a href="imprimir_propiedades.php" target="_blank" style="background:#007bff; color:white; padding:5px 10px; border-radius:3px; text-decoration:none; font-weight:bold; font-size:10px;">🖨️ Imprimir</a>
+            <?php if (!$soloLectura): ?>
+                <a href="nueva_propiedad.php" style="background:#28a745; color:white; padding:5px 10px; border-radius:3px; text-decoration:none; font-weight:bold; font-size:10px;">+ NUEVA</a>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div class="controles">
@@ -126,7 +129,7 @@ $soloLectura = ($nivelAcceso < 2);
             <tr class="fila-propiedad" data-id="<?= $f['propiedad_id'] ?>" onclick="seleccionarPropiedad(<?= $f['propiedad_id'] ?>, this, event)">
                 <td class="al-izq"><?= $f['propiedad'] ?></td>
                 <td class="al-cen"><?= $f['consorcio'] ?></td>
-                <td class="al-cen" style="font-weight:bold; color:#007bff;"><?= $f['porcentaje'] !== null ? number_format($f['porcentaje'], 2, ',', '.') . '%' : '-' ?></td>
+                <td class="al-cen" style="font-weight:bold; color:#007bff;"><?= $f['porcentaje'] !== null ? number_format($f['porcentaje'], 3, ',', '.') . '%' : '-' ?></td>
                 <td class="al-cen"><?= $f['padron'] ?></td>
                 <td class="al-cen" style="font-size: 8px; color: #777; white-space: nowrap;"><?= substr($f['detalle'],0,30) ?>...</td>
                 <td class="al-cen">
@@ -167,9 +170,8 @@ function seleccionarPropiedad(id, filaEl, ev) {
     filaEl.classList.add('fila-prop-seleccionada');
     propSeleccionadaId = id;
     var barra = document.getElementById('barraEditar');
-    if (barra) {
-        barra.style.display = 'block';
-    }
+    if (barra) barra.style.display = 'block';
+    if (id) abrirEditarPropiedad();
 }
 
 function abrirEditarPropiedad() {

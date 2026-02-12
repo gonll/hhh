@@ -1,5 +1,5 @@
 <?php
-en el formulario estas tres inultima el texto cobrado justificado achicar ese diinclude 'db.php';
+include 'db.php';
 include 'verificar_sesion.php';
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=solo_lectura');
@@ -41,6 +41,9 @@ if (!$prop) {
         .fila-doble > div { flex: 0 0 100px; }
         .fila-doble label { margin: 6px 0 3px; }
         .fila-doble input { width: 100%; }
+        .btn-detalle { background: #17a2b8; color: white; padding: 4px 8px; font-size: 10px; margin-right: 6px; margin-bottom: 4px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-detalle:hover { background: #138496; }
+        .carga-rapida { margin-bottom: 6px; }
     </style>
 </head>
 <body>
@@ -48,6 +51,9 @@ if (!$prop) {
 <?php $esNivel3 = isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3; ?>
 <div class="card" id="formularioEditar" style="display:<?= $esNivel3 ? 'block' : 'none' ?>;">
     <h2>Editar datos de la propiedad</h2>
+    <?php if (isset($_GET['error']) && $_GET['error'] === 'padron_duplicado'): ?>
+    <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Falta dato o corregir.</div>
+    <?php endif; ?>
     <form action="actualizar_propiedad.php" method="POST">
         <input type="hidden" name="propiedad_id" value="<?= $prop['propiedad_id'] ?>">
         
@@ -64,15 +70,22 @@ if (!$prop) {
             </div>
             <div>
                 <label>%</label>
-                <input type="number" name="porcentaje" step="0.01" min="0" max="100" value="<?= htmlspecialchars($prop['porcentaje'] ?? '') ?>" placeholder="5.25" style="text-transform:none;">
+                <input type="text" name="porcentaje" inputmode="decimal" value="<?= htmlspecialchars($prop['porcentaje'] ?? '') ?>" placeholder="3,505 o 3.505" style="text-transform:none;" pattern="[0-9]+[.,]?[0-9]*" title="Ej: 3,505 o 3.505">
             </div>
         </div>
         
         <label>Padrón</label>
         <input type="text" name="padron" value="<?= htmlspecialchars($prop['padron'] ?? '') ?>">
         
+        <label>Carga rápida detalle</label>
+        <div class="carga-rapida">
+            <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Un dormitorio con placar completo, baño completo con grifería FV y loza Ferrun revestido con cerámico en perfectas condiciones, cocina revestida en cerámico, con alacena en buen estado de conservación, bacha de acero inoxidable con monocomando, con cocina y lavadero marca Ferrun, todo recién pintado, piso de cerámico, todo en perfecto estado de conservación.'">1 dormitorio</button>
+            <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Dos dormitorios con placares completo, baño completo con grifería FV y loza Ferrun revestido con cerámico en perfectas condiciones, cocina revestida en cerámico, con bacha de acero inoxidable y monocomando fv, con alacena en buen estado de conservación, con cocina y lavadero marca Ferrun y grifería FV, con monocomando, toilette completo con grifería FV y loza Ferrun, todo recién pintado, piso de cerámico, todo en perfecto estado de conservación.'">2 dormitorios</button>
+            <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Tres dormitorios con placares completo, baño completo con grifería FV y loza Ferrun revestido con cerámico en perfectas condiciones, cocina revestida en cerámico, con bacha de acero inoxidable y monocomando fv, con alacena en buen estado de conservación, con cocina y lavadero marca Ferrun y grifería FV, con monocomando, toilette completo con grifería FV y loza Ferrun, todo recién pintado, piso de cerámico, todo en perfecto estado de conservación.'">3 dormitorios</button>
+        </div>
+        
         <label>Detalle técnico</label>
-        <textarea name="detalle"><?= htmlspecialchars($prop['detalle'] ?? '') ?></textarea>
+        <textarea id="detalle" name="detalle"><?= htmlspecialchars($prop['detalle'] ?? '') ?></textarea>
         
         <div class="btns">
             <button type="submit">GUARDAR CAMBIOS</button>

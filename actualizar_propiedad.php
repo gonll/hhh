@@ -14,13 +14,23 @@ $id        = (int)$_POST['propiedad_id'];
 $propiedad = mysqli_real_escape_string($conexion, trim($_POST['propiedad'] ?? ''));
 $ciudad    = mysqli_real_escape_string($conexion, trim($_POST['ciudad'] ?? ''));
 $consorcio = mysqli_real_escape_string($conexion, trim($_POST['consorcio'] ?? ''));
-$porcentaje = isset($_POST['porcentaje']) && $_POST['porcentaje'] !== '' ? (float)$_POST['porcentaje'] : null;
+$porcentaje_raw = trim($_POST['porcentaje'] ?? '');
+$porcentaje_raw = str_replace(',', '.', $porcentaje_raw);
+$porcentaje = $porcentaje_raw !== '' ? (float)$porcentaje_raw : null;
 $padron    = mysqli_real_escape_string($conexion, trim($_POST['padron'] ?? ''));
 $detalle   = mysqli_real_escape_string($conexion, trim($_POST['detalle'] ?? ''));
 
 if ($id <= 0 || $propiedad === '') {
     header('Location: propiedades.php');
     exit;
+}
+
+if ($padron !== '') {
+    $existe = mysqli_query($conexion, "SELECT propiedad_id FROM propiedades WHERE padron = '$padron' AND propiedad_id != $id LIMIT 1");
+    if ($existe && mysqli_num_rows($existe) > 0) {
+        header('Location: editar_propiedad.php?id=' . $id . '&error=padron_duplicado');
+        exit;
+    }
 }
 
 $porcentaje_sql = $porcentaje !== null ? $porcentaje : 'NULL';
@@ -37,6 +47,6 @@ $sql = "UPDATE propiedades SET
 if (mysqli_query($conexion, $sql)) {
     header('Location: propiedades.php?ok=1');
 } else {
-    echo "Error al actualizar: " . mysqli_error($conexion);
+    echo "Falta dato o corregir.";
 }
 exit;

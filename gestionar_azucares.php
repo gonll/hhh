@@ -196,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $mov_id = (int)mysqli_insert_id($conexion);
                     mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id WHERE id = $stock_id");
                 } else {
-                    $mensaje_stock = 'Error al grabar en cuenta.';
+                    $mensaje_stock = 'Falta dato o corregir.';
                     $operacion = null;
                 }
             }
@@ -223,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Location: gestionar_azucares.php?factura=ok');
                 exit;
             }
-            $mensaje_stock = 'Error al guardar factura.';
+            $mensaje_stock = 'Falta dato o corregir.';
         }
     } elseif (isset($_POST['eliminar_stock'])) {
         $id_borrar = (int)($_POST['id'] ?? 0);
@@ -231,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: gestionar_azucares.php?borrado=ok');
             exit;
         } else {
-            $mensaje_stock = $id_borrar > 0 ? 'Error al eliminar.' : 'ID inválido.';
+            $mensaje_stock = 'Falta dato o corregir.';
         }
     } elseif (isset($_POST['alta_stock'])) {
         $es_ajax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || !empty($_POST['alta_ajax']);
@@ -261,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     header('Location: gestionar_azucares.php?alta=ok');
                     exit;
                 } else {
-                    $mensaje_stock = 'Error: ' . mysqli_error($conexion);
+                    $mensaje_stock = 'Falta dato o corregir.';
                 }
             } else {
                 $sql_ins = "INSERT INTO stock (fecha, linea, articulo, orden, cantidad, deposito) VALUES ('$fecha', $linea, '$articulo', $orden, $cantidad, " . ($deposito === '' ? "NULL" : "'$deposito'") . ")";
@@ -340,7 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     header('Location: gestionar_azucares.php?alta=ok');
                     exit;
                 } else {
-                    $mensaje_stock = 'Error: ' . mysqli_error($conexion);
+                    $mensaje_stock = 'Falta dato o corregir.';
                     if ($es_ajax) {
                         header('Content-Type: application/json; charset=utf-8');
                         echo json_encode(['ok' => false, 'mensaje' => $mensaje_stock]);
@@ -1461,7 +1461,7 @@ function fmtNum($n) {
                             document.getElementById('alta_orden').focus();
                             setTimeout(ocultarMensaje, 3000);
                         } else {
-                            mostrarMensaje(data.mensaje || 'Error.', true);
+                            mostrarMensaje(data.mensaje || 'Falta dato o corregir.', true);
                         }
                     } catch (err) {
                         mostrarMensaje('Error al guardar.', true);

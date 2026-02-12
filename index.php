@@ -217,7 +217,7 @@ if ($nivelAcceso === 3) {
             <p id="mensajeMailEnviado" style="font-size:10px; color:#155724; background:#d4edda; padding:6px; border-radius:4px; margin:0 0 6px;">✓ Mail enviado correctamente a Herrera Hugo.</p>
         <?php endif; ?>
         <?php if (isset($_GET['mail_error'])): ?>
-            <p id="mensajeMailError" style="font-size:10px; color:#721c24; background:#f8d7da; padding:6px; border-radius:4px; margin:0 0 6px;">✗ Error al enviar mail: <?= htmlspecialchars($_GET['mail_error']) ?></p>
+            <p id="mensajeMailError" style="font-size:10px; color:#721c24; background:#f8d7da; padding:6px; border-radius:4px; margin:0 0 6px;">✗ Falta dato o corregir.</p>
         <?php endif; ?>
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:4px;">
             <span style="font-size:9px; color:#666;"><?= htmlspecialchars($_SESSION['acceso_usuario'] ?? '') ?> (nivel <?= (int)($_SESSION['acceso_nivel'] ?? 0) ?>)</span>
@@ -815,7 +815,7 @@ function guardarAnticipo() {
                     if (fila) cargarMovimientos(fila, usuarioId);
                 }
             } else {
-                msgEl.textContent = 'Error: ' + txt;
+                msgEl.textContent = 'Falta dato o corregir.';
                 msgEl.style.display = 'block';
                 msgEl.style.color = '#dc3545';
             }
@@ -857,7 +857,7 @@ function ejecutarLiquidarExpensas() {
                 if (fila) cargarMovimientos(fila, uSel);
                 alert('Liquidación de expensas guardada correctamente.');
             } else {
-                alert('Error: ' + txt);
+                alert('Falta dato o corregir.');
             }
         });
 }
@@ -889,7 +889,7 @@ function guardarCobroExp() {
                 if (fila) cargarMovimientos(fila, uSel);
                 document.getElementById('cobroMonto').value = '';
             } else {
-                alert('Error: ' + txt);
+                alert('Falta dato o corregir.');
             }
         });
 }
@@ -1184,7 +1184,7 @@ function guardar() {
     .then(r => r.text())
     .then(txt => {
         if (txt !== 'OK' && txt !== 'OK_CAJA') {
-            alert('Error: ' + txt);
+            alert('Falta dato o corregir.');
             return;
         }
         cargarMovimientos(document.querySelector('.fila-seleccionada'), uSel);

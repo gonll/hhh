@@ -5,6 +5,13 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=solo_lectura');
     exit;
 }
+$ultima_ciudad = '';
+$ultimo_consorcio = '';
+$r = @mysqli_query($conexion, "SELECT ciudad, consorcio FROM propiedades ORDER BY propiedad_id DESC LIMIT 1");
+if ($r && $row = mysqli_fetch_assoc($r)) {
+    $ultima_ciudad   = htmlspecialchars($row['ciudad'] ?? '');
+    $ultimo_consorcio = htmlspecialchars($row['consorcio'] ?? '');
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -41,30 +48,28 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
 
 <div class="card">
     <h2>Nueva propiedad</h2>
+    <?php if (isset($_GET['error']) && ($_GET['error'] === '1' || $_GET['error'] === 'padron_duplicado')): ?>
+    <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Falta dato o corregir.</div>
+    <?php endif; ?>
     <form action="guardar_propiedad.php" method="POST" onsubmit="return validarPropietario()">
+        <label>Propiedad *</label>
+        <input type="text" name="propiedad" required autofocus placeholder="Ej: DEPTO 1A">
+
+        <label>Ciudad</label>
+        <input type="text" name="ciudad" value="<?= $ultima_ciudad ?>" placeholder="Ej: S. M. DE TUCUMAN">
+
+        <label>Consorcio</label>
+        <input type="text" name="consorcio" value="<?= $ultimo_consorcio ?>" placeholder="Ej: 430 o 101">
+
         <div class="buscador-contenedor">
             <label>Propietario *</label>
             <input type="text" id="bus_propietario" placeholder="BUSCAR USUARIO..." onkeyup="buscarPropietario(this.value)" autocomplete="off">
             <input type="hidden" name="propietario_id" id="propietario_id" value="">
             <div id="sug_propietario" class="sugerencias"></div>
         </div>
-
-        <label>Propiedad *</label>
-        <input type="text" name="propiedad" required autofocus placeholder="Ej: DEPTO 1A">
-
-        <label>Ciudad</label>
-        <input type="text" name="ciudad" placeholder="Ej: S. M. DE TUCUMAN">
         
-        <div class="fila-doble">
-            <div>
-                <label>Consorcio</label>
-                <input type="text" name="consorcio" placeholder="Ej: 430 o 101">
-            </div>
-            <div>
-                <label>%</label>
-                <input type="number" name="porcentaje" step="0.01" min="0" max="100" placeholder="5.25" style="text-transform:none;">
-            </div>
-        </div>
+        <label>%</label>
+        <input type="text" name="porcentaje" inputmode="decimal" placeholder="3,505 o 3.505" style="text-transform:none; max-width:120px;" pattern="[0-9]+[.,]?[0-9]*" title="Ej: 3,505 o 3.505">
         
         <label>Padrón</label>
         <input type="text" name="padron" placeholder="Ej: 12345">
@@ -121,6 +126,20 @@ function validarPropietario() {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         history.back();
+        return;
+    }
+    if (e.key === 'Enter' && e.target.closest('form')) {
+        if (e.target.tagName === 'TEXTAREA') return;
+        if (e.target.type === 'button' || e.target.type === 'submit') return;
+        e.preventDefault();
+        var form = e.target.closest('form');
+        var campos = form.querySelectorAll('input:not([type="hidden"]), textarea, button[type="submit"]');
+        for (var i = 0; i < campos.length; i++) {
+            if (campos[i] === e.target && i < campos.length - 1) {
+                campos[i + 1].focus();
+                return;
+            }
+        }
     }
 });
 </script>
