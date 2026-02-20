@@ -75,7 +75,8 @@ $anio_firma = date('Y', $ts_firma);
 
 // Montos
 $precio = (float)$c['precio_convenido'];
-$deposito = (float)$c['monto_deposito'];
+// El depósito de garantía siempre es 1.5 veces el precio del alquiler
+$deposito = round($precio * 1.5, 2);
 $multa = round($precio * 0.10, 0); // 10% del alquiler
 $precio_letras = numerosALetras($precio);
 $deposito_letras = numerosALetras($deposito);

@@ -5,8 +5,16 @@ include 'respaldar_automatico.php'; // Respaldo automático diario
 $archivo_respaldo = hacerRespaldoAutomatico(); // Ejecutar respaldo si no se hizo hoy (retorna nombre de archivo si se hizo nuevo)
 if ((int)date('j') > 10) include 'actualizar_ipc_desde_api.php';
 include 'liquidar_alquileres_mes.php'; // Liquidar alquileres del mes si aún no se cargaron (desde día 1)
-// Consulta para listar usuarios, poniendo a "CAJA" (ID 1) primero
-$sql = "SELECT * FROM usuarios ORDER BY (id = 1) DESC, apellido ASC";
+// Consulta para listar usuarios, poniendo a "CAJA" (ID 1) primero, con fecha fin de contrato vigente
+$sql = "SELECT u.*, 
+        (SELECT a.fecha_fin 
+         FROM alquileres a 
+         WHERE (a.inquilino1_id = u.id OR a.inquilino2_id = u.id) 
+         AND a.estado = 'VIGENTE' 
+         ORDER BY a.fecha_fin DESC 
+         LIMIT 1) as fecha_fin_contrato
+        FROM usuarios u 
+        ORDER BY (u.id = 1) DESC, u.apellido ASC";
 $resultado = mysqli_query($conexion, $sql);
 
 // Consulta para detectar si falta el índice del mes actual
@@ -242,7 +250,11 @@ if ($nivelAcceso === 3) {
                 <tbody id="cuerpo">
                     <?php while ($f = mysqli_fetch_array($resultado)) {
                         $btnEdit = $soloLectura ? '' : "<button class='btn-edit-inline' onclick='event.stopPropagation(); abrirEditor({$f['id']})'>📝 EDITAR</button>";
-                        echo "<tr onclick='cargarMovimientos(this, {$f['id']})'>
+                        $fechaFinAttr = '';
+                        if (!empty($f['fecha_fin_contrato'])) {
+                            $fechaFinAttr = " data-fecha-fin='".htmlspecialchars($f['fecha_fin_contrato'])."'";
+                        }
+                        echo "<tr onclick='cargarMovimientos(this, {$f['id']})'$fechaFinAttr>
                                 <td>
                                     <span class='nombre-txt'>".strtoupper($f['apellido'])."</span>
                                     $btnEdit
@@ -534,7 +546,20 @@ function cargarMovimientos(fila, id) {
     if (btnIng) btnIng.classList.add("btn-activo");
     if (btnRet) btnRet.classList.add("btn-activo");
     document.getElementById("btnWord").style.display = "none";
-    document.getElementById("tituloMovimientos").innerText = "MOVIMIENTOS DE: " + fila.querySelector('.nombre-txt').innerText;
+    
+    // Construir título con fecha de fin de contrato si existe
+    var nombreUsuario = fila.querySelector('.nombre-txt').innerText;
+    var fechaFinContrato = fila.getAttribute('data-fecha-fin');
+    var tituloTexto = "MOVIMIENTOS DE: " + nombreUsuario;
+    if (fechaFinContrato) {
+        // Formatear fecha de YYYY-MM-DD a dd/mm/yyyy
+        var fechaParts = fechaFinContrato.split('-');
+        if (fechaParts.length === 3) {
+            var fechaFormateada = fechaParts[2] + '/' + fechaParts[1] + '/' + fechaParts[0];
+            tituloTexto += " (Fin contrato: " + fechaFormateada + ")";
+        }
+    }
+    document.getElementById("tituloMovimientos").innerText = tituloTexto;
 
     var nomUsuario = fila.querySelector('.nombre-txt').innerText.toUpperCase().trim();
     esConsorcioUsuario = nomUsuario.indexOf("CONSORCIO") === 0;

@@ -24,7 +24,8 @@ $fecha_inicio  = mysqli_real_escape_string($conexion, $_POST['fecha_inicio']);
 $fecha_fin     = mysqli_real_escape_string($conexion, $_POST['fecha_fin']);
 $precio        = (float)$_POST['precio'];
 $fecha_firma   = mysqli_real_escape_string($conexion, $_POST['fecha_firma']);
-$deposito      = (float)$_POST['deposito'];
+// El depósito de garantía siempre será 1.5 veces el precio del alquiler
+$deposito      = round($precio * 1.5, 2);
 $nom_prop_raw   = isset($_POST['nom_prop']) ? trim($_POST['nom_prop']) : '';
 $nom_prop       = mysqli_real_escape_string($conexion, omitir_ciudad_provincia($nom_prop_raw));
 

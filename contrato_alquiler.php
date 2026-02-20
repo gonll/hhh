@@ -32,9 +32,10 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
         .buscador-contenedor { position: relative; }
         .sugerencias { position: absolute; width: 100%; background: white; border: 1px solid #ddd; z-index: 100; max-height: 100px; overflow-y: auto; display: none; }
         .sugerencia-item { padding: 5px; cursor: pointer; font-size: 10px; border-bottom: 1px solid #eee; }
-        .btn-accion { background: #28a745; color: white; border: none; padding: 8px; cursor: pointer; font-weight: bold; border-radius: 4px; width: 100%; text-transform: uppercase; margin-top: 10px; font-size: 11px; }
-        .volver { display: inline-block; padding: 6px 12px; text-decoration: none; background: #ffc107; color: #333; font-weight: bold; font-size: 10px; border-radius: 4px; }
-        .volver:hover { background: #e0a800; }
+        .btn-accion { background: #ffc107; color: #333; border: none; padding: 8px; cursor: pointer; font-weight: bold; border-radius: 4px; width: 100%; text-transform: uppercase; margin-top: 10px; font-size: 11px; }
+        .btn-accion:hover { background: #e0a800; }
+        .volver { display: inline-block; padding: 6px 12px; text-decoration: none; background: #28a745; color: white; font-weight: bold; font-size: 10px; border-radius: 4px; }
+        .volver:hover { background: #218838; }
     </style>
 </head>
 <body>
@@ -107,7 +108,7 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
 
             <div>
                 <label>Precio Convenido ($)</label>
-                <input type="number" id="precio" class="nav-enter" placeholder="0.00" oninput="copiarMonto(this.value)" required>
+                <input type="number" id="precio" class="nav-enter" placeholder="0.00" oninput="calcularDeposito(this.value)" required>
             </div>
             <div>
                 <label>Fecha Firma</label>
@@ -115,7 +116,7 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
             </div>
 
             <div>
-                <label>Monto Depósito Garantía ($)</label>
+                <label>Monto Depósito Garantía ($) - 1.5 alquileres</label>
                 <input type="number" id="deposito" class="nav-enter" placeholder="0.00" required>
             </div>
         </div>
@@ -133,20 +134,31 @@ function recalcularFechaFin() {
     const fInicioVal = document.getElementById('fecha_inicio').value;
     const meses = parseInt(document.getElementById('plazo').value);
     
-    if (fInicioVal && !isNaN(meses)) {
-        let fecha = new Date(fInicioVal + "T00:00:00");
-        // Sumar meses
-        fecha.setMonth(fecha.getMonth() + meses);
-        // Obtener el último día de ese mes resultante
-        let ultimoDia = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0).getDate();
-        fecha.setDate(ultimoDia);
+    if (fInicioVal && !isNaN(meses) && meses > 0) {
+        let fechaInicio = new Date(fInicioVal + "T00:00:00");
+        let anioInicio = fechaInicio.getFullYear();
+        let mesInicio = fechaInicio.getMonth(); // 0-11 (febrero = 1)
+        
+        // Calcular el mes final: mes de inicio + plazo - 1
+        // Ejemplo: inicio 01/02/2026 (mes índice 1), plazo 4 meses
+        // Meses: Feb(1), Mar(2), Abr(3), May(4) -> mes final = índice 4 (mayo)
+        // mesFinal = 1 + 4 - 1 = 4 (mayo)
+        let mesFinal = mesInicio + meses - 1;
+        let anioFinal = anioInicio + Math.floor(mesFinal / 12);
+        mesFinal = mesFinal % 12;
+        if (mesFinal < 0) {
+            mesFinal += 12;
+            anioFinal--;
+        }
+        
+        // Obtener el último día del mes final
+        let ultimoDia = new Date(anioFinal, mesFinal + 1, 0).getDate();
         
         // Formatear a YYYY-MM-DD para el input date
-        let y = fecha.getFullYear();
-        let m = (fecha.getMonth() + 1).toString().padStart(2, '0');
-        let d = fecha.getDate().toString().padStart(2, '0');
+        let m = (mesFinal + 1).toString().padStart(2, '0');
+        let d = ultimoDia.toString().padStart(2, '0');
         
-        document.getElementById('fecha_fin').value = `${y}-${m}-${d}`;
+        document.getElementById('fecha_fin').value = `${anioFinal}-${m}-${d}`;
     }
 }
 
@@ -179,7 +191,11 @@ function actualizarInfoProp() {
     infoProp.detalle = opt.getAttribute('data-detalle') || '';
 }
 
-function copiarMonto(v) { document.getElementById('deposito').value = v; }
+function calcularDeposito(precio) {
+    const precioNum = parseFloat(precio) || 0;
+    const deposito = precioNum * 1.5;
+    document.getElementById('deposito').value = deposito.toFixed(2);
+}
 
 function buscar(q, listaId, hiddenId) {
     const lista = document.getElementById(listaId);
