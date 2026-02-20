@@ -269,7 +269,7 @@ if ($nivelAcceso === 3) {
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                 <a href="gestionar_finca.php" class="btn-abm-prop btn-finca" style="flex: 1;">Finca</a>
                 <a href="gestionar_azucares.php" class="btn-abm-prop" style="flex: 1;">Azucar</a>
-                <a href="#" class="btn-abm-prop btn-arriendos" onclick="return false;" style="flex: 1;">Arriendos</a>
+                <a href="arriendos.php" class="btn-abm-prop btn-arriendos" style="flex: 1;">Arriendos</a>
             </div>
             <a href="propiedades.php" class="btn-abm-prop btn-admin-prop">⚙️ Admin. Propiedades</a>
             <a href="contrato_alquiler.php" class="btn-abm-prop btn-contrato">📜 Contrato de Alquiler</a>
