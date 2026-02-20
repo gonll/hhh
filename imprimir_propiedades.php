@@ -31,12 +31,12 @@ $resultado = mysqli_query($conexion, $sql);
         .disponible { color: #666; font-style: italic; }
         @media print {
             .no-print { display: none !important; }
-            body { margin: 4mm 6mm; font-size: 9px; line-height: 1.15; }
-            h1 { font-size: 11px; margin: 0 0 3px 0; padding: 0; }
-            table { font-size: 8px; }
-            th, td { padding: 2px 4px; line-height: 1.2; }
-            th { font-size: 7px; }
-            tr { height: 1px; }
+            body { margin: 4mm 6mm; font-size: 18px; line-height: 1.15; }
+            h1 { font-size: 22px; margin: 0 0 6px 0; padding: 0; }
+            table { font-size: 16px; }
+            th, td { padding: 4px 8px; line-height: 1.2; }
+            th { font-size: 14px; }
+            tr { height: auto; }
             tbody tr { page-break-inside: avoid; }
         }
     </style>
