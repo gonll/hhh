@@ -2,7 +2,7 @@
 include 'db.php';
 include 'verificar_sesion.php';
 include 'helpers_contrato.php';
-aen cuenta caja en 
+
 if (!isset($_GET['id'])) {
     die("ID no recibido");
 }
@@ -93,7 +93,8 @@ header("Content-Disposition: attachment; filename=\"Recibo_$nro_recibo.doc\"");
     body {
         font-family: Arial, sans-serif;
         font-size: 12pt;
-        margin: 2cm;
+        margin: 1cm;
+        line-height: 1.5;
     }
     .titulo {
         text-align: center;
@@ -101,9 +102,12 @@ header("Content-Disposition: attachment; filename=\"Recibo_$nro_recibo.doc\"");
         font-weight: bold;
         letter-spacing: 2px;
         margin-bottom: 10px;
+        line-height: 1.5;
     }
     .fecha {
         margin-bottom: 15px;
+        text-align: right;
+        line-height: 1.5;
     }
     .texto {
         margin-bottom: 15px;
@@ -112,9 +116,12 @@ header("Content-Disposition: attachment; filename=\"Recibo_$nro_recibo.doc\"");
     }
     .son {
         margin-bottom: 20px;
+        text-align: justify;
+        line-height: 1.5;
     }
     .firma-container {
-        margin-top: 50px;
+        margin-top: 18px;
+        line-height: 1.5;
     }
 </style>
 </head>
@@ -123,7 +130,7 @@ header("Content-Disposition: attachment; filename=\"Recibo_$nro_recibo.doc\"");
     <p>&nbsp;</p>
     <div class="fecha"><?= $fecha_formateada ?></div>
     <div class="texto">Recibí de <?= $usuario_inquilino ?> la cantidad de pesos <?= $monto_letras ?> . ($<?= $monto_numero ?>-) en concepto de <?= $concepto ?>.</div>
-    <div class="son">Son:$<?= $monto_numero ?>-</div>
+    <div class="son"><strong>Son:$<?= $monto_numero ?>-</strong></div>
     <div class="firma-container">
         <table style="width: 100%; border-collapse: collapse; border: 0;">
             <tr>
