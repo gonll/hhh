@@ -76,8 +76,13 @@ if ($res_stock) {
     }
 }
 
-$res_faltan = mysqli_query($conexion, "SELECT COUNT(*) AS n FROM stock WHERE vendida_a_id IS NULL");
-$faltan_vender = ($res_faltan && $r = mysqli_fetch_assoc($res_faltan)) ? (int)$r['n'] : 0;
+$res_faltan = mysqli_query($conexion, "SELECT COUNT(*) AS n, COALESCE(SUM(cantidad), 0) AS total FROM stock WHERE vendida_a_id IS NULL");
+$faltan_vender = 0;
+$faltan_vender_cantidad = 0;
+if ($res_faltan && $r = mysqli_fetch_assoc($res_faltan)) {
+    $faltan_vender = (int)$r['n'];
+    $faltan_vender_cantidad = (float)$r['total'];
+}
 
 $mensaje_stock = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -580,7 +585,7 @@ function fmtNum($n) {
 </head>
 <body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
-        <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?>)</span></h2>
+        <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
 
         <?php if ($mensaje_stock): ?>
         <p class="msg-interpretar ok" style="display: block;"><?= htmlspecialchars($mensaje_stock) ?></p>
