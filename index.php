@@ -43,6 +43,7 @@ if ($nivelAcceso === 3) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sistema HHH 2026</title>
     <!-- Favicons -->
     <link rel="icon" href="/favicon.ico" sizes="any">
