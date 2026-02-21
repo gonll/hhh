@@ -10,6 +10,7 @@
         $deployMsg = isset($_GET['msg']) ? htmlspecialchars($_GET['msg']) : '';
         echo '<span style="font-size:11px; ' . ($deployOk ? 'color:#155724;' : 'color:#721c24;') . '">' . ($deployOk ? '✓ Deploy realizado.' : '✗ ' . ($deployMsg ?: 'Error.')) . '</span>';
     } ?>
+    <?php if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
     <form method="post" action="deploy_accion.php" style="display: inline; margin: 0;" onsubmit="return confirm('¿Ejecutar git add, commit, pull y push?');">
         <input type="hidden" name="action" value="subir_codigo">
         <button type="submit" style="background:#17a2b8; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer;">Subir código</button>
@@ -18,4 +19,5 @@
         <input type="hidden" name="action" value="subir_db">
         <button type="submit" style="background:#6c757d; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer;">Subir base de datos</button>
     </form>
+    <?php endif; ?>
 </div>

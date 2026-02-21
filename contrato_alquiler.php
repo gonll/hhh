@@ -259,10 +259,12 @@ function generarContratoWord(d) {
     window.open('generar_word_contrato.php?id=' + d.propiedad_id, '_blank', 'noopener');
 }
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        history.back();
+    if (e.key === 'Escape' || e.keyCode === 27) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.href = 'index.php';
     }
-});
+}, true);
 </script>
 <?php include 'timeout_sesion_inc.php'; ?>
 </body>
