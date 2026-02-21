@@ -54,7 +54,7 @@ if (!$prop) {
     <?php if (isset($_GET['error']) && $_GET['error'] === 'padron_duplicado'): ?>
     <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Falta dato o corregir.</div>
     <?php endif; ?>
-    <form action="actualizar_propiedad.php" method="POST">
+    <form class="form-nav-enter" action="actualizar_propiedad.php" method="POST">
         <input type="hidden" name="propiedad_id" value="<?= $prop['propiedad_id'] ?>">
         
         <label>Propiedad</label>

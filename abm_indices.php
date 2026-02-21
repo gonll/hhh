@@ -47,7 +47,7 @@ $res = mysqli_query($conexion, "SELECT * FROM indices ORDER BY fecha DESC LIMIT 
 
 <div class="caja">
     <h3>Carga de Índice IPC</h3>
-    <form method="POST" autocomplete="off">
+    <form method="POST" class="form-nav-enter" autocomplete="off">
         <label>Mes Correspondiente</label>
         <input type="date" name="fecha" required value="<?= date('Y-m-01') ?>">
         

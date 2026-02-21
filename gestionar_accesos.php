@@ -64,7 +64,7 @@ $lista = mysqli_query($conexion, "SELECT id, usuario, nivel_acceso, fecha_creaci
     <?php if ($mensaje !== ''): ?>
         <p class="<?= strpos($mensaje, 'Error') !== false ? 'err' : 'ok' ?>"><?= htmlspecialchars($mensaje) ?></p>
     <?php endif; ?>
-    <form method="POST">
+    <form method="POST" class="form-nav-enter">
         <div class="fila-form">
             <div>
                 <label>Usuario</label>

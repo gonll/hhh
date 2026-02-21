@@ -106,7 +106,7 @@ $lista = mysqli_query($conexion, "SELECT * FROM tabla_salarial ORDER BY id DESC"
             <div class="mensaje <?= strpos($mensaje, 'Error') !== false ? 'error' : 'ok' ?>"><?= htmlspecialchars($mensaje) ?></div>
         <?php endif; ?>
 
-        <form method="POST">
+        <form method="POST" class="form-nav-enter">
             <?php if ($editar_id): ?>
                 <input type="hidden" name="id" value="<?= $editar_id ?>">
             <?php endif; ?>
@@ -188,5 +188,6 @@ $lista = mysqli_query($conexion, "SELECT * FROM tabla_salarial ORDER BY id DESC"
             <a href="gestionar_finca.php" class="btn btn-secondary">← Volver a Finca (PDT)</a>
         </p>
     </div>
+<?php include 'nav_enter_form_inc.php'; ?>
 </body>
 </html>

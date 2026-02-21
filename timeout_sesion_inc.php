@@ -82,3 +82,4 @@ $inactividadMs = $minutosInactividad * 60 * 1000;
     setInterval(checkInactivity, CHECK_MS);
 })();
 </script>
+<?php include __DIR__ . '/nav_enter_form_inc.php'; ?>

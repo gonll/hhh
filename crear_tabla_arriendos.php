@@ -35,4 +35,15 @@ $r = mysqli_query($conexion, "SHOW COLUMNS FROM arriendos LIKE 'fecha_vencimient
 if ($r && mysqli_num_rows($r) == 0) {
     mysqli_query($conexion, "ALTER TABLE arriendos ADD COLUMN fecha_vencimiento_contrato DATE DEFAULT NULL AFTER paga_provincial");
 }
+// Añadir columna porcentaje_otros si no existe
+$r2 = mysqli_query($conexion, "SHOW COLUMNS FROM arriendos LIKE 'porcentaje_otros'");
+if ($r2 && mysqli_num_rows($r2) == 0) {
+    mysqli_query($conexion, "ALTER TABLE arriendos ADD COLUMN porcentaje_otros DECIMAL(5,2) DEFAULT NULL AFTER paga_provincial");
+}
+// Añadir columna iva_porcentaje si no existe (reemplaza descontar_iva + monto_descuentos)
+$r3 = mysqli_query($conexion, "SHOW COLUMNS FROM arriendos LIKE 'iva_porcentaje'");
+if ($r3 && mysqli_num_rows($r3) == 0) {
+    mysqli_query($conexion, "ALTER TABLE arriendos ADD COLUMN iva_porcentaje DECIMAL(5,2) NOT NULL DEFAULT 21.00 AFTER kilos_fecha_2");
+    mysqli_query($conexion, "UPDATE arriendos SET iva_porcentaje = IF(descontar_iva = 1, 21.00, 0)");
+}
 ?>

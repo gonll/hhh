@@ -57,7 +57,7 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
     <?php if (isset($_GET['error']) && ($_GET['error'] === '1' || $_GET['error'] === 'padron_duplicado')): ?>
     <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Falta dato o corregir.</div>
     <?php endif; ?>
-    <form action="guardar_propiedad.php" method="POST" onsubmit="return validarPropietario()">
+    <form class="form-nav-enter" action="guardar_propiedad.php" method="POST" onsubmit="return validarPropietario()">
         <label>Propiedad *</label>
         <input type="text" name="propiedad" required autofocus placeholder="Ej: DEPTO 1A">
 

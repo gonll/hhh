@@ -209,6 +209,8 @@ if ($nivelAcceso === 3) {
         .modal-cobro .btn-cerrar { background: #6c757d; color: white; }
         .col-operacion-link { cursor: pointer; color: #007bff !important; }
         .col-operacion-link:hover { text-decoration: underline; }
+        .link-precio-azucar { color: #0080ff !important; cursor: pointer; text-decoration: none; }
+        .link-precio-azucar:hover { text-decoration: underline; color: #0066cc !important; }
     </style>
 </head>
 <body>
@@ -415,6 +417,19 @@ if ($nivelAcceso === 3) {
             <div class="btns">
                 <button type="button" class="btn-guardar" onclick="ejecutarLiquidarExpensas()">Liquidar</button>
                 <button type="button" class="btn-cerrar" onclick="cerrarModalLiqExp()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalPrecioAzucar" class="modal-overlay" onclick="if(event.target===this) cerrarModalPrecioAzucar()">
+        <div class="modal-cobro" onclick="event.stopPropagation()">
+            <h3>Precio bolsa azúcar</h3>
+            <p style="font-size:11px; color:#666; margin:0 0 12px;">Precio de bolsa azúcar incluido IVA, precio final.</p>
+            <label>Precio de bolsa azúcar incluido IVA, precio final</label>
+            <input type="text" id="precioAzucarBolsa" placeholder="Ej: 100" inputmode="decimal">
+            <div class="btns">
+                <button type="button" class="btn-guardar" onclick="guardarPrecioAzucar()">Guardar</button>
+                <button type="button" class="btn-cerrar" onclick="cerrarModalPrecioAzucar()">Cerrar</button>
             </div>
         </div>
     </div>
@@ -737,6 +752,40 @@ function cerrarModalLiqExp() {
     document.getElementById('modalLiqExp').classList.remove('visible');
 }
 
+var modalPrecioAzucarData = { movimientoId: 0, arriendoId: 0, arriendoFecha: 0 };
+function abrirModalPrecioAzucar(movimientoId, arriendoId, arriendoFecha) {
+    modalPrecioAzucarData = { movimientoId: movimientoId, arriendoId: arriendoId, arriendoFecha: arriendoFecha };
+    document.getElementById('precioAzucarBolsa').value = '';
+    document.getElementById('modalPrecioAzucar').classList.add('visible');
+    document.getElementById('precioAzucarBolsa').focus();
+}
+function cerrarModalPrecioAzucar() {
+    document.getElementById('modalPrecioAzucar').classList.remove('visible');
+}
+function guardarPrecioAzucar() {
+    var precio = parseFloat((document.getElementById('precioAzucarBolsa').value || '').replace(',', '.').replace(/\s/g, ''));
+    if (isNaN(precio) || precio <= 0) {
+        alert('Ingrese un precio válido.');
+        return;
+    }
+    var fd = new FormData();
+    fd.append('movimiento_id', modalPrecioAzucarData.movimientoId);
+    fd.append('arriendo_id', modalPrecioAzucarData.arriendoId);
+    fd.append('arriendo_fecha', modalPrecioAzucarData.arriendoFecha);
+    fd.append('precio_bolsa', precio);
+    fetch('actualizar_movimiento_arriendo_azucar.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.text(); })
+        .then(function(txt) {
+            if (txt.trim() === 'OK') {
+                cerrarModalPrecioAzucar();
+                var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
+                if (fila && uSel) cargarMovimientos(fila, uSel);
+            } else {
+                alert(txt || 'Error al actualizar.');
+            }
+        });
+}
+
 function abrirModalAntCel() {
     var el = document.getElementById('modalAntCel');
     if (el) {
@@ -955,6 +1004,11 @@ const CAMPOS_MOV = ['ins_fecha', 'ins_concepto', 'ins_compro', 'ins_refer', 'ins
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        var modalPrecioAz = document.getElementById('modalPrecioAzucar');
+        if (modalPrecioAz && modalPrecioAz.classList.contains('visible')) {
+            cerrarModalPrecioAzucar();
+            return;
+        }
         var modalAnt = document.getElementById('modalAntCel');
         if (modalAnt && modalAnt.classList.contains('activo')) {
             cerrarModalAntCel();

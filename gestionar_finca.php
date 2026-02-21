@@ -521,7 +521,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             }
         }
         ?>
-        <form method="POST" id="formPDT" action="<?= htmlspecialchars($form_action_url) ?>" onkeydown="var e=event||window.event;if((e.keyCode||e.which)==27){var f=document.getElementById('formCargaGasoilSisterna');if(f&&f.style.display!='none'){f.style.display='none';return false;}<?php if ($desde_cel): ?>if(history.length>1){history.back();return false;}<?php endif; ?>location.href='<?= addslashes($url_esc_volver) ?>';return false;}">
+        <form method="POST" id="formPDT" class="form-nav-enter" action="<?= htmlspecialchars($form_action_url) ?>" onkeydown="var e=event||window.event;if((e.keyCode||e.which)==27){var f=document.getElementById('formCargaGasoilSisterna');if(f&&f.style.display!='none'){f.style.display='none';return false;}<?php if ($desde_cel): ?>if(history.length>1){history.back();return false;}<?php endif; ?>location.href='<?= addslashes($url_esc_volver) ?>';return false;}">
             <?php if ($pdt_edit): ?>
                 <input type="hidden" name="pdt_id" value="<?= $pdt_edit['id'] ?>">
             <?php endif; ?>
@@ -1426,5 +1426,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         }
     })();
     </script>
+<?php include 'nav_enter_form_inc.php'; ?>
 </body>
 </html>

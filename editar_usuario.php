@@ -41,7 +41,7 @@ if (!$user) {
 
 <div class="card">
     <h2>Editar Usuario</h2>
-    <form action="actualizar_usuario.php" method="POST">
+    <form class="form-nav-enter" action="actualizar_usuario.php" method="POST">
         <input type="hidden" name="id" value="<?= $user['id'] ?>">
         
         <label>Apellido y nombre</label>
