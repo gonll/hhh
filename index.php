@@ -96,8 +96,9 @@ if ($nivelAcceso === 3) {
         /* Cabecera Central y Reloj */
         .cabecera-detalle { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         #reloj-sistema { font-size: 1rem; color: #aaa; font-weight: 300; min-width: 150px; text-align: right; }
-        .btn-ant-cel { background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-ant-cel { display: none; background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
         .btn-ant-cel:hover { background: #138496; }
+        @media (max-width: 768px) { .btn-ant-cel { display: inline-block; } }
         /* Modal Ant/cel responsive - pantalla completa en cel con 3 secciones */
         .modal-ant-cel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; align-items: center; justify-content: center; padding: 10px; box-sizing: border-box; }
         .modal-ant-cel-overlay.activo { display: flex; }
