@@ -118,6 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $precio_vta = (float)$precio_venta_raw;
         $cant_vendida = (int)($_POST['cantidad_vendida'] ?? 0);
         $operacion_input = trim($_POST['operacion'] ?? '');
+        $fecha_pago = trim($_POST['fecha_pago'] ?? '');
         $es_edicion = isset($_POST['editar_venta_azucar']);
         if ($stock_id < 1 || $usuario_id < 1 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_vta) || $cant_vendida < 1) {
             $mensaje_stock = 'Faltan datos o son inválidos (stock, usuario, fecha, cantidad vendida).';
@@ -182,7 +183,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         mysqli_query($conexion, $ins);
                         $mov_id = (int)mysqli_insert_id($conexion);
                     }
-                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id WHERE id = $stock_id");
+                    $fecha_fact_sql = '';
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_pago)) {
+                        $r_check = mysqli_fetch_assoc(mysqli_query($conexion, "SELECT facturada_a_id FROM stock WHERE id = $stock_id LIMIT 1"));
+                        if (empty($r_check['facturada_a_id'])) {
+                            $fecha_pago_esc = mysqli_real_escape_string($conexion, $fecha_pago);
+                            $fecha_fact_sql = ", fecha_fact = '$fecha_pago_esc'";
+                        }
+                    }
+                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id $fecha_fact_sql WHERE id = $stock_id");
                 } else {
                     // Cambio de comprador: en el registro del usuario viejo solo actualizar referencia a "Vta corregida" y monto a 0 (no nuevo asiento).
                     $mov_id_old = (int)($r_old['venta_movimiento_id'] ?? 0);
@@ -193,16 +202,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $ref_corregida_esc = mysqli_real_escape_string($conexion, 'Vta corregida');
                         mysqli_query($conexion, "UPDATE cuentas SET referencia = '$ref_corregida_esc', monto = 0 WHERE movimiento_id = $mov_id_old");
                     }
+                    $fecha_fact_sql = '';
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_pago)) {
+                        $r_check = mysqli_fetch_assoc(mysqli_query($conexion, "SELECT facturada_a_id FROM stock WHERE id = $stock_id LIMIT 1"));
+                        if (empty($r_check['facturada_a_id'])) {
+                            $fecha_pago_esc = mysqli_real_escape_string($conexion, $fecha_pago);
+                            $fecha_fact_sql = ", fecha_fact = '$fecha_pago_esc'";
+                        }
+                    }
                     $ins = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) VALUES ($usuario_id, '$fecha_vta_esc', '$concepto', '$compro', '$refer', $monto)";
                     mysqli_query($conexion, $ins);
                     $mov_id = (int)mysqli_insert_id($conexion);
-                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id WHERE id = $stock_id");
+                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id $fecha_fact_sql WHERE id = $stock_id");
                 }
             } else {
+                $fecha_fact_sql = '';
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_pago)) {
+                    $fecha_pago_esc = mysqli_real_escape_string($conexion, $fecha_pago);
+                    $fecha_fact_sql = ", fecha_fact = '$fecha_pago_esc'";
+                }
                 $ins = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) VALUES ($usuario_id, '$fecha_vta_esc', '$concepto', '$compro', '$refer', $monto)";
                 if (mysqli_query($conexion, $ins)) {
                     $mov_id = (int)mysqli_insert_id($conexion);
-                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id WHERE id = $stock_id");
+                    mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id $fecha_fact_sql WHERE id = $stock_id");
                 } else {
                     $mensaje_stock = 'Falta dato o corregir.';
                     $operacion = null;
@@ -798,6 +820,7 @@ function fmtNum($n) {
                         <div class="form-g campo-precio-venta" style="flex: 0 0 auto;"><label for="venta_precio">Precio venta</label><input type="text" name="precio_venta" id="venta_precio" placeholder="0,00" autocomplete="off" required></div>
                         <div class="form-g" style="flex: 0 0 5em;"><label>Cant. vendida</label><input type="number" name="cantidad_vendida" id="venta_cant_vendida" min="1" step="1" required></div>
                         <div class="form-g" style="flex: 0 0 5em;"><label>Operación</label><input type="number" name="operacion" id="venta_operacion" min="1" step="1" placeholder="Auto"></div>
+                        <div class="form-g campo-fecha-vta" style="flex: 0 0 auto;"><label>Fecha de Pago</label><input type="date" name="fecha_pago" id="venta_fecha_pago" title="Provisorio en fecha fact.; se sobrescribe al facturar"></div>
                     </div>
                     <div class="botones">
                         <button type="submit" class="btn-guardar-venta" id="venta_btn_guardar">Guardar venta</button>
@@ -1050,6 +1073,8 @@ function fmtNum($n) {
             document.getElementById('venta_operador_nombre').textContent = tr.dataset.operadorApellido || '—';
             document.getElementById('venta_buscar_operador').value = tr.dataset.operadorApellido || '';
             document.getElementById('venta_operacion').value = tr.dataset.operacion || '';
+            var facturadaId = parseInt(tr.dataset.facturadaAId || '0', 10);
+            document.getElementById('venta_fecha_pago').value = (facturadaId === 0 && tr.dataset.fechafact) ? tr.dataset.fechafact : '';
             if (hGuardar) hGuardar.remove();
             var he = document.createElement('input');
             he.type = 'hidden';
@@ -1066,6 +1091,7 @@ function fmtNum($n) {
             document.getElementById('venta_usuario_nombre').textContent = '—';
             document.getElementById('venta_buscar_usuario').value = '';
             document.getElementById('venta_operacion').value = '';
+            document.getElementById('venta_fecha_pago').value = '';
         }
         document.getElementById('modalVenta').classList.add('activo');
     }
@@ -1318,7 +1344,7 @@ function fmtNum($n) {
         }
     })();
 
-    var camposVentaOrden = ['venta_buscar_usuario', 'venta_fecha', 'venta_precio', 'venta_cant_vendida', 'venta_operacion', 'venta_btn_guardar'];
+    var camposVentaOrden = ['venta_buscar_usuario', 'venta_fecha', 'venta_precio', 'venta_cant_vendida', 'venta_operacion', 'venta_fecha_pago', 'venta_btn_guardar'];
     document.getElementById('modalVenta').addEventListener('keydown', function(e) {
         if (e.key !== 'Enter') return;
         var form = document.getElementById('formVenta');
