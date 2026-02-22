@@ -19,10 +19,5 @@
         <input type="hidden" name="action" value="subir_db">
         <button type="submit" style="background:#6c757d; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer;">Subir base de datos</button>
     </form>
-    <span id="migrar-saldo-control" style="display:inline-flex; align-items:center; gap:6px;">
-        <label style="font-size:11px;">Monto:</label>
-        <input type="number" id="monto-migrar" step="0.01" placeholder="Saldo objetivo" style="width:100px; padding:6px 8px; font-size:11px; border:1px solid #ced4da; border-radius:4px;">
-        <button type="button" onclick="migrarSaldo()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer;">Migrar</button>
-    </span>
     <?php endif; ?>
 </div>
