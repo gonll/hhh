@@ -19,5 +19,6 @@
         <input type="hidden" name="action" value="subir_db">
         <button type="submit" style="background:#6c757d; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer;">Subir base de datos</button>
     </form>
+    <a href="bajar_bd_servidor.php" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer; text-decoration:none; display:inline-block;">Bajar base de datos (servidor)</a>
     <?php endif; ?>
 </div>
