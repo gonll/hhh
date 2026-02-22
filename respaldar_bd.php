@@ -19,8 +19,8 @@ function respaldoBDPorPHP($conn, $ruta_destino) {
         }
         $res3 = mysqli_query($conn, "SELECT * FROM `" . mysqli_real_escape_string($conn, $tabla) . "`");
         if ($res3 && mysqli_num_rows($res3) > 0) {
-            $cols = [];
-            while ($c = mysqli_fetch_field($res3)) $cols[] = "`" . $c->name . "`";
+            $fields = mysqli_fetch_fields($res3);
+            $cols = $fields ? array_map(function($f) { return "`" . $f->name . "`"; }, $fields) : [];
             mysqli_data_seek($res3, 0);
             while ($r = mysqli_fetch_row($res3)) {
                 $vals = array_map(function($v) use ($conn) {
@@ -47,11 +47,16 @@ $usuario  = $env['DB_USER'] ?? 'root';
 $clave    = $env['DB_PASS'] ?? '';
 $base     = $env['DB_NAME'] ?? 'sistemahhh26';
 
-// Ruta donde guardar el respaldo (directorio del proyecto)
-$directorio_respaldo = __DIR__;
+// Ruta: en Linux usar /tmp (siempre escribible); en Windows usar directorio del proyecto
 $fecha = date('Y-m-d_H-i-s');
 $nombre_archivo = "respaldo_sistemahhh26_{$fecha}.sql";
-$ruta_completa = $directorio_respaldo . DIRECTORY_SEPARATOR . $nombre_archivo;
+$es_windows = (DIRECTORY_SEPARATOR === '\\');
+$ruta_completa = $es_windows
+    ? (__DIR__ . DIRECTORY_SEPARATOR . $nombre_archivo)
+    : (sys_get_temp_dir() . DIRECTORY_SEPARATOR . $nombre_archivo);
+
+// En Linux/servidor: usar PHP directamente (más fiable; mysqldump suele fallar por permisos)
+$usar_php_directo = !$es_windows && isset($conexion);
 
 // Buscar mysqldump: Windows XAMPP, Linux típico, o en PATH
 $mysqldump = null;
@@ -87,13 +92,23 @@ if (!empty($clave)) {
 $comando = escapeshellarg($mysqldump) . " --host=" . escapeshellarg($servidor) . " --user=" . escapeshellarg($usuario) .
            $opt_pass . " --single-transaction --routines --triggers " . escapeshellarg($base) . " > " . escapeshellarg($ruta_completa) . " 2>&1";
 
-// Ejecutar respaldo con mysqldump
-exec($comando, $salida, $codigo_error);
-if (isset($tmp_cnf) && file_exists($tmp_cnf)) @unlink($tmp_cnf);
-
-// Si mysqldump falló, intentar respaldo con PHP (funciona sin mysqldump)
-if (($codigo_error !== 0 || !file_exists($ruta_completa) || filesize($ruta_completa) === 0) && isset($conexion)) {
+// Ejecutar respaldo
+if ($usar_php_directo) {
     respaldoBDPorPHP($conexion, $ruta_completa);
+} else {
+    exec($comando, $salida, $codigo_error);
+    if (isset($tmp_cnf) && file_exists($tmp_cnf)) @unlink($tmp_cnf);
+    $dump_valido = ($codigo_error === 0 && file_exists($ruta_completa) && filesize($ruta_completa) > 0);
+    if ($dump_valido) {
+        $primeras = @file_get_contents($ruta_completa, false, null, 0, 200);
+        if ($primeras && (stripos($primeras, 'mysqldump:') !== false || stripos($primeras, 'Access denied') !== false || stripos($primeras, 'ERROR') === 0)) {
+            $dump_valido = false;
+            @unlink($ruta_completa);
+        }
+    }
+    if (!$dump_valido && isset($conexion)) {
+        respaldoBDPorPHP($conexion, $ruta_completa);
+    }
 }
 
 if (file_exists($ruta_completa) && filesize($ruta_completa) > 0) {
