@@ -53,8 +53,11 @@ if (mysqli_num_rows($res) > 0) {
             $compro_html = "<a href='#' class='link-precio-azucar' onclick='event.stopPropagation(); abrirModalPrecioAzucar(" . (int)$m['movimiento_id'] . ", $arriendo_id, $arriendo_fecha); return false;'>$compro_upper</a>";
             $ref_html = "<a href='#' class='link-precio-azucar' onclick='event.stopPropagation(); abrirModalPrecioAzucar(" . (int)$m['movimiento_id'] . ", $arriendo_id, $arriendo_fecha); return false;'>$ref_upper</a>";
         }
-        echo "<tr class='fila-mov' data-movimiento-id=\"{$m['movimiento_id']}\" data-concepto=\"$concepto_attr\" data-compro=\"$compro_attr\" data-ref=\"$ref_attr\" data-monto=\"" . (float)$m['monto'] . "\" data-arriendo-id=\"$arriendo_id\" data-arriendo-fecha=\"$arriendo_fecha\" onclick=\"seleccionarFila(this, '{$m['movimiento_id']}', '$fechaFormateada', '" . addslashes(strtoupper($m['concepto'])) . "', '" . addslashes(strtoupper($m['comprobante'])) . "', '" . addslashes(strtoupper($m['referencia'])) . "', '{$m['monto']}')\">
-                <td class='al-cen'>$fechaFormateada</td>
+        $fecha_raw = $m['fecha'];
+        $clase_fecha = (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 2) ? 'celda-fecha-editable' : '';
+        $title_fecha = $clase_fecha ? " title='Clic para editar fecha'" : '';
+        echo "<tr class='fila-mov' data-movimiento-id=\"{$m['movimiento_id']}\" data-concepto=\"$concepto_attr\" data-compro=\"$compro_attr\" data-ref=\"$ref_attr\" data-monto=\"" . (float)$m['monto'] . "\" data-arriendo-id=\"$arriendo_id\" data-arriendo-fecha=\"$arriendo_fecha\" data-fecha=\"$fecha_raw\" onclick=\"seleccionarFila(this, '{$m['movimiento_id']}', '$fechaFormateada', '" . addslashes(strtoupper($m['concepto'])) . "', '" . addslashes(strtoupper($m['comprobante'])) . "', '" . addslashes(strtoupper($m['referencia'])) . "', '{$m['monto']}')\">
+                <td class='al-cen $clase_fecha'$title_fecha>$fechaFormateada</td>
                 <td class='al-izq'>" . strtoupper($m['concepto']) . "</td>
                 <td class='al-cen'>$compro_html</td>
                 <td class='$ref_td_class'$ref_td_attrs>$ref_html</td>

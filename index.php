@@ -211,6 +211,8 @@ if ($nivelAcceso === 3) {
         .modal-cobro .btn-cerrar { background: #6c757d; color: white; }
         .col-operacion-link { cursor: pointer; color: #007bff !important; }
         .col-operacion-link:hover { text-decoration: underline; }
+        .celda-fecha-editable { cursor: pointer; }
+        .celda-fecha-editable:hover { background: #e7f3ff !important; }
         .link-precio-azucar { color: #0080ff !important; cursor: pointer; text-decoration: none; }
         .link-precio-azucar:hover { text-decoration: underline; color: #0066cc !important; }
     </style>
@@ -1034,6 +1036,7 @@ document.addEventListener('keydown', function(e) {
 function ponerFechaActual() {
     var inpFecha = document.getElementById("ins_fecha");
     if (!inpFecha || document.getElementById("filaCarga").style.display === "none") return;
+    if ((inpFecha.value || "").trim() !== "") return; /* No sobrescribir si el usuario ya ingresó otra fecha */
     var hoy = new Date();
     var d = String(hoy.getDate()).padStart(2, '0');
     var m = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -1215,6 +1218,7 @@ function avisarComprobanteCaja() {
 function preparar(t) { 
     tipo = t; 
     document.getElementById("filaCarga").style.display = "table-footer-group";
+    document.getElementById("ins_fecha").value = "";
     ponerFechaActual();
     // Si es INGRESO y hay un movimiento seleccionado de VENTA DE AZUCAR, llenar concepto con "COBRO VTA AZUCAR" y comprobante "CHEQUE/ECHEQ"
     if (t === 'INGRESO' && movSel && movSel.concepto) {
@@ -1373,6 +1377,60 @@ function guardar() {
             e.stopPropagation();
             e.preventDefault();
             abrirModalMovimientosOperacion(td.getAttribute('data-operacion'));
+            return;
+        }
+        var tdFecha = e.target.closest('.celda-fecha-editable');
+        if (tdFecha && !tdFecha.classList.contains('editando')) {
+            e.stopPropagation();
+            e.preventDefault();
+            var tr = tdFecha.closest('tr');
+            var movId = tr && tr.dataset ? tr.dataset.movimientoId : '';
+            var fechaActual = tr && tr.dataset ? tr.dataset.fecha : '';
+            if (!movId || !uSel) return;
+            tdFecha.classList.add('editando');
+            var inp = document.createElement('input');
+            inp.type = 'date';
+            inp.value = fechaActual || '';
+            inp.style.cssText = 'width:100%; padding:2px; font-size:inherit; border:2px solid #007bff; box-sizing:border-box;';
+            tdFecha.textContent = '';
+            tdFecha.appendChild(inp);
+            inp.focus();
+            function guardarFecha() {
+                if (!tdFecha.classList.contains('editando')) return;
+                tdFecha.classList.remove('editando');
+                var nuevaFecha = inp.value;
+                inp.remove();
+                if (!nuevaFecha) {
+                    tdFecha.textContent = fechaActual ? (fechaActual.split('-').reverse().join('/')) : '';
+                    return;
+                }
+                var fd = new FormData();
+                fd.append('movimiento_id', movId);
+                fd.append('fecha', nuevaFecha);
+                fetch('actualizar_fecha_movimiento.php', { method: 'POST', body: fd })
+                    .then(function(r) { return r.text(); })
+                    .then(function(txt) {
+                        if (txt.trim() === 'OK') {
+                            var p = nuevaFecha.split('-');
+                            tdFecha.textContent = p[2] + '/' + p[1] + '/' + p[0];
+                            if (tr && tr.dataset) tr.dataset.fecha = nuevaFecha;
+                            var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
+                            if (fila) cargarMovimientos(fila, uSel);
+                        } else {
+                            tdFecha.textContent = fechaActual ? (fechaActual.split('-').reverse().join('/')) : '';
+                            alert(txt || 'Error al actualizar.');
+                        }
+                    });
+            }
+            inp.onblur = guardarFecha;
+            inp.onkeydown = function(ev) {
+                if (ev.key === 'Enter') { ev.preventDefault(); guardarFecha(); }
+                if (ev.key === 'Escape') {
+                    tdFecha.classList.remove('editando');
+                    inp.remove();
+                    tdFecha.textContent = fechaActual ? (fechaActual.split('-').reverse().join('/')) : '';
+                }
+            };
         }
     });
 </script>
