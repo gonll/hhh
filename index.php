@@ -972,6 +972,36 @@ function guardarCobroExp() {
         });
 }
 
+function migrarSaldo() {
+    if (!uSel) {
+        alert('Seleccioná un usuario primero.');
+        return;
+    }
+    var inp = document.getElementById('monto-migrar');
+    if (!inp) return;
+    var monto = parseFloat(String(inp.value).replace(',', '.').trim());
+    if (isNaN(monto)) {
+        alert('Ingresá un monto válido.');
+        return;
+    }
+    if (!confirm('¿Migrar saldo del usuario seleccionado a $ ' + monto.toFixed(2) + '? Se creará un movimiento INICIAL con la diferencia.')) return;
+    var fd = new FormData();
+    fd.append('usuario_id', uSel);
+    fd.append('monto', monto);
+    fetch('migrar_saldo.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.text(); })
+        .then(function(txt) {
+            if (txt.trim() === 'OK') {
+                var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
+                if (fila) cargarMovimientos(fila, uSel);
+                inp.value = '';
+                alert('Migración realizada correctamente.');
+            } else {
+                alert(txt.trim() || 'Error al migrar.');
+            }
+        });
+}
+
 function seleccionarFila(el, movimientoId, fecha, concepto, compro, ref, monto) {
     document.querySelectorAll('.fila-mov').forEach(f => f.classList.remove('fila-mov-seleccionada'));
     el.classList.add('fila-mov-seleccionada');
