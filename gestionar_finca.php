@@ -1344,15 +1344,19 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     tipoHoras.focus();
                 }
 
-                // Cartel "Parte guardado": mostrarlo 1 segundo y luego ocultarlo
+                // Cartel "Parte guardado": mostrarlo 2 segundos, ocultarlo y volver cursor a fecha
                 (function() {
                     var cartel = document.getElementById('cartelMensaje');
                     if (cartel && cartel.classList.contains('parte-guardado')) {
                         setTimeout(function() {
                             cartel.style.transition = 'opacity 0.3s';
                             cartel.style.opacity = '0';
-                            setTimeout(function() { cartel.remove(); }, 300);
-                        }, 1000);
+                            setTimeout(function() {
+                                cartel.remove();
+                                var inpFecha = document.getElementById('fecha');
+                                if (inpFecha) inpFecha.focus();
+                            }, 300);
+                        }, 2000);
                     }
                 })();
                 
