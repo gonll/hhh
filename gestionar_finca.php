@@ -392,7 +392,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt th.col-gasoil, .tabla-listado-pdt td.col-gasoil { width: 42px; }
         .tabla-listado-pdt th.col-cambio, .tabla-listado-pdt td.col-cambio { width: 38px; text-align: center; }
         .tabla-listado-pdt th.col-cc, .tabla-listado-pdt td.col-cc { width: 28px; text-align: center; }
-        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { width: 1%; min-width: 200px; white-space: nowrap; }
+        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { width: 1%; min-width: 200px; white-space: nowrap; overflow: visible; }
         .icono-tractor { width: 15px; height: 15px; display: inline-block; margin-right: 3px; vertical-align: middle; }
         #tractorGroup { display: none; }
         /* Iconos tractores por marca: John Deere verde, New Holland azul, Massey Ferguson rojo */
@@ -603,10 +603,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 20px;">
                     <?php if ($mostrar_vista_completa): ?>
                     <a href="gestionar_tabla_salarial.php" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">ABM Tabla salarial</a>
-                    <form method="POST" style="display:inline;" onsubmit="return confirm('¿Eliminar TODOS los registros PDT? Esta acción no se puede deshacer.');">
-                        <input type="hidden" name="eliminar_todos" value="1">
-                        <button type="submit" class="btn btn-danger" style="font-size: 11px; padding: 5px 10px;">Eliminar todos los PDT</button>
-                    </form>
                     <span id="valoresSalarialesFinca" style="font-size: 11px; color: #333; padding: 4px 8px; background: #e8f4e8; border-radius: 4px; border: 1px solid #c8e6c9;">
                         Hora común: $ <?= number_format($ultima_tabla_salarial['valor_hora_comun'], 2, ',', '.') ?> &nbsp;|&nbsp; Hora tractor: $ <?= number_format($ultima_tabla_salarial['valor_hora_tractor'], 2, ',', '.') ?>
                     </span>
@@ -712,6 +708,13 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             </div>
         </form>
         
+        <?php if ($mostrar_vista_completa): ?>
+        <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline; margin-right:10px;" onsubmit="return confirm('¿Eliminar TODOS los registros PDT? Esta acción no se puede deshacer.');">
+            <input type="hidden" name="eliminar_todos" value="1">
+            <button type="submit" class="btn btn-danger" style="font-size: 11px; padding: 5px 10px;">Eliminar todos los PDT</button>
+        </form>
+        <?php endif; ?>
+        
         <?php
         if ($desde_cel && !$mostrar_vista_completa && isset($conexion)) {
             $ultimos3 = array();
@@ -748,7 +751,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             echo '</tbody></table></div></div>';
         }
         ?>
-        <?php if ($mostrar_vista_completa): ?>
         <h3 style="margin-top: 30px;">Listado de PDTs</h3>
         <div class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
@@ -784,16 +786,16 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                             </td>
                             <td class="col-acciones">
                                 <div class="acciones-botones">
-                                    <form method="POST" style="display: inline;">
+                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;">
                                         <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
                                         <button type="submit" name="editar" class="btn btn-secondary">Modificar</button>
                                     </form>
-                                    <form method="POST" style="display: inline;">
+                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;">
                                         <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
                                         <button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm('¿Eliminar este PDT?')">Eliminar</button>
                                     </form>
-                                    <?php if ($mostrar_vista_completa && (!isset($pdt['en_cc']) || $pdt['en_cc'] == 0)): ?>
-                                    <form method="POST" style="display: inline;">
+                                    <?php if ((!isset($pdt['en_cc']) || $pdt['en_cc'] == 0)): ?>
+                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;">
                                         <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
                                         <button type="submit" name="cargar_cc" class="btn btn-success">Cargar en CC</button>
                                     </form>
@@ -810,7 +812,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             </tbody>
         </table>
         </div>
-        <?php endif; ?>
         
         <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
             <?php if ($desde_cel): ?>
