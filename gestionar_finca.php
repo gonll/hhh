@@ -60,6 +60,14 @@ $mensaje = '';
 $pdt_edit = null;
 $preseleccionar_usuario_id = null;
 
+// Si llegamos por GET con guardado=1 (redirect tras POST), mostrar mensaje y preservar usuario
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['guardado']) && $_GET['guardado'] == '1') {
+    $mensaje = 'Parte guardado.';
+    if (!empty($_GET['usuario'])) {
+        $preseleccionar_usuario_id = (int)$_GET['usuario'];
+    }
+}
+
 // Procesar acciones
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Carga de gasoil en cisterna (+)
@@ -214,6 +222,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdt_edit = $row;
         }
     }
+    // Redirect POST->GET tras guardar: permite que flecha atrás del navegador vuelva al principal
+    if ($mensaje === 'Parte guardado.') {
+        $redir = $form_action_url . '?guardado=1';
+        if (!empty($preseleccionar_usuario_id)) {
+            $redir .= '&usuario=' . (int)$preseleccionar_usuario_id;
+        }
+        header('Location: ' . $redir);
+        exit;
+    }
 }
 
 // Obtener lista de PDTs (vista completa: 200 registros; móvil nivel 0: solo 3)
@@ -325,7 +342,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     <title><?= htmlspecialchars($titulo_pagina) ?></title>
     <style>
         body { font-family: Arial, sans-serif; margin: 15px; background: #f5f5f5; font-size: 11px; }
-        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); box-sizing: border-box; overflow-x: auto; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); box-sizing: border-box; overflow-x: auto; overflow-y: visible; }
         h2 { color: #007bff; margin-top: 0; margin-bottom: 12px; font-size: 18px; }
         h3 { font-size: 14px; margin-top: 15px; margin-bottom: 10px; }
         .mensaje { padding: 8px; margin-bottom: 12px; border-radius: 3px; font-size: 11px; }
@@ -380,6 +397,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt tr.fila-con-observaciones td.col-acciones { background: #ffebee !important; }
         .tabla-listado-pdt tr.fila-con-observaciones:hover td.col-acciones { background: #ffcdd2 !important; }
         .wrap-tabla-pdt { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: visible; }
+        /* Listado de PDTs: altura mínima y scroll para mostrar todos los registros (evita div pequeño en servidor) */
+        #wrap-listado-pdt { min-height: 250px; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .tabla-listado-pdt tr.fila-con-observaciones { cursor: pointer; }
         #modalObservaciones { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; }
         #modalObservaciones.activo { display: flex; }
@@ -541,7 +560,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             }
         }
         ?>
-        <form method="POST" id="formPDT" class="form-nav-enter" action="<?= htmlspecialchars($form_action_url) ?>" onkeydown="var e=event||window.event;if((e.keyCode||e.which)==27){var f=document.getElementById('formCargaGasoilSisterna');if(f&&f.style.display!='none'){f.style.display='none';return false;}<?php if ($desde_cel): ?>if(history.length>1){history.back();return false;}<?php endif; ?>location.href='<?= addslashes($url_esc_volver) ?>';return false;}">
+        <form method="POST" id="formPDT" class="form-nav-enter" action="<?= htmlspecialchars($form_action_url) ?>" onkeydown="var e=event||window.event;if((e.keyCode||e.which)==9){var a=document.activeElement,h=document.getElementById('horas'),o=document.getElementById('observaciones'),g=document.getElementById('btnGuardar');if(h&&o&&g){if(e.shiftKey){if(a===o){e.preventDefault();h.focus();return false;}if(a===g){e.preventDefault();o.focus();return false;}}else{if(a===h){e.preventDefault();o.focus();return false;}if(a===o){e.preventDefault();g.focus();return false;}}}}if((e.keyCode||e.which)==27){var f=document.getElementById('formCargaGasoilSisterna');if(f&&f.style.display!='none'){f.style.display='none';return false;}<?php if ($desde_cel): ?>if(history.length>1){history.back();return false;}<?php endif; ?>location.href='<?= addslashes($url_esc_volver) ?>';return false;}">
             <?php if ($pdt_edit): ?>
                 <input type="hidden" name="pdt_id" value="<?= $pdt_edit['id'] ?>">
             <?php endif; ?>
@@ -763,7 +782,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         }
         ?>
         <h3 style="margin-top: 30px;">Listado de PDTs</h3>
-        <div class="wrap-tabla-pdt">
+        <div id="wrap-listado-pdt" class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
             <thead>
                 <tr>
@@ -939,6 +958,15 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             document.addEventListener('DOMContentLoaded', registrarEsc);
         } else {
             registrarEsc();
+        }
+        
+        // Flecha atrás del navegador: volver siempre al principal
+        window.addEventListener('popstate', function() {
+            window.location.href = urlVolver;
+        });
+        // Añadir estado para que popstate se dispare al hacer clic en atrás (evita ir al formulario POST anterior)
+        if (window.history && window.history.pushState) {
+            window.history.pushState({gestionar: 1}, '', window.location.href);
         }
         
         // Clic en banderita = mismo efecto que ESC (ejecutar cuando el DOM esté listo)
