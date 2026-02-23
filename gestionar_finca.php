@@ -758,12 +758,13 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             echo '</tbody></table></div></div>';
         }
         ?>
-        <h3 style="margin-top: 30px;">Listado de PDTs <a href="gestionar_finca.php" target="_blank" rel="noopener" style="font-size:11px; margin-left:10px; color:#007bff;">Abrir en nueva ventana</a></h3>
+        <h3 style="margin-top: 30px;">Listado de PDTs</h3>
         <div class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
             <thead>
                 <tr>
                     <th class="col-id">ID</th>
+                    <th class="col-acciones">Acciones</th>
                     <th class="col-personal">Personal</th>
                     <th class="col-tipo">Tipo</th>
                     <th class="col-tractor">Tractor</th>
@@ -772,7 +773,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <th class="col-gasoil">Gasoil</th>
                     <th class="col-cambio">C.aceite</th>
                     <th class="col-cc">CC</th>
-                    <th class="col-acciones">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -781,16 +781,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
 <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
                                                             <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
-                            <td class="col-personal" title="<?= htmlspecialchars($pdt['usuario_nombre']) ?>"><?= htmlspecialchars($pdt['usuario_nombre']) ?></td>
-                            <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 20 ? mb_substr($t, 0, 20) . '…' : $t; ?></td>
-                            <td class="col-tractor"><?= htmlspecialchars($pdt['tractor'] ?? '-') ?></td>
-                            <td class="col-fecha" title="<?= date('d/m/Y', strtotime($pdt['fecha'])) ?>"><?php $f = date('d/m/Y', strtotime($pdt['fecha'])); echo mb_strlen($f) > 20 ? mb_substr($f, 0, 20) . '…' : $f; ?></td>
-                            <td class="col-cantidad"><?= number_format($pdt['horas'], 2, ',', '.') ?></td>
-                            <td class="col-gasoil"><?= isset($pdt['cant_gasoil']) && $pdt['cant_gasoil'] !== null ? number_format($pdt['cant_gasoil'], 2, ',', '.') : '-' ?></td>
-                            <td class="col-cambio"><?= (isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-' ?></td>
-                            <td class="col-cc" style="font-weight: bold; <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color: #28a745;' : 'color: #dc3545;' ?>">
-                                <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO' ?>
-                            </td>
                             <td class="col-acciones">
                                 <div class="acciones-botones">
                                     <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
@@ -808,6 +798,16 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                                     </form>
                                     <?php endif; ?>
                                 </div>
+                            </td>
+                            <td class="col-personal" title="<?= htmlspecialchars($pdt['usuario_nombre']) ?>"><?= htmlspecialchars($pdt['usuario_nombre']) ?></td>
+                            <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 20 ? mb_substr($t, 0, 20) . '…' : $t; ?></td>
+                            <td class="col-tractor"><?= htmlspecialchars($pdt['tractor'] ?? '-') ?></td>
+                            <td class="col-fecha" title="<?= date('d/m/Y', strtotime($pdt['fecha'])) ?>"><?php $f = date('d/m/Y', strtotime($pdt['fecha'])); echo mb_strlen($f) > 20 ? mb_substr($f, 0, 20) . '…' : $f; ?></td>
+                            <td class="col-cantidad"><?= number_format($pdt['horas'], 2, ',', '.') ?></td>
+                            <td class="col-gasoil"><?= isset($pdt['cant_gasoil']) && $pdt['cant_gasoil'] !== null ? number_format($pdt['cant_gasoil'], 2, ',', '.') : '-' ?></td>
+                            <td class="col-cambio"><?= (isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-' ?></td>
+                            <td class="col-cc" style="font-weight: bold; <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color: #28a745;' : 'color: #dc3545;' ?>">
+                                <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO' ?>
                             </td>
                         </tr>
                     <?php endwhile; ?>
