@@ -374,7 +374,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt tr.fila-con-observaciones:hover td { background: #ffcdd2; }
         .tabla-listado-pdt tr.fila-con-observaciones td.col-acciones { background: #ffebee; }
         .tabla-listado-pdt tr.fila-con-observaciones:hover td.col-acciones { background: #ffcdd2; }
-        .wrap-tabla-pdt { width: 100%; max-width: 100%; overflow: visible; }
+        .wrap-tabla-pdt { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: visible; min-height: 80px; }
         .tabla-listado-pdt tr.fila-con-observaciones { cursor: pointer; }
         #modalObservaciones { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; }
         #modalObservaciones.activo { display: flex; }
@@ -392,7 +392,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt th.col-gasoil, .tabla-listado-pdt td.col-gasoil { width: 42px; }
         .tabla-listado-pdt th.col-cambio, .tabla-listado-pdt td.col-cambio { width: 38px; text-align: center; }
         .tabla-listado-pdt th.col-cc, .tabla-listado-pdt td.col-cc { width: 28px; text-align: center; }
-        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { width: 1%; min-width: 200px; white-space: nowrap; overflow: visible; }
+        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { width: 1%; min-width: 220px; white-space: nowrap; overflow: visible !important; position: relative; z-index: 1; }
         .icono-tractor { width: 15px; height: 15px; display: inline-block; margin-right: 3px; vertical-align: middle; }
         #tractorGroup { display: none; }
         /* Iconos tractores por marca: John Deere verde, New Holland azul, Massey Ferguson rojo */
@@ -752,11 +752,12 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         }
         ?>
         <h3 style="margin-top: 30px;">Listado de PDTs</h3>
-        <div class="wrap-tabla-pdt">
+        <div class="wrap-tabla-pdt" style="border: 1px solid #dee2e6; border-radius: 4px; padding: 8px; background: #fff;">
         <table class="tabla-listado-pdt">
             <thead>
                 <tr>
                     <th class="col-id">ID</th>
+                    <th class="col-acciones">Acciones</th>
                     <th class="col-personal">Personal</th>
                     <th class="col-tipo">Tipo</th>
                     <th class="col-tractor">Tractor</th>
@@ -765,7 +766,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <th class="col-gasoil">Gasoil</th>
                     <th class="col-cambio">C.aceite</th>
                     <th class="col-cc">CC</th>
-                    <th class="col-acciones">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -774,6 +774,24 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
 <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
                                                             <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
+                            <td class="col-acciones">
+                                <div class="acciones-botones" style="display:inline-flex; gap:6px; flex-wrap:nowrap;">
+                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline; margin:0;">
+                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
+                                        <button type="submit" name="editar" class="btn btn-secondary">Modificar</button>
+                                    </form>
+                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline; margin:0;">
+                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
+                                        <button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm('¿Eliminar este PDT?')">Eliminar</button>
+                                    </form>
+                                    <?php if ((!isset($pdt['en_cc']) || $pdt['en_cc'] == 0)): ?>
+                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline; margin:0;">
+                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
+                                        <button type="submit" name="cargar_cc" class="btn btn-success">Cargar en CC</button>
+                                    </form>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
                             <td class="col-personal"><?= htmlspecialchars($pdt['usuario_nombre']) ?></td>
                             <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 20 ? mb_substr($t, 0, 20) . '…' : $t; ?></td>
                             <td class="col-tractor"><?= htmlspecialchars($pdt['tractor'] ?? '-') ?></td>
@@ -783,24 +801,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                             <td class="col-cambio"><?= (isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-' ?></td>
                             <td class="col-cc" style="font-weight: bold; <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color: #28a745;' : 'color: #dc3545;' ?>">
                                 <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO' ?>
-                            </td>
-                            <td class="col-acciones">
-                                <div class="acciones-botones">
-                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
-                                        <button type="submit" name="editar" class="btn btn-secondary">Modificar</button>
-                                    </form>
-                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
-                                        <button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm('¿Eliminar este PDT?')">Eliminar</button>
-                                    </form>
-                                    <?php if ((!isset($pdt['en_cc']) || $pdt['en_cc'] == 0)): ?>
-                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
-                                        <button type="submit" name="cargar_cc" class="btn btn-success">Cargar en CC</button>
-                                    </form>
-                                    <?php endif; ?>
-                                </div>
                             </td>
                         </tr>
                     <?php endwhile; ?>
