@@ -431,51 +431,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .acciones-botones .btn { padding: 4px 8px; font-size: 10px; flex-shrink: 0; }
         textarea { font-size: 11px; padding: 5px; }
         #usuarioSeleccionado { font-size: 10px; padding: 3px 5px !important; }
-        <?php if ($desde_cel): ?>
-        /* Responsive Partes desde cel */
-        .vista-partes-cel .container { max-width: 100%; padding: 10px; box-sizing: border-box; }
-        .vista-partes-cel .form-row { flex-direction: column; }
-        .vista-partes-cel .form-row .form-group { width: 100%; max-width: 100%; }
-        .vista-partes-cel .form-group-observaciones { max-width: 100%; }
-        .vista-partes-cel .form-group-observaciones textarea { min-height: 44px; font-size: 16px; }
-        .vista-partes-cel .buscador-usuario-container { width: 100% !important; }
-        .vista-partes-cel .form-group input, .vista-partes-cel .form-group select, .vista-partes-cel .form-group textarea { font-size: 16px; min-height: 44px; }
-        .vista-partes-cel .btn { padding: 10px 16px; min-height: 44px; font-size: 14px; touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,0,0,0.1); cursor: pointer; }
-        .vista-partes-cel #btnCargaGasoilSisterna { min-height: 48px; padding: 12px 20px; font-size: 14px; display: block; width: 100%; max-width: 320px; margin: 0 auto; box-sizing: border-box; position: relative; z-index: 5; }
-        .vista-partes-cel .wrap-tabla-pdt { overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; }
-        .vista-partes-cel .tabla-listado-pdt { display: table; width: 100%; table-layout: auto; }
-        .vista-partes-cel .tabla-listado-pdt th, .vista-partes-cel .tabla-listado-pdt td { padding: 8px 6px; font-size: 12px; }
-        .vista-partes-cel h2 { font-size: 1.2rem; }
-        .vista-partes-cel h3 { margin-top: 20px; margin-bottom: 10px; font-size: 1rem; }
-        .vista-partes-cel .wrap-tabla-pdt { margin-bottom: 20px; }
-        /* Botones Guardar, Cancelar y Salir: mismo tamaño y estilo en Partes desde cel */
-        .vista-partes-cel .botones-form-partes .btn,
-        .vista-partes-cel .botones-form-partes a.btn {
-            padding: 12px 20px;
-            min-height: 48px;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        /* Buscador y dropdown en cel: por encima de todo y área táctil */
-        .vista-partes-cel .buscador-usuario { position: relative; z-index: 100; }
-        .vista-partes-cel #resultadosUsuario { z-index: 9998; max-height: 220px; -webkit-overflow-scrolling: touch; }
-        .vista-partes-cel #resultadosUsuario .usuario-item { min-height: 44px; display: flex; align-items: center; padding: 10px 8px; cursor: pointer; -webkit-tap-highlight-color: rgba(0,0,0,0.08); }
-        /* Bloque gasoil en cel: asegurar que el formulario se muestre encima */
-        .vista-partes-cel #formCargaGasoilSisterna { position: relative; z-index: 50; }
-        /* Sección Últimos 3 partes: visible y con scroll en cel */
-        .vista-partes-cel #seccion-ultimos-tres-partes { margin-top: 24px; padding-top: 12px; border-top: 1px solid #dee2e6; }
-        .vista-partes-cel #seccion-ultimos-tres-partes .wrap-tabla-pdt { max-height: 42vh; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .vista-partes-cel #seccion-ultimos-tres-partes h3 { margin-top: 0; margin-bottom: 8px; font-size: 1rem; }
-        @media (max-width: 480px) {
-            .vista-partes-cel .form-row { gap: 12px; }
-        }
-        <?php endif; ?>
     </style>
 </head>
 <?php
@@ -486,7 +441,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         }
         $js_esc .= "location.href='".addslashes($url_esc_volver)."';return false;}";
         ?>
-<body<?= $desde_cel ? ' class="vista-partes-cel"' : '' ?> onkeydown="var e=event||window.event;<?= $js_esc ?>">
+<body onkeydown="var e=event||window.event;<?= $js_esc ?>">
     <div class="container">
         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
             <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?> <a href="<?= $desde_cel ? ($es_nivel_0 ? 'logout.php' : 'gestionar_finca.php') : 'index.php' ?>" id="linkVolverEsc" style="font-size: 14px; color: #007bff;" title="Volver (ESC)">Volver pantalla principal</a></h2>
@@ -584,7 +539,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     var nomSel = document.getElementById('nombreUsuarioSel');
                     var divSel = document.getElementById('usuarioSeleccionado');
                     if(!b||!r||!uid) return;
-                    var minC = document.body && document.body.classList.contains('vista-partes-cel') ? 1 : 2;
+                    var minC = 2;
                     function buscar(){
                         var t = (b.value||'').toLowerCase().trim();
                         if(t.length < minC){ r.style.display='none'; if(!t){ uid.value=''; if(divSel) divSel.style.display='none'; } return; }
@@ -705,16 +660,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 </div>
             </div>
             
-            <div class="<?= $desde_cel ? 'botones-form-partes' : '' ?>" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;<?= $desde_cel ? ' justify-content: space-between;' : '' ?>">
-                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary" tabindex="5">Guardar</button>
-                <?php if ($desde_cel): ?>
-                <a href="<?= htmlspecialchars($form_action_url) ?>" class="btn btn-secondary">Cancelar</a>
-                <?php endif; ?>
-                </div>
-                <?php if ($desde_cel): ?>
-                <a href="<?= $es_nivel_0 ? 'logout.php' : 'gestionar_finca.php' ?>" class="btn btn-secondary" style="margin-left: auto;">Salir</a>
-                <?php endif; ?>
                 <?php if ($mensaje === 'Parte guardado.'): ?>
                     <div id="cartelMensaje" class="cartel-parte-guardado parte-guardado">Parte guardado.</div>
                     <script>
@@ -743,42 +690,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         </form>
         <?php endif; ?>
         
-        <?php
-        if ($desde_cel && !$mostrar_vista_completa && isset($conexion)) {
-            $ultimos3 = array();
-            $qr = mysqli_query($conexion, "SELECT p.id, p.usuario_id, p.tipo_horas, p.tractor, p.fecha, p.horas, p.cant_gasoil, p.cambio_aceite, p.en_cc, p.observaciones, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3");
-            if ($qr) {
-                while ($f = mysqli_fetch_assoc($qr)) { $ultimos3[] = $f; }
-            }
-            echo '<div id="seccion-ultimos-tres-partes" style="display:block; margin-top:24px; padding-top:12px; border-top:1px solid #dee2e6;">';
-            echo '<h3 style="margin-top:0; margin-bottom:8px; font-size:1rem;">Últimos 3 partes</h3>';
-            echo '<div class="wrap-tabla-pdt" style="max-height:42vh; overflow:auto; -webkit-overflow-scrolling:touch;"><table class="tabla-listado-pdt"><thead><tr>';
-            echo '<th class="col-id">ID</th><th class="col-personal">Personal</th><th class="col-tipo">Tipo</th><th class="col-tractor">Tractor</th><th class="col-fecha">Fecha</th><th class="col-cantidad">Cant.</th><th class="col-gasoil">Gasoil</th><th class="col-cambio">C.aceite</th><th class="col-cc">CC</th><th class="col-acciones">Acciones</th></tr></thead><tbody>';
-            if (count($ultimos3) > 0) {
-                foreach ($ultimos3 as $pdt) {
-                    $tiene_obs = !empty(trim($pdt['observaciones'] ?? ''));
-                    $cls = $tiene_obs ? ' fila-con-observaciones' : '';
-                    echo '<tr class="fila-pdt'.$cls.'" data-usuario-id="'.(int)$pdt['usuario_id'].'">';
-                    echo '<td class="col-id">'.(int)$pdt['id'].'</td>';
-                    echo '<td class="col-personal">'.htmlspecialchars($pdt['usuario_nombre']).'</td>';
-                    echo '<td class="col-tipo">'.htmlspecialchars($pdt['tipo_horas']).'</td>';
-                    echo '<td class="col-tractor">'.htmlspecialchars($pdt['tractor'] ?? '-').'</td>';
-                    echo '<td class="col-fecha">'.date('d/m/Y', strtotime($pdt['fecha'])).'</td>';
-                    echo '<td class="col-cantidad">'.number_format($pdt['horas'], 2, ',', '.').'</td>';
-                    echo '<td class="col-gasoil">'.(isset($pdt['cant_gasoil']) && $pdt['cant_gasoil'] !== null ? number_format($pdt['cant_gasoil'], 2, ',', '.') : '-').'</td>';
-                    echo '<td class="col-cambio">'.((isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-').'</td>';
-                    echo '<td class="col-cc" style="font-weight:bold;'.((isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color:#28a745;' : 'color:#dc3545;').'">'.((isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO').'</td>';
-                    echo '<td class="col-acciones"><div class="acciones-botones">';
-                    echo '<form method="POST" style="display:inline;"><input type="hidden" name="pdt_id" value="'.$pdt['id'].'"><button type="submit" name="editar" class="btn btn-secondary">Modificar</button></form> ';
-                    echo '<form method="POST" style="display:inline;"><input type="hidden" name="pdt_id" value="'.$pdt['id'].'"><button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm(\'¿Eliminar este PDT?\')">Eliminar</button></form>';
-                    echo '</div></td></tr>';
-                }
-            } else {
-                echo '<tr><td colspan="10" style="text-align:center; padding:15px; color:#666; font-size:11px;">No hay partes diarios de trabajo registrados.</td></tr>';
-            }
-            echo '</tbody></table></div></div>';
-        }
-        ?>
         <h3 style="margin-top: 30px;">Listado de PDTs</h3>
         <div id="wrap-listado-pdt" class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
@@ -1018,9 +929,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
                 <?php endif; ?>
     
-                // Buscador de usuarios (mínimo 1 carácter en vista cel para mejor uso en móvil)
-                var esVistaCel = document.body.classList.contains('vista-partes-cel');
-                var minCaracteresBusqueda = esVistaCel ? 1 : 2;
+                // Buscador de usuarios (mínimo 2 caracteres)
+                var minCaracteresBusqueda = 2;
                 function ejecutarBusquedaUsuarios() {
                     if (!buscador || !resultados || !usuarioIdInput || !Array.isArray(usuarios)) return;
                     const termino = buscador.value.toLowerCase().trim();
@@ -1053,9 +963,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     try {
                         if (buscador && resultados && Array.isArray(usuarios) && usuarios.length > 0) {
                             buscador.addEventListener('input', ejecutarBusquedaUsuarios);
-                            buscador.addEventListener('keyup', function() { 
-                                if (esVistaCel) ejecutarBusquedaUsuarios(); 
-                            });
+                            buscador.addEventListener('keyup', ejecutarBusquedaUsuarios);
                         } else {
                             console.warn('Buscador no inicializado:', {
                                 buscador: !!buscador,
@@ -1423,11 +1331,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     
     // Inicializar botón carga gasoil de forma completamente independiente
     // Esto asegura que funcione incluso si hay errores en otras partes del código
-    // Funciona tanto en modo normal como responsive (partes desde cel)
     (function initCargaGasoil() {
         var formCargaGasoilSisterna = null;
         var btnCargaGasoilSisterna = null;
-        var ultimoTouchGasoil = 0;
         var intentos = 0;
         var maxIntentos = 50; // 5 segundos máximo
         
@@ -1463,20 +1369,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 btnCargaGasoilSisterna.parentNode.replaceChild(nuevoBtn, btnCargaGasoilSisterna);
                 btnCargaGasoilSisterna = nuevoBtn;
                 
-                // Listener para touch (móvil/responsive)
-                btnCargaGasoilSisterna.addEventListener('touchend', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    ultimoTouchGasoil = Date.now();
-                    window.toggleCargaGasoilForm();
-                }, { passive: false });
-                
-                // Listener para click (desktop)
+                // Listener para click
                 btnCargaGasoilSisterna.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    // Evitar doble ejecución si ya se ejecutó touchend recientemente
-                    if (Date.now() - ultimoTouchGasoil < 400) return;
                     window.toggleCargaGasoilForm();
                 });
                 
