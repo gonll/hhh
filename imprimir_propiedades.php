@@ -45,8 +45,10 @@ $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_sal
         th { background: #007bff; color: white; font-size: 11px; text-transform: uppercase; }
         tr:nth-child(even) { background: #f5f5f5; }
         .disponible { color: #666; font-style: italic; }
+        /* Ocultar columnas solo al imprimir (para que entre en un solo renglón) */
         @media print {
             .no-print { display: none !important; }
+            .ocultar-en-print { display: none !important; }
             body { margin: 4mm 6mm; font-size: 18px; line-height: 1.15; }
             h1 { font-size: 22px; margin: 0 0 6px 0; padding: 0; }
             table { font-size: 16px; }
@@ -68,10 +70,10 @@ $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_sal
             <tr>
                 <th>Consorcio</th>
                 <th>Propiedad</th>
-                <th>Propietario</th>
+                <th class="ocultar-en-print">Propietario</th>
                 <th>Inquilino</th>
-                <th>Inicio alquiler</th>
-                <th>Fin alquiler</th>
+                <th class="ocultar-en-print">Inicio alquiler</th>
+                <th class="ocultar-en-print">Fin alquiler</th>
                 <th>Monto alquiler actual</th>
                 <th>Saldo a la fecha</th>
             </tr>
@@ -98,10 +100,10 @@ $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_sal
             <tr>
                 <td><?= htmlspecialchars($f['consorcio']) ?></td>
                 <td><?= htmlspecialchars($f['propiedad']) ?></td>
-                <td><?= $propietario ?></td>
+                <td class="ocultar-en-print"><?= $propietario ?></td>
                 <td><?= $inquilino ?></td>
-                <td><?= $inicio ?></td>
-                <td><?= $venc ?></td>
+                <td class="ocultar-en-print"><?= $inicio ?></td>
+                <td class="ocultar-en-print"><?= $venc ?></td>
                 <td style="text-align:right;"><?= $monto ?></td>
                 <td style="text-align:right;"><?= $saldo_txt ?></td>
             </tr>
