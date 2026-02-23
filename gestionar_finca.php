@@ -545,7 +545,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <div class="form-group buscador-usuario-container">
                     <label>Personal *</label>
                     <div class="buscador-usuario">
-                        <input type="text" id="buscadorUsuario" placeholder="Buscar..." autocomplete="off" value="<?= htmlspecialchars($nombre_personal_mostrar) ?>" oninput="if(window.buscarPersonalPdt)window.buscarPersonalPdt();" onkeyup="if(window.buscarPersonalPdt)window.buscarPersonalPdt();">
+                        <input type="text" id="buscadorUsuario" tabindex="-1" placeholder="Buscar..." autocomplete="off" value="<?= htmlspecialchars($nombre_personal_mostrar) ?>" oninput="if(window.buscarPersonalPdt)window.buscarPersonalPdt();" onkeyup="if(window.buscarPersonalPdt)window.buscarPersonalPdt();">
                         <input type="hidden" name="usuario_id" id="usuario_id" value="<?= $pdt_edit ? $pdt_edit['usuario_id'] : ($preseleccionar_usuario_id ?? '') ?>" required>
                         <div id="resultadosUsuario"></div>
                         <div id="usuarioSeleccionado" style="margin-top: 5px; padding: 3px 5px; background: #e7f3ff; border-radius: 4px; font-size: 11px; <?= ($nombre_personal_mostrar !== '') ? '' : 'display: none;' ?>">
@@ -613,7 +613,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <div class="form-row">
                 <div class="form-group form-group-compact">
                     <label>Tipo de trabajo *</label>
-                    <select name="tipo_horas" id="tipo_horas" required>
+                    <select name="tipo_horas" id="tipo_horas" tabindex="1" required>
                         <optgroup label="Horas tractos">
                             <option value="Horas tractos" <?= ($pdt_edit && $pdt_edit['tipo_horas'] === 'Horas tractos') ? 'selected' : '' ?>>Horas tractos</option>
                         </optgroup>
@@ -625,7 +625,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 
                 <div class="form-group" id="tractorGroup">
                     <label>Tractor *</label>
-                    <select name="tractor" id="tractor">
+                    <select name="tractor" id="tractor" tabindex="-1">
                         <optgroup label="John Deere">
                             <option class="tractor-jd" value="John Deere 200 hp" <?= ($pdt_edit && $pdt_edit['tractor'] === 'John Deere 200 hp') ? 'selected' : '' ?>>
                                 🚜 John Deere 200 hp
@@ -657,22 +657,22 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 
                 <div class="form-group form-group-compact">
                     <label>Fecha *</label>
-                    <input type="date" name="fecha" id="fecha" value="<?= $pdt_edit ? $pdt_edit['fecha'] : date('Y-m-d') ?>" required>
+                    <input type="date" name="fecha" id="fecha" tabindex="2" value="<?= $pdt_edit ? $pdt_edit['fecha'] : date('Y-m-d') ?>" required>
                 </div>
                 
                 <div class="form-group form-group-compact" id="cantidadHorasGroup">
                     <label id="labelCantidad">Cantidad *</label>
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="horas" id="horas" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '' ?>" placeholder="0" required autocomplete="off">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="horas" id="horas" tabindex="3" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '' ?>" placeholder="0" required autocomplete="off">
                 </div>
                 
                 <div class="form-group" id="gasoilGroup" style="display: none;">
                     <label>Cant Gasoil *</label>
-                    <input type="number" name="cant_gasoil" id="cant_gasoil" step="0.01" min="0" value="<?= $pdt_edit ? ($pdt_edit['cant_gasoil'] ?? '0') : '0' ?>">
+                    <input type="number" name="cant_gasoil" id="cant_gasoil" tabindex="-1" step="0.01" min="0" value="<?= $pdt_edit ? ($pdt_edit['cant_gasoil'] ?? '0') : '0' ?>">
                 </div>
                 
                 <div class="form-group checkbox-group" id="cambioAceiteGroup" style="display: none;">
                     <label class="checkbox-label">
-                        <input type="checkbox" name="cambio_aceite" id="cambio_aceite" value="1" <?= ($pdt_edit && isset($pdt_edit['cambio_aceite']) && $pdt_edit['cambio_aceite'] == 1) ? 'checked' : '' ?>>
+                        <input type="checkbox" name="cambio_aceite" id="cambio_aceite" tabindex="-1" value="1" <?= ($pdt_edit && isset($pdt_edit['cambio_aceite']) && $pdt_edit['cambio_aceite'] == 1) ? 'checked' : '' ?>>
                         Cambio de aceite
                     </label>
                 </div>
@@ -680,12 +680,12 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             
             <div class="form-group">
                 <label>Observaciones</label>
-                <textarea name="observaciones" rows="1" style="resize: vertical; min-height: 20px;"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
+                <textarea name="observaciones" id="observaciones" rows="1" tabindex="4" style="resize: vertical; min-height: 20px;"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
             </div>
             
             <div class="<?= $desde_cel ? 'botones-form-partes' : '' ?>" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;<?= $desde_cel ? ' justify-content: space-between;' : '' ?>">
                 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary">Guardar</button>
+                <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary" tabindex="5">Guardar</button>
                 <?php if ($desde_cel): ?>
                 <a href="<?= htmlspecialchars($form_action_url) ?>" class="btn btn-secondary">Cancelar</a>
                 <?php endif; ?>
