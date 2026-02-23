@@ -364,8 +364,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         th { background: #007bff; color: white; padding: 6px 4px; text-align: left; font-size: 10px; }
         td { padding: 5px 4px; border-bottom: 1px solid #eee; font-size: 10px; }
         tr:hover { background: #f8f9fa; }
-        .tabla-listado-pdt { table-layout: fixed; }
-        .tabla-listado-pdt th, .tabla-listado-pdt td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+        .tabla-listado-pdt { table-layout: auto; width: 100%; }
+        .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; overflow: visible; }
         .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; }
         .tabla-listado-pdt th.col-acciones { background: #007bff; }
         .tabla-listado-pdt td.col-acciones { background: #fff; }
@@ -382,17 +382,16 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         #modalObservaciones .modal-caja h4 { margin: 0 0 12px 0; color: #333; font-size: 16px; }
         #modalObservaciones .modal-caja .obs-contenido { white-space: pre-wrap; color: #333; margin-bottom: 16px; }
         #modalObservaciones .modal-caja .btn { cursor: pointer; }
-        .tabla-listado-pdt { width: max-content; min-width: 100%; }
-        .tabla-listado-pdt th.col-id, .tabla-listado-pdt td.col-id { width: 38px; max-width: 38px; }
-        .tabla-listado-pdt th.col-personal, .tabla-listado-pdt td.col-personal { width: 90px; }
-        .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 55px; }
-        .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { width: 75px; }
-        .tabla-listado-pdt th.col-fecha, .tabla-listado-pdt td.col-fecha { width: 52px; }
-        .tabla-listado-pdt th.col-cantidad, .tabla-listado-pdt td.col-cantidad { width: 42px; }
-        .tabla-listado-pdt th.col-gasoil, .tabla-listado-pdt td.col-gasoil { width: 42px; }
-        .tabla-listado-pdt th.col-cambio, .tabla-listado-pdt td.col-cambio { width: 38px; text-align: center; }
-        .tabla-listado-pdt th.col-cc, .tabla-listado-pdt td.col-cc { width: 28px; text-align: center; }
-        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { width: 1%; min-width: 200px; white-space: nowrap; overflow: visible; }
+        .tabla-listado-pdt th.col-id, .tabla-listado-pdt td.col-id { min-width: 40px; }
+        .tabla-listado-pdt th.col-personal, .tabla-listado-pdt td.col-personal { min-width: 100px; }
+        .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { min-width: 80px; }
+        .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { min-width: 90px; }
+        .tabla-listado-pdt th.col-fecha, .tabla-listado-pdt td.col-fecha { min-width: 85px; }
+        .tabla-listado-pdt th.col-cantidad, .tabla-listado-pdt td.col-cantidad { min-width: 55px; }
+        .tabla-listado-pdt th.col-gasoil, .tabla-listado-pdt td.col-gasoil { min-width: 55px; }
+        .tabla-listado-pdt th.col-cambio, .tabla-listado-pdt td.col-cambio { min-width: 50px; text-align: center; }
+        .tabla-listado-pdt th.col-cc, .tabla-listado-pdt td.col-cc { min-width: 40px; text-align: center; }
+        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 220px; white-space: nowrap; overflow: visible; }
         .icono-tractor { width: 15px; height: 15px; display: inline-block; margin-right: 3px; vertical-align: middle; }
         #tractorGroup { display: none; }
         /* Iconos tractores por marca: John Deere verde, New Holland azul, Massey Ferguson rojo */
