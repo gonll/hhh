@@ -190,6 +190,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $mensaje = 'Falta dato o corregir.';
         }
+    } elseif (isset($_POST['eliminar_todos'])) {
+        mysqli_query($conexion, "DELETE FROM gasoil WHERE pdt_id IS NOT NULL");
+        if (mysqli_query($conexion, "DELETE FROM pdt")) {
+            $mensaje = 'Todos los registros PDT han sido eliminados.';
+        } else {
+            $mensaje = 'Falta dato o corregir.';
+        }
     } elseif (isset($_POST['cargar_cc'])) {
         $pdt_id = (int)$_POST['pdt_id'];
         $sql = "UPDATE pdt SET en_cc = 1 WHERE id = $pdt_id";
@@ -456,6 +463,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     <div class="container">
         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
             <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?> <a href="<?= $desde_cel ? ($es_nivel_0 ? 'logout.php' : 'gestionar_finca.php') : 'index.php' ?>" id="linkVolverEsc" style="font-size: 14px; color: #007bff;" title="Volver (ESC)">Volver pantalla principal</a></h2>
+            <?php if ($desde_cel && !$es_nivel_0 && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 2): ?>
+            <a href="gestionar_finca.php" style="font-size: 12px; color: #28a745; font-weight: bold; margin-left: 8px;">Ver gestión completa (modo PC)</a>
+            <?php endif; ?>
             <div style="text-align: right; flex-shrink: 0;">
                 <div style="margin-bottom: 6px;">
                     <button type="button" id="btnCargaGasoilSisterna" class="btn btn-secondary" style="font-size: 12px;" onclick="var f=document.getElementById('formCargaGasoilSisterna');if(f){f.style.display=(f.style.display==='block')?'none':'block';}" ontouchend="var f=document.getElementById('formCargaGasoilSisterna');if(f){f.style.display=(f.style.display==='block')?'none':'block';}event.preventDefault();">Carga gasoil en cisterna</button>
@@ -588,6 +598,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 20px;">
                     <?php if (!$desde_cel): ?>
                     <a href="gestionar_tabla_salarial.php" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">ABM Tabla salarial</a>
+                    <form method="POST" style="display:inline;" onsubmit="return confirm('¿Eliminar TODOS los registros PDT? Esta acción no se puede deshacer.');">
+                        <input type="hidden" name="eliminar_todos" value="1">
+                        <button type="submit" class="btn btn-danger" style="font-size: 11px; padding: 5px 10px;">Eliminar todos los PDT</button>
+                    </form>
                     <span id="valoresSalarialesFinca" style="font-size: 11px; color: #333; padding: 4px 8px; background: #e8f4e8; border-radius: 4px; border: 1px solid #c8e6c9;">
                         Hora común: $ <?= number_format($ultima_tabla_salarial['valor_hora_comun'], 2, ',', '.') ?> &nbsp;|&nbsp; Hora tractor: $ <?= number_format($ultima_tabla_salarial['valor_hora_tractor'], 2, ',', '.') ?>
                     </span>
