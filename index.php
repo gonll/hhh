@@ -273,7 +273,7 @@ if ($nivelAcceso === 3) {
         
         <?php if (!$soloLectura): ?>
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <a href="gestionar_finca.php" class="btn-abm-prop btn-finca" style="flex: 1;">Finca</a>
+                <a href="gestionar_finca.php?modo=completo" class="btn-abm-prop btn-finca" style="flex: 1;">Finca</a>
                 <a href="gestionar_azucares.php" class="btn-abm-prop" style="flex: 1;">Azucar</a>
                 <a href="arriendos.php" class="btn-abm-prop btn-arriendos" style="flex: 1;">Arriendos</a>
             </div>

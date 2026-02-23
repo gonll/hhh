@@ -16,6 +16,11 @@ if ($desde_cel) {
     $titulo_pagina = 'Gestión Finca - Partes Diarios de Trabajo (PDT)';
 }
 $es_nivel_0 = (isset($_SESSION['acceso_nivel']) && (int)$_SESSION['acceso_nivel'] === 0);
+// Mostrar vista completa: acceso directo a gestionar_finca.php O no viene de cel O usuario nivel >= 2 O parámetro ?modo=completo
+$script_actual = basename($_SERVER['SCRIPT_NAME'] ?? '');
+$acceso_directo_finca = ($script_actual === 'gestionar_finca.php');
+$forzar_modo_completo = isset($_GET['modo']) && $_GET['modo'] === 'completo';
+$mostrar_vista_completa = $acceso_directo_finca || !$desde_cel || $forzar_modo_completo || (isset($_SESSION['acceso_nivel']) && (int)$_SESSION['acceso_nivel'] >= 2);
 
 // Verificar si la tabla existe, si no crearla
 $res_check = mysqli_query($conexion, "SHOW TABLES LIKE 'pdt'");
@@ -214,19 +219,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Obtener lista de PDTs (desde_cel: solo últimos 3 cargados)
+// Obtener lista de PDTs (vista completa: 200 registros; móvil nivel 0: solo 3)
 $lista_pdt_cel = [];
-if (!empty($desde_cel)) {
-    $sql_lista = "SELECT p.*, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3";
-    $res_lista = mysqli_query($conexion, $sql_lista);
-    if ($res_lista) {
-        while ($row = mysqli_fetch_assoc($res_lista)) {
-            $lista_pdt_cel[] = $row;
-        }
-    }
-} else {
+if ($mostrar_vista_completa) {
     $sql_lista = "SELECT p.*, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 200";
-    $res_lista = mysqli_query($conexion, $sql_lista);
+} else {
+    $sql_lista = "SELECT p.*, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3";
+}
+$res_lista = mysqli_query($conexion, $sql_lista);
+if ($res_lista && !$mostrar_vista_completa) {
+    while ($row = mysqli_fetch_assoc($res_lista)) {
+        $lista_pdt_cel[] = $row;
+    }
 }
 
 // Obtener usuarios para el buscador
@@ -464,7 +468,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
             <h2 style="margin: 0;"><?= htmlspecialchars($titulo_pagina) ?> <a href="<?= $desde_cel ? ($es_nivel_0 ? 'logout.php' : 'gestionar_finca.php') : 'index.php' ?>" id="linkVolverEsc" style="font-size: 14px; color: #007bff;" title="Volver (ESC)">Volver pantalla principal</a></h2>
             <?php if ($desde_cel && !$es_nivel_0 && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 2): ?>
-            <a href="gestionar_finca.php" style="font-size: 12px; color: #28a745; font-weight: bold; margin-left: 8px;">Ver gestión completa (modo PC)</a>
+            <a href="gestionar_finca.php?modo=completo" style="font-size: 12px; color: #28a745; font-weight: bold; margin-left: 8px;">Ver gestión completa (modo PC)</a>
             <?php endif; ?>
             <div style="text-align: right; flex-shrink: 0;">
                 <div style="margin-bottom: 6px;">
@@ -596,7 +600,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 })();
                 </script>
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 20px;">
-                    <?php if (!$desde_cel): ?>
+                    <?php if ($mostrar_vista_completa): ?>
                     <a href="gestionar_tabla_salarial.php" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">ABM Tabla salarial</a>
                     <form method="POST" style="display:inline;" onsubmit="return confirm('¿Eliminar TODOS los registros PDT? Esta acción no se puede deshacer.');">
                         <input type="hidden" name="eliminar_todos" value="1">
@@ -695,20 +699,20 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <?php if ($mensaje === 'Parte guardado.'): ?>
                     <div id="cartelMensaje" class="cartel-parte-guardado parte-guardado">Parte guardado.</div>
                 <?php endif; ?>
-                <?php if (!$desde_cel): ?>
+                <?php if ($mostrar_vista_completa): ?>
                 <span id="resumenHorasUsuario" style="font-size: 11px; color: #555; padding: 4px 8px; background: #f0f0f0; border-radius: 4px; min-height: 24px; display: inline-flex; align-items: center;">Seleccione un usuario para ver el resumen (horas con CC=NO)</span>
                 <?php endif; ?>
-                <?php if ($pdt_edit && !$desde_cel): ?>
+                <?php if ($pdt_edit && $mostrar_vista_completa): ?>
                     <a href="<?= htmlspecialchars($form_action_url) ?>" class="btn btn-secondary">Cancelar</a>
                 <?php endif; ?>
-                <?php if (!$desde_cel): ?>
+                <?php if ($mostrar_vista_completa): ?>
                 <button type="button" id="btnCargarCC" class="btn btn-success" style="font-size: 11px; padding: 5px 10px;" disabled title="Seleccione un usuario">Cargar en cuenta corriente</button>
                 <?php endif; ?>
             </div>
         </form>
         
         <?php
-        if (defined('DESDE_CEL') && DESDE_CEL && isset($conexion)) {
+        if ($desde_cel && !$mostrar_vista_completa && isset($conexion)) {
             $ultimos3 = array();
             $qr = mysqli_query($conexion, "SELECT p.id, p.usuario_id, p.tipo_horas, p.tractor, p.fecha, p.horas, p.cant_gasoil, p.cambio_aceite, p.en_cc, p.observaciones, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3");
             if ($qr) {
@@ -743,7 +747,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             echo '</tbody></table></div></div>';
         }
         ?>
-        <?php if (!$desde_cel): ?>
+        <?php if ($mostrar_vista_completa): ?>
         <h3 style="margin-top: 30px;">Listado de PDTs</h3>
         <div class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
@@ -787,7 +791,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                                         <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
                                         <button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm('¿Eliminar este PDT?')">Eliminar</button>
                                     </form>
-                                    <?php if (!$desde_cel && (!isset($pdt['en_cc']) || $pdt['en_cc'] == 0)): ?>
+                                    <?php if ($mostrar_vista_completa && (!isset($pdt['en_cc']) || $pdt['en_cc'] == 0)): ?>
                                     <form method="POST" style="display: inline;">
                                         <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
                                         <button type="submit" name="cargar_cc" class="btn btn-success">Cargar en CC</button>
@@ -812,10 +816,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <?php if ($es_nivel_0): ?>
                     <a href="logout.php" class="btn btn-secondary">Salir</a>
                 <?php else: ?>
-                    <a href="gestionar_finca.php" class="btn btn-secondary">← Volver a Gestión Finca</a>
+                    <a href="gestionar_finca.php?modo=completo" class="btn btn-primary" style="font-weight: bold;">Ver gestión completa (modo PC)</a>
+                    <a href="gestionar_finca.php?modo=completo" class="btn btn-secondary">← Volver a Gestión Finca</a>
                 <?php endif; ?>
             <?php endif; ?>
-            <?php if (!$desde_cel): ?>
+            <?php if ($mostrar_vista_completa): ?>
             <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
             <?php endif; ?>
             <a href="partes_desde_cel.php" class="btn btn-secondary">Partes desde cel</a>
