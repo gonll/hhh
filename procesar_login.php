@@ -28,5 +28,12 @@ $_SESSION['acceso_id']    = (int)$row['id'];
 $_SESSION['acceso_usuario'] = $usuario;
 $_SESSION['acceso_nivel']   = (int)$row['nivel_acceso'];
 
+// Respaldo y envío por correo al ingresar (nivel 1 a 3)
+$nivel = (int)$row['nivel_acceso'];
+if ($nivel >= 1 && $nivel <= 3) {
+    require_once __DIR__ . '/respaldar_enviar_email.php';
+    @respaldarYEnviarPorEmail($conexion);
+}
+
 header('Location: index.php');
 exit;

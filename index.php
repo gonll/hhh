@@ -240,7 +240,7 @@ if ($nivelAcceso === 3) {
                     <a href="gestionar_accesos.php" style="color:#007bff; font-size:9px; margin-right:6px;">Accesos</a>
                     <a href="respaldar_bd.php" style="color:#28a745; font-size:9px; margin-right:6px;">Respaldar</a>
                 <?php endif; ?>
-                <a href="<?= (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3) ? 'respaldar_bd.php?salir=1' : 'logout.php' ?>" style="color:#dc3545; font-size:9px;">Salir</a>
+                <a href="<?= (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 1 && $_SESSION['acceso_nivel'] <= 3) ? 'respaldar_al_salir.php' : 'logout.php' ?>" style="color:#dc3545; font-size:9px;">Salir</a>
             </div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
