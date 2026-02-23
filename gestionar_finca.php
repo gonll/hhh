@@ -1324,8 +1324,24 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     });
                 }
                 
-                // Navegación con Enter entre campos hasta el botón Guardar
+                // Tabulación forzada: cantidad -> observaciones -> guardar (funciona en todos los navegadores/servidores)
                 const btnGuardar = document.getElementById('btnGuardar');
+                const observacionesEl = document.getElementById('observaciones') || document.querySelector('textarea[name="observaciones"]');
+                if (formPDT && horasInput && observacionesEl && btnGuardar) {
+                    formPDT.addEventListener('keydown', function(e) {
+                        if (e.key !== 'Tab' && e.keyCode !== 9) return;
+                        var active = document.activeElement;
+                        if (e.shiftKey) {
+                            if (active === observacionesEl) { e.preventDefault(); horasInput.focus(); }
+                            else if (active === btnGuardar) { e.preventDefault(); observacionesEl.focus(); }
+                        } else {
+                            if (active === horasInput) { e.preventDefault(); observacionesEl.focus(); }
+                            else if (active === observacionesEl) { e.preventDefault(); btnGuardar.focus(); }
+                        }
+                    }, true);
+                }
+                
+                // Navegación con Enter entre campos hasta el botón Guardar
                 if (btnGuardar && buscador && tipoHoras) {
                     const camposOrden = [buscador, tipoHoras, tractorSelect, fechaInput, horasInput, cantGasoilInput, cambioAceiteInput, observacionesTextarea, btnGuardar].filter(c => c !== null);
                     
