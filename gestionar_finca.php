@@ -366,8 +366,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         tr:hover { background: #f8f9fa; }
         .tabla-listado-pdt { table-layout: auto; width: 100%; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
-        /* Columnas de datos: no desbordar para no tapar Acciones */
-        .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tipo, .tabla-listado-pdt td.col-tractor { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* Columnas de datos: mostrar contenido; ellipsis solo si es muy largo */
+        .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tipo, .tabla-listado-pdt td.col-tractor { min-width: 80px; overflow: visible; }
         .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; position: relative; z-index: 2; background: #fff !important; }
         .tabla-listado-pdt th.col-acciones { background: #007bff !important; }
         .tabla-listado-pdt td.col-acciones { background: #fff !important; }
@@ -385,7 +385,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         #modalObservaciones .modal-caja .obs-contenido { white-space: pre-wrap; color: #333; margin-bottom: 16px; }
         #modalObservaciones .modal-caja .btn { cursor: pointer; }
         .tabla-listado-pdt th.col-id, .tabla-listado-pdt td.col-id { min-width: 40px; }
-        .tabla-listado-pdt th.col-personal, .tabla-listado-pdt td.col-personal { min-width: 80px; max-width: 120px; }
+        .tabla-listado-pdt th.col-personal, .tabla-listado-pdt td.col-personal { min-width: 80px; }
         .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { min-width: 80px; }
         .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { min-width: 90px; }
         .tabla-listado-pdt th.col-fecha, .tabla-listado-pdt td.col-fecha { min-width: 85px; }
@@ -420,10 +420,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .vista-partes-cel .form-group input, .vista-partes-cel .form-group select, .vista-partes-cel .form-group textarea { font-size: 16px; min-height: 44px; }
         .vista-partes-cel .btn { padding: 10px 16px; min-height: 44px; font-size: 14px; touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,0,0,0.1); cursor: pointer; }
         .vista-partes-cel #btnCargaGasoilSisterna { min-height: 48px; padding: 12px 20px; font-size: 14px; display: block; width: 100%; max-width: 320px; margin: 0 auto; box-sizing: border-box; position: relative; z-index: 5; }
-        .vista-partes-cel .wrap-tabla-pdt { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .vista-partes-cel .tabla-listado-pdt { display: table; width: 100%; }
-        .vista-partes-cel .tabla-listado-pdt thead, .vista-partes-cel .tabla-listado-pdt tbody, .vista-partes-cel .tabla-listado-pdt tr { display: table-row; }
-        .vista-partes-cel .tabla-listado-pdt th, .vista-partes-cel .tabla-listado-pdt td { display: table-cell; white-space: nowrap; padding: 8px 6px; font-size: 12px; }
+        .vista-partes-cel .wrap-tabla-pdt { overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; }
+        .vista-partes-cel .tabla-listado-pdt { display: table; width: 100%; table-layout: auto; }
+        .vista-partes-cel .tabla-listado-pdt th, .vista-partes-cel .tabla-listado-pdt td { padding: 8px 6px; font-size: 12px; }
         .vista-partes-cel h2 { font-size: 1.2rem; }
         .vista-partes-cel h3 { margin-top: 20px; margin-bottom: 10px; font-size: 1rem; }
         .vista-partes-cel .wrap-tabla-pdt { margin-bottom: 20px; }
@@ -776,7 +775,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 </tr>
             </thead>
             <tbody>
-                <?php if ($res_lista && mysqli_num_rows($res_lista) > 0): ?>
+                <?php
+                $tiene_datos = $mostrar_vista_completa ? ($res_lista && mysqli_num_rows($res_lista) > 0) : (count($lista_pdt_cel) > 0);
+                ?>
+                <?php if ($tiene_datos): ?>
+                    <?php if ($mostrar_vista_completa): ?>
                     <?php while ($pdt = mysqli_fetch_assoc($res_lista)): ?>
                         <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
 <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
@@ -811,6 +814,42 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                             </td>
                         </tr>
                     <?php endwhile; ?>
+                    <?php else: ?>
+                    <?php foreach ($lista_pdt_cel as $pdt): ?>
+                        <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
+<tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
+                                                            <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
+                            <td class="col-acciones">
+                                <div class="acciones-botones">
+                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
+                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
+                                        <button type="submit" name="editar" class="btn btn-secondary">Modificar</button>
+                                    </form>
+                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
+                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
+                                        <button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm('¿Eliminar este PDT?')">Eliminar</button>
+                                    </form>
+                                    <?php if ((!isset($pdt['en_cc']) || $pdt['en_cc'] == 0)): ?>
+                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
+                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
+                                        <button type="submit" name="cargar_cc" class="btn btn-success">Cargar en CC</button>
+                                    </form>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td class="col-personal" title="<?= htmlspecialchars($pdt['usuario_nombre']) ?>"><?= htmlspecialchars($pdt['usuario_nombre']) ?></td>
+                            <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 20 ? mb_substr($t, 0, 20) . '…' : $t; ?></td>
+                            <td class="col-tractor"><?= htmlspecialchars($pdt['tractor'] ?? '-') ?></td>
+                            <td class="col-fecha" title="<?= date('d/m/Y', strtotime($pdt['fecha'])) ?>"><?php $f = date('d/m/Y', strtotime($pdt['fecha'])); echo mb_strlen($f) > 20 ? mb_substr($f, 0, 20) . '…' : $f; ?></td>
+                            <td class="col-cantidad"><?= number_format($pdt['horas'], 2, ',', '.') ?></td>
+                            <td class="col-gasoil"><?= isset($pdt['cant_gasoil']) && $pdt['cant_gasoil'] !== null ? number_format($pdt['cant_gasoil'], 2, ',', '.') : '-' ?></td>
+                            <td class="col-cambio"><?= (isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-' ?></td>
+                            <td class="col-cc" style="font-weight: bold; <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color: #28a745;' : 'color: #dc3545;' ?>">
+                                <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO' ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
                 <?php else: ?>
                     <tr>
                         <td colspan="10" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
