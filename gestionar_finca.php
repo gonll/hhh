@@ -694,6 +694,12 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <?php endif; ?>
                 <?php if ($mensaje === 'Parte guardado.'): ?>
                     <div id="cartelMensaje" class="cartel-parte-guardado parte-guardado">Parte guardado.</div>
+                    <script>
+                    (function(){
+                        var c=document.getElementById('cartelMensaje');
+                        if(c){setTimeout(function(){c.style.transition='opacity 0.3s';c.style.opacity='0';setTimeout(function(){c.remove();var f=document.getElementById('fecha');if(f)f.focus();},300);},2000);}
+                    })();
+                    </script>
                 <?php endif; ?>
                 <?php if ($mostrar_vista_completa): ?>
                 <span id="resumenHorasUsuario" style="font-size: 11px; color: #555; padding: 4px 8px; background: #f0f0f0; border-radius: 4px; min-height: 24px; display: inline-flex; align-items: center;">Seleccione un usuario para ver el resumen (horas con CC=NO)</span>
@@ -1344,22 +1350,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     tipoHoras.focus();
                 }
 
-                // Cartel "Parte guardado": mostrarlo 2 segundos, ocultarlo y volver cursor a fecha
-                (function() {
-                    var cartel = document.getElementById('cartelMensaje');
-                    if (cartel && cartel.classList.contains('parte-guardado')) {
-                        setTimeout(function() {
-                            cartel.style.transition = 'opacity 0.3s';
-                            cartel.style.opacity = '0';
-                            setTimeout(function() {
-                                cartel.remove();
-                                var inpFecha = document.getElementById('fecha');
-                                if (inpFecha) inpFecha.focus();
-                            }, 300);
-                        }, 2000);
-                    }
-                })();
-                
                 // Debug: confirmar que el código se ejecutó
                 console.log('Gestión finca inicializada correctamente');
             } catch (e) {
