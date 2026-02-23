@@ -339,6 +339,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .form-row .form-group.checkbox-group { flex: 0 0 auto; display: flex; align-items: flex-end; padding-bottom: 0; }
         /* Campos compactos: tipo trabajo, fecha, cantidad - mitad de ancho */
         .form-row .form-group.form-group-compact { flex: 0 0 auto; max-width: 110px; min-width: 90px; }
+        /* Observaciones: misma línea que cantidad, 80% ancho */
+        .form-group-observaciones { flex: 1 1 auto; min-width: 120px; max-width: 80%; }
+        .form-group-observaciones textarea { width: 100%; font-size: 10px; padding: 4px 6px; min-height: 28px; resize: vertical; box-sizing: border-box; }
         .form-row .form-group.form-group-compact select,
         .form-row .form-group.form-group-compact input { width: 100%; font-size: 10px; padding: 4px 6px; }
         label { display: block; margin-bottom: 4px; font-weight: bold; color: #333; font-size: 10px; }
@@ -416,6 +419,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .vista-partes-cel .container { max-width: 100%; padding: 10px; box-sizing: border-box; }
         .vista-partes-cel .form-row { flex-direction: column; }
         .vista-partes-cel .form-row .form-group { width: 100%; max-width: 100%; }
+        .vista-partes-cel .form-group-observaciones { max-width: 100%; }
+        .vista-partes-cel .form-group-observaciones textarea { min-height: 44px; font-size: 16px; }
         .vista-partes-cel .buscador-usuario-container { width: 100% !important; }
         .vista-partes-cel .form-group input, .vista-partes-cel .form-group select, .vista-partes-cel .form-group textarea { font-size: 16px; min-height: 44px; }
         .vista-partes-cel .btn { padding: 10px 16px; min-height: 44px; font-size: 14px; touch-action: manipulation; -webkit-tap-highlight-color: rgba(0,0,0,0.1); cursor: pointer; }
@@ -665,6 +670,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <input type="text" inputmode="numeric" pattern="[0-9]*" name="horas" id="horas" tabindex="3" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '' ?>" placeholder="0" required autocomplete="off">
                 </div>
                 
+                <div class="form-group form-group-observaciones">
+                    <label>Observaciones</label>
+                    <textarea name="observaciones" id="observaciones" rows="1" tabindex="4" style="resize: vertical; min-height: 28px;"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
+                </div>
+                
                 <div class="form-group" id="gasoilGroup" style="display: none;">
                     <label>Cant Gasoil *</label>
                     <input type="number" name="cant_gasoil" id="cant_gasoil" tabindex="-1" step="0.01" min="0" value="<?= $pdt_edit ? ($pdt_edit['cant_gasoil'] ?? '0') : '0' ?>">
@@ -676,11 +686,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         Cambio de aceite
                     </label>
                 </div>
-            </div>
-            
-            <div class="form-group">
-                <label>Observaciones</label>
-                <textarea name="observaciones" id="observaciones" rows="1" tabindex="4" style="resize: vertical; min-height: 20px;"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
             </div>
             
             <div class="<?= $desde_cel ? 'botones-form-partes' : '' ?>" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;<?= $desde_cel ? ' justify-content: space-between;' : '' ?>">
@@ -1324,18 +1329,24 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     });
                 }
                 
-                // Tabulación forzada: cantidad -> observaciones -> guardar (funciona en todos los navegadores/servidores)
+                // Tabulación forzada: tipo -> fecha -> cantidad -> observaciones -> guardar (funciona en todos los navegadores/servidores)
                 const btnGuardar = document.getElementById('btnGuardar');
                 const observacionesEl = document.getElementById('observaciones') || document.querySelector('textarea[name="observaciones"]');
-                if (formPDT && horasInput && observacionesEl && btnGuardar) {
+                const tipoHorasEl = document.getElementById('tipo_horas');
+                const fechaEl = document.getElementById('fecha');
+                if (formPDT && tipoHorasEl && fechaEl && horasInput && observacionesEl && btnGuardar) {
                     formPDT.addEventListener('keydown', function(e) {
                         if (e.key !== 'Tab' && e.keyCode !== 9) return;
                         var active = document.activeElement;
                         if (e.shiftKey) {
                             if (active === observacionesEl) { e.preventDefault(); horasInput.focus(); }
                             else if (active === btnGuardar) { e.preventDefault(); observacionesEl.focus(); }
+                            else if (active === horasInput) { e.preventDefault(); fechaEl.focus(); }
+                            else if (active === fechaEl) { e.preventDefault(); tipoHorasEl.focus(); }
                         } else {
-                            if (active === horasInput) { e.preventDefault(); observacionesEl.focus(); }
+                            if (active === tipoHorasEl) { e.preventDefault(); fechaEl.focus(); }
+                            else if (active === fechaEl) { e.preventDefault(); horasInput.focus(); }
+                            else if (active === horasInput) { e.preventDefault(); observacionesEl.focus(); }
                             else if (active === observacionesEl) { e.preventDefault(); btnGuardar.focus(); }
                         }
                     }, true);
