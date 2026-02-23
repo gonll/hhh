@@ -117,8 +117,8 @@ usort($cuentas, function($a, $b) {
     return strcmp($a['nombre'], $b['nombre']);
 });
 
-// Paginación: máximo 20 cuentas por página
-$cuentas_por_pagina = 20;
+// Paginación: 40 registros por hoja
+$cuentas_por_pagina = 40;
 $pagina_param = $_GET['pagina'] ?? '1';
 $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
 $mostrar_todas = ($pagina_param === 'todas' || $imprimir);
@@ -155,7 +155,7 @@ foreach ($cuentas as $c) {
     <style>
         @media print {
             .no-print { display: none !important; }
-            body { margin: 0; padding: 10px; }
+            body { margin: 0; padding: 10px; font-size: 75%; }
             .pagina { page-break-after: always; }
             .pagina:last-child { page-break-after: auto; }
         }
@@ -166,6 +166,7 @@ foreach ($cuentas as $c) {
             font-family: Arial, sans-serif;
             margin: 20px;
             background: #f5f5f5;
+            font-size: 75%;
         }
         .container {
             background: white;
@@ -297,8 +298,7 @@ foreach ($cuentas as $c) {
             <table>
                 <thead>
                     <tr>
-                    <th style="width: 5%;">ID</th>
-                    <th style="width: 45%;">Nombre</th>
+                    <th style="width: 50%;">Nombre</th>
                     <th style="width: 30%;">Propiedades</th>
                     <th style="width: 20%; text-align: right;">Saldo</th>
                     </tr>
@@ -319,7 +319,6 @@ foreach ($cuentas as $c) {
                         }
                     ?>
                     <tr>
-                        <td><?= $cuenta['id'] ?></td>
                         <td><?= htmlspecialchars($cuenta['nombre']) ?></td>
                         <td style="font-size: 11px; color: #666;"><?= htmlspecialchars($cuenta['propiedades'] ?? '') ?></td>
                         <td class="<?= $clase_saldo ?>" style="text-align: right;">
@@ -339,7 +338,7 @@ foreach ($cuentas as $c) {
                     </tr>
                     <?php if ($num_pagina_real === count($paginas)): ?>
                     <tr class="total" style="background: #fff3cd;">
-                        <td colspan="3" style="text-align: right; padding-right: 20px; font-size: 15px;">
+                        <td colspan="2" style="text-align: right; padding-right: 20px; font-size: 15px;">
                             <strong>SUMA DEUDAS (sin Caja):</strong>
                         </td>
                         <td style="text-align: right; font-size: 15px; color: #dc3545;">
@@ -347,7 +346,7 @@ foreach ($cuentas as $c) {
                         </td>
                     </tr>
                     <tr class="total" style="background: #e7f3ff;">
-                        <td colspan="3" style="text-align: right; padding-right: 20px; font-size: 16px;">
+                        <td colspan="2" style="text-align: right; padding-right: 20px; font-size: 16px;">
                             <strong>TOTAL GENERAL (sin Caja):</strong>
                         </td>
                         <td style="text-align: right; font-size: 16px; <?= $total_saldo_general >= 0 ? 'color: #28a745;' : 'color: #dc3545;' ?>">
