@@ -41,6 +41,8 @@ if (!isset($_SESSION['acceso_nivel']) || $_SESSION['acceso_nivel'] < 3) {
     die('Sin permiso para respaldar');
 }
 
+$es_salir = isset($_GET['salir']) && $_GET['salir'] == '1';
+
 $env = parse_ini_file(__DIR__ . '/.env');
 $servidor = $env['DB_HOST'] ?? 'localhost';
 $usuario  = $env['DB_USER'] ?? 'root';
@@ -112,12 +114,19 @@ if ($usar_php_directo) {
 }
 
 if (file_exists($ruta_completa) && filesize($ruta_completa) > 0) {
-    // Enviar respaldo por mail a hectorhugoherrera@gmail.com
-    $mail_respaldo = 'hectorhugoherrera@gmail.com';
+    // Enviar respaldo por mail a hectorhugoherrera@gmail.com y hyllback@gmail.com
     require_once __DIR__ . '/smtp_enviar.php';
     $asunto_mail = 'Respaldo BD sistemahhh26 - ' . date('d/m/Y H:i');
     $cuerpo_mail = '<p>Se adjunta el respaldo de la base de datos <strong>sistemahhh26</strong> generado el ' . date('d/m/Y H:i') . '.</p>';
-    @enviar_mail_smtp_con_adjunto($mail_respaldo, $asunto_mail, $cuerpo_mail, $ruta_completa, 'application/sql');
+    @enviar_mail_smtp_con_adjunto('hectorhugoherrera@gmail.com', $asunto_mail, $cuerpo_mail, $ruta_completa, 'application/sql');
+    @enviar_mail_smtp_con_adjunto('hyllback@gmail.com', $asunto_mail, $cuerpo_mail, $ruta_completa, 'application/sql');
+
+    if ($es_salir) {
+        // Llegó desde Salir: redirigir a logout (el respaldo ya se envió por correo)
+        @unlink($ruta_completa);
+        header('Location: logout.php');
+        exit;
+    }
 
     // Respaldar exitoso - descargar el archivo
     header('Content-Type: application/octet-stream');
