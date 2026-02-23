@@ -16,11 +16,8 @@ if ($desde_cel) {
     $titulo_pagina = 'Gestión Finca - Partes Diarios de Trabajo (PDT)';
 }
 $es_nivel_0 = (isset($_SESSION['acceso_nivel']) && (int)$_SESSION['acceso_nivel'] === 0);
-// Mostrar vista completa: acceso directo a gestionar_finca.php O no viene de cel O usuario nivel >= 2 O parámetro ?modo=completo
-$script_actual = basename($_SERVER['SCRIPT_NAME'] ?? '');
-$acceso_directo_finca = ($script_actual === 'gestionar_finca.php');
-$forzar_modo_completo = isset($_GET['modo']) && $_GET['modo'] === 'completo';
-$mostrar_vista_completa = $acceso_directo_finca || !$desde_cel || $forzar_modo_completo || (isset($_SESSION['acceso_nivel']) && (int)$_SESSION['acceso_nivel'] >= 2);
+// Siempre mostrar vista completa (botones Modificar, Eliminar, Cargar CC) - igual en servidor y PC
+$mostrar_vista_completa = true;
 
 // Verificar si la tabla existe, si no crearla
 $res_check = mysqli_query($conexion, "SHOW TABLES LIKE 'pdt'");
@@ -340,6 +337,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .form-row { display: flex; gap: 8px; margin-bottom: 11px; }
         .form-row .form-group { flex: 1; margin-bottom: 0; }
         .form-row .form-group.checkbox-group { flex: 0 0 auto; display: flex; align-items: flex-end; padding-bottom: 0; }
+        /* Campos compactos: tipo trabajo, fecha, cantidad - mitad de ancho */
+        .form-row .form-group.form-group-compact { flex: 0 0 auto; max-width: 110px; min-width: 90px; }
+        .form-row .form-group.form-group-compact select,
+        .form-row .form-group.form-group-compact input { width: 100%; font-size: 10px; padding: 4px 6px; }
         label { display: block; margin-bottom: 4px; font-weight: bold; color: #333; font-size: 10px; }
         input[type="text"], input[type="number"], input[type="date"], select, textarea {
             width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; font-size: 11px;
@@ -614,7 +615,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             </div>
             
             <div class="form-row">
-                <div class="form-group">
+                <div class="form-group form-group-compact">
                     <label>Tipo de trabajo *</label>
                     <select name="tipo_horas" id="tipo_horas" required>
                         <optgroup label="Horas tractos">
@@ -658,12 +659,12 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     </div>
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group form-group-compact">
                     <label>Fecha *</label>
                     <input type="date" name="fecha" id="fecha" value="<?= $pdt_edit ? $pdt_edit['fecha'] : date('Y-m-d') ?>" required>
                 </div>
                 
-                <div class="form-group" id="cantidadHorasGroup">
+                <div class="form-group form-group-compact" id="cantidadHorasGroup">
                     <label id="labelCantidad">Cantidad *</label>
                     <input type="text" inputmode="numeric" pattern="[0-9]*" name="horas" id="horas" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '' ?>" placeholder="0" required autocomplete="off">
                 </div>
