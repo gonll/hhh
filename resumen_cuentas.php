@@ -92,8 +92,12 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
         .botones { text-align: center; margin-bottom: 20px; }
         .botones button, .botones a { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 0 5px; text-decoration: none; display: inline-block; }
         .botones button:hover, .botones a:hover { background: #0056b3; color: white; }
-        table { width: 100%; border-collapse: collapse; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th { background: #007bff; color: white; padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; }
+        th:nth-child(1), td:nth-child(1) { width: 15%; }
+        th:nth-child(2), td:nth-child(2) { width: 25%; }
+        th:nth-child(3), td:nth-child(3) { width: 35%; }
+        th:nth-child(4), td:nth-child(4) { width: 25%; min-width: 100px; }
         td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 13px; white-space: nowrap; }
         tr:nth-child(even) { background: #f9f9f9; }
         .saldo-pos { color: #28a745; font-weight: bold; text-align: right; }
