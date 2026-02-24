@@ -40,6 +40,28 @@ if (!$res_check || mysqli_num_rows($res_check) == 0) {
     mysqli_query($conexion, $sql_create);
 }
 
+// Asegurar columnas en pdt (migración: servidor puede tener tabla antigua sin cant_gasoil, cambio_aceite, en_cc, tipo_horas, tractor)
+$res_cols = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'cant_gasoil'");
+if ($res_cols && mysqli_num_rows($res_cols) == 0) {
+    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN cant_gasoil DECIMAL(6,2) NULL AFTER horas");
+}
+$res_cols2 = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'cambio_aceite'");
+if ($res_cols2 && mysqli_num_rows($res_cols2) == 0) {
+    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN cambio_aceite TINYINT(1) DEFAULT 0 AFTER cant_gasoil");
+}
+$res_cols3 = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'en_cc'");
+if ($res_cols3 && mysqli_num_rows($res_cols3) == 0) {
+    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN en_cc TINYINT(1) DEFAULT 0 AFTER cambio_aceite");
+}
+$res_cols4 = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'tipo_horas'");
+if ($res_cols4 && mysqli_num_rows($res_cols4) == 0) {
+    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN tipo_horas VARCHAR(50) NOT NULL DEFAULT 'Horas Comunes' AFTER usuario_id");
+}
+$res_cols5 = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'tractor'");
+if ($res_cols5 && mysqli_num_rows($res_cols5) == 0) {
+    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN tractor VARCHAR(100) NULL AFTER tipo_horas");
+}
+
 // Tabla gasoil: + carga sisterna, - consumo tractor
 $res_gasoil = mysqli_query($conexion, "SHOW TABLES LIKE 'gasoil'");
 if (!$res_gasoil || mysqli_num_rows($res_gasoil) == 0) {
@@ -125,20 +147,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
         $fecha = mysqli_real_escape_string($conexion, $fecha);
         $horas = (int)$horas;
-        
-        // Verificar si las columnas existen, si no agregarlas
-        $res_cols = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'cant_gasoil'");
-        if (!$res_cols || mysqli_num_rows($res_cols) == 0) {
-            mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN cant_gasoil DECIMAL(6,2) NULL AFTER horas");
-        }
-        $res_cols2 = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'cambio_aceite'");
-        if (!$res_cols2 || mysqli_num_rows($res_cols2) == 0) {
-            mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN cambio_aceite TINYINT(1) DEFAULT 0 AFTER cant_gasoil");
-        }
-        $res_cols3 = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'en_cc'");
-        if (!$res_cols3 || mysqli_num_rows($res_cols3) == 0) {
-            mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN en_cc TINYINT(1) DEFAULT 0 AFTER cambio_aceite");
-        }
         
         if (isset($_POST['pdt_id']) && $_POST['pdt_id'] > 0) {
             // Modificar - mantener en_cc actual si no se envía
@@ -234,14 +242,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Obtener lista de PDTs (vista completa: 200 registros; móvil nivel 0: solo 3)
+// SELECT explícito para compatibilidad con servidores que puedan tener columnas en distinto orden
 $lista_pdt = [];
 $sql_lista = $mostrar_vista_completa
-    ? "SELECT p.*, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 200"
-    : "SELECT p.*, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3";
+    ? "SELECT p.id, p.usuario_id, p.tipo_horas, p.tractor, p.fecha, p.horas, p.cant_gasoil, p.cambio_aceite, p.en_cc, p.observaciones, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 200"
+    : "SELECT p.id, p.usuario_id, p.tipo_horas, p.tractor, p.fecha, p.horas, p.cant_gasoil, p.cambio_aceite, p.en_cc, p.observaciones, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3";
 $res_lista = mysqli_query($conexion, $sql_lista);
 if ($res_lista) {
     while ($row = mysqli_fetch_assoc($res_lista)) {
-        $lista_pdt[] = $row;
+        // Normalizar claves a minúsculas para compatibilidad con servidores que devuelven mayúsculas
+        $lista_pdt[] = array_combine(array_map('strtolower', array_keys($row)), array_values($row));
     }
 }
 
@@ -514,7 +524,27 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             }
         }
         ?>
-        <form method="POST" id="formPDT" class="form-nav-enter" action="<?= htmlspecialchars($form_action_url) ?>" onkeydown="var e=event||window.event;if((e.keyCode||e.which)==9){var a=document.activeElement,h=document.getElementById('horas'),o=document.getElementById('observaciones'),g=document.getElementById('btnGuardar');if(h&&o&&g){if(e.shiftKey){if(a===o){e.preventDefault();h.focus();return false;}if(a===g){e.preventDefault();o.focus();return false;}}else{if(a===h){e.preventDefault();o.focus();return false;}if(a===o){e.preventDefault();g.focus();return false;}}}}if((e.keyCode||e.which)==27){var f=document.getElementById('formCargaGasoilSisterna');if(f&&f.style.display!='none'){f.style.display='none';return false;}<?php if ($desde_cel): ?>if(history.length>1){history.back();return false;}<?php endif; ?>location.href='<?= addslashes($url_esc_volver) ?>';return false;}">
+        <form method="POST" id="formPDT" class="form-nav-enter" action="<?= htmlspecialchars($form_action_url) ?>">
+        <script>
+        (function(){
+            function setupTab(){
+                var f=document.getElementById('formPDT'),t=document.getElementById('tipo_horas'),tr=document.getElementById('tractor'),fe=document.getElementById('fecha'),h=document.getElementById('horas'),cg=document.getElementById('cant_gasoil'),ca=document.getElementById('cambio_aceite'),o=document.getElementById('observaciones'),g=document.getElementById('btnGuardar');
+                if(!f||!t||!fe||!h||!o||!g)return;
+                var campos=[t,tr,fe,h,cg,ca,o,g].filter(function(x){return x;});
+                function siguiente(i,dir){var j=i+dir;while(j>=0&&j<campos.length){var c=campos[j];if(c&&c.offsetParent!==null&&c.style.display!=='none')return c;j+=dir;}return null;}
+                f.addEventListener('keydown',function(e){
+                    var k=(e.key==='Tab')?9:(e.keyCode||e.which||0);
+                    if(k!==9)return;
+                    var a=document.activeElement,idx=-1;
+                    for(var i=0;i<campos.length;i++){if(campos[i]===a){idx=i;break;}}
+                    var next=(e.shiftKey)?siguiente(idx,-1):siguiente(idx,1);
+                    if(next){e.preventDefault();next.focus();if(next.select)next.select();}
+                },true);
+            }
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupTab);
+            else setupTab();
+        })();
+        </script>
             <?php if ($pdt_edit): ?>
                 <input type="hidden" name="pdt_id" value="<?= $pdt_edit['id'] ?>">
             <?php endif; ?>
@@ -1248,29 +1278,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     formPDT.addEventListener('submit', function() {
                         guardarValores();
                     });
-                }
-                
-                // Tabulación forzada: tipo -> fecha -> cantidad -> observaciones -> guardar (funciona en todos los navegadores/servidores)
-                const btnGuardar = document.getElementById('btnGuardar');
-                const observacionesEl = document.getElementById('observaciones') || document.querySelector('textarea[name="observaciones"]');
-                const tipoHorasEl = document.getElementById('tipo_horas');
-                const fechaEl = document.getElementById('fecha');
-                if (formPDT && tipoHorasEl && fechaEl && horasInput && observacionesEl && btnGuardar) {
-                    formPDT.addEventListener('keydown', function(e) {
-                        if (e.key !== 'Tab' && e.keyCode !== 9) return;
-                        var active = document.activeElement;
-                        if (e.shiftKey) {
-                            if (active === observacionesEl) { e.preventDefault(); horasInput.focus(); }
-                            else if (active === btnGuardar) { e.preventDefault(); observacionesEl.focus(); }
-                            else if (active === horasInput) { e.preventDefault(); fechaEl.focus(); }
-                            else if (active === fechaEl) { e.preventDefault(); tipoHorasEl.focus(); }
-                        } else {
-                            if (active === tipoHorasEl) { e.preventDefault(); fechaEl.focus(); }
-                            else if (active === fechaEl) { e.preventDefault(); horasInput.focus(); }
-                            else if (active === horasInput) { e.preventDefault(); observacionesEl.focus(); }
-                            else if (active === observacionesEl) { e.preventDefault(); btnGuardar.focus(); }
-                        }
-                    }, true);
                 }
                 
                 // Navegación con Enter entre campos hasta el botón Guardar
