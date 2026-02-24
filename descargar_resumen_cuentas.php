@@ -32,9 +32,8 @@ while ($f = mysqli_fetch_assoc($resultado)) {
         $saldo1 = (float)($f['saldo_inq1'] ?? 0);
         $nombre1 = trim($f['nombre_inquilino'] ?? '');
         if (!empty($inq1_id) && $inq1_id != 1) {
-            $key = 'inq_' . $inq1_id;
-            if (!isset($por_usuario[$key]) || $porcentaje > ($por_usuario[$key]['porcentaje'] ?? 0)) {
-                $por_usuario[$key] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre1 ?: '-', 'saldo' => $saldo1, 'porcentaje' => $porcentaje];
+            if (!isset($por_usuario[$inq1_id]) || $porcentaje > ($por_usuario[$inq1_id]['porcentaje'] ?? 0)) {
+                $por_usuario[$inq1_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre1 ?: '-', 'saldo' => $saldo1, 'porcentaje' => $porcentaje];
             }
         }
         if (!empty($f['inquilino2_id'])) {
@@ -42,9 +41,8 @@ while ($f = mysqli_fetch_assoc($resultado)) {
             $saldo2 = (float)($f['saldo_inq2'] ?? 0);
             $nombre2 = trim($f['nombre_inquilino2'] ?? '');
             if ($inq2_id != 1) {
-                $key = 'inq_' . $inq2_id;
-                if (!isset($por_usuario[$key]) || $porcentaje > ($por_usuario[$key]['porcentaje'] ?? 0)) {
-                    $por_usuario[$key] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre2 ?: '-', 'saldo' => $saldo2, 'porcentaje' => $porcentaje];
+                if (!isset($por_usuario[$inq2_id]) || $porcentaje > ($por_usuario[$inq2_id]['porcentaje'] ?? 0)) {
+                    $por_usuario[$inq2_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre2 ?: '-', 'saldo' => $saldo2, 'porcentaje' => $porcentaje];
                 }
             }
         }
@@ -53,9 +51,8 @@ while ($f = mysqli_fetch_assoc($resultado)) {
         if ($prop_id > 0 && $prop_id != 1) {
             $nombre = trim($f['nombre_propietario'] ?? '');
             $saldo = (float)($f['saldo_prop'] ?? 0);
-            $key = 'prop_' . $prop_id;
-            if (!isset($por_usuario[$key]) || $porcentaje > ($por_usuario[$key]['porcentaje'] ?? 0)) {
-                $por_usuario[$key] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre ?: '-', 'saldo' => $saldo, 'porcentaje' => $porcentaje];
+            if (!isset($por_usuario[$prop_id]) || $porcentaje > ($por_usuario[$prop_id]['porcentaje'] ?? 0)) {
+                $por_usuario[$prop_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre ?: '-', 'saldo' => $saldo, 'porcentaje' => $porcentaje];
             }
         }
     }
@@ -67,8 +64,10 @@ usort($filas, function($a, $b) {
     return $c !== 0 ? $c : strcmp($a['propiedad'], $b['propiedad']);
 });
 
-$res_total = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id != 1");
-$total_general = ($res_total && $r = mysqli_fetch_assoc($res_total)) ? (float)$r['total'] : 0;
+$total_general = 0;
+foreach ($filas as $f) {
+    $total_general += $f['saldo'];
+}
 
 $fecha_archivo = date('Y-m-d_His');
 $nombre_archivo = "resumen_cuentas_$fecha_archivo.csv";
