@@ -525,26 +525,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         }
         ?>
         <form method="POST" id="formPDT" class="form-nav-enter" action="<?= htmlspecialchars($form_action_url) ?>">
-        <script>
-        (function(){
-            function setupTab(){
-                var f=document.getElementById('formPDT'),t=document.getElementById('tipo_horas'),tr=document.getElementById('tractor'),fe=document.getElementById('fecha'),h=document.getElementById('horas'),cg=document.getElementById('cant_gasoil'),ca=document.getElementById('cambio_aceite'),o=document.getElementById('observaciones'),g=document.getElementById('btnGuardar');
-                if(!f||!t||!fe||!h||!o||!g)return;
-                var campos=[t,tr,fe,h,cg,ca,o,g].filter(function(x){return x;});
-                function siguiente(i,dir){var j=i+dir;while(j>=0&&j<campos.length){var c=campos[j];if(c&&c.offsetParent!==null&&c.style.display!=='none')return c;j+=dir;}return null;}
-                f.addEventListener('keydown',function(e){
-                    var k=(e.key==='Tab')?9:(e.keyCode||e.which||0);
-                    if(k!==9)return;
-                    var a=document.activeElement,idx=-1;
-                    for(var i=0;i<campos.length;i++){if(campos[i]===a){idx=i;break;}}
-                    var next=(e.shiftKey)?siguiente(idx,-1):siguiente(idx,1);
-                    if(next){e.preventDefault();next.focus();if(next.select)next.select();}
-                },true);
-            }
-            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupTab);
-            else setupTab();
-        })();
-        </script>
             <?php if ($pdt_edit): ?>
                 <input type="hidden" name="pdt_id" value="<?= $pdt_edit['id'] ?>">
             <?php endif; ?>
@@ -1422,6 +1402,33 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         } else {
             initGasoil();
         }
+    })();
+    </script>
+    <script>
+    (function(){
+        function setupTabPDT(){
+            var f=document.getElementById('formPDT'),t=document.getElementById('tipo_horas'),tr=document.getElementById('tractor'),fe=document.getElementById('fecha'),h=document.getElementById('horas'),cg=document.getElementById('cant_gasoil'),ca=document.getElementById('cambio_aceite'),o=document.getElementById('observaciones'),g=document.getElementById('btnGuardar');
+            if(!f||!t||!fe||!h||!o||!g)return false;
+            if(f.dataset.tabInit)return true;
+            f.dataset.tabInit='1';
+            var campos=[t,tr,fe,h,cg,ca,o,g].filter(function(x){return x;});
+            function siguiente(i,dir){var j=i+dir;while(j>=0&&j<campos.length){var c=campos[j];if(c&&c.offsetParent!==null&&c.style.display!=='none')return c;j+=dir;}return null;}
+            f.addEventListener('keydown',function(e){
+                var k=(e.key==='Tab')?9:(e.keyCode||e.which||0);
+                if(k!==9)return;
+                var a=document.activeElement,idx=-1;
+                for(var i=0;i<campos.length;i++){if(campos[i]===a){idx=i;break;}}
+                var next=(e.shiftKey)?siguiente(idx,-1):siguiente(idx,1);
+                if(next){e.preventDefault();next.focus();if(next.select)next.select();}
+            },true);
+            return true;
+        }
+        function runSetupTab(){
+            var ok=setupTabPDT();
+            if(!ok){var n=(window._tabRetry=(window._tabRetry||0)+1);if(n<=20)setTimeout(runSetupTab,100);}
+        }
+        if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',runSetupTab);
+        else runSetupTab();
     })();
     </script>
 <?php include 'nav_enter_form_inc.php'; ?>

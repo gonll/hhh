@@ -11,6 +11,7 @@
             if (form.dataset.navEnterInit) return;
             form.dataset.navEnterInit = '1';
             form.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab' || e.keyCode === 9) return;
                 if (e.key !== 'Enter' && e.keyCode !== 13) return;
                 var el = document.activeElement;
                 if (!el || !form.contains(el)) return;
