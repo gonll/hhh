@@ -2,149 +2,52 @@
 include 'db.php';
 include 'verificar_sesion.php';
 
-// Configurar zona horaria de Argentina
 date_default_timezone_set('America/Argentina/Buenos_Aires');
 
-// Obtener inquilinos1 con contratos vigentes
-$sql_inquilinos = "SELECT DISTINCT u.id, u.apellido 
-                   FROM usuarios u
-                   INNER JOIN alquileres a ON a.inquilino1_id = u.id
-                   WHERE a.estado = 'VIGENTE'";
-$res_inquilinos = mysqli_query($conexion, $sql_inquilinos);
+// Obtener todas las propiedades con inquilino o propietario según corresponda
+$sql = "SELECT p.propiedad_id, p.propiedad, p.consorcio, p.propietario_id,
+        prop.apellido AS nombre_propietario,
+        u.apellido AS nombre_inquilino,
+        u2.apellido AS nombre_inquilino2,
+        a.inquilino1_id,
+        a.inquilino2_id,
+        (SELECT COALESCE(SUM(monto), 0) FROM cuentas WHERE usuario_id = a.inquilino1_id) AS saldo_inq1,
+        (SELECT COALESCE(SUM(monto), 0) FROM cuentas WHERE usuario_id = a.inquilino2_id) AS saldo_inq2,
+        (SELECT COALESCE(SUM(monto), 0) FROM cuentas WHERE usuario_id = p.propietario_id) AS saldo_prop
+        FROM propiedades p
+        LEFT JOIN usuarios prop ON p.propietario_id = prop.id
+        LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
+        LEFT JOIN usuarios u ON a.inquilino1_id = u.id
+        LEFT JOIN usuarios u2 ON a.inquilino2_id = u2.id
+        ORDER BY p.consorcio ASC, p.propiedad ASC";
+$resultado = mysqli_query($conexion, $sql);
 
-// Obtener propietarios
-$sql_propietarios = "SELECT DISTINCT u.id, u.apellido 
-                     FROM usuarios u
-                     INNER JOIN propiedades p ON p.propietario_id = u.id";
-$res_propietarios = mysqli_query($conexion, $sql_propietarios);
-
-// Obtener Caja (ID 1)
-$sql_caja = "SELECT id, apellido FROM usuarios WHERE id = 1";
-$res_caja = mysqli_query($conexion, $sql_caja);
-
-$cuentas = [];
-$ids_procesados = [];
-
-// Procesar Caja primero
-if ($res_caja && $caja = mysqli_fetch_assoc($res_caja)) {
-    $usuario_id = (int)$caja['id'];
-    $sql_saldo = "SELECT COALESCE(SUM(monto), 0) AS saldo FROM cuentas WHERE usuario_id = $usuario_id";
-    $res_saldo = mysqli_query($conexion, $sql_saldo);
-    $row_saldo = mysqli_fetch_assoc($res_saldo);
-    $saldo = (float)($row_saldo['saldo'] ?? 0);
-    
-        if ($saldo != 0) {
-        $cuentas[] = [
-            'id' => $usuario_id,
-            'nombre' => strtoupper(trim($caja['apellido'])),
-            'saldo' => $saldo,
-            'tipo' => 'CAJA',
-            'orden' => 0,
-            'propiedades' => ''
-        ];
-        $ids_procesados[$usuario_id] = true;
+$filas = [];
+while ($f = mysqli_fetch_assoc($resultado)) {
+    $esta_alquilada = !empty($f['inquilino1_id']);
+    if ($esta_alquilada) {
+        $nombre = trim($f['nombre_inquilino'] ?? '');
+        if (!empty($f['nombre_inquilino2'])) $nombre .= ' / ' . trim($f['nombre_inquilino2']);
+        $saldo = (float)($f['saldo_inq1'] ?? 0);
+        if (!empty($f['inquilino2_id'])) $saldo += (float)($f['saldo_inq2'] ?? 0);
+    } else {
+        $nombre = trim($f['nombre_propietario'] ?? '');
+        $saldo = (float)($f['saldo_prop'] ?? 0);
     }
+    $filas[] = [
+        'consorcio' => $f['consorcio'] ?? '',
+        'propiedad' => $f['propiedad'] ?? '',
+        'nombre' => $nombre ?: '-',
+        'saldo' => $saldo,
+        'alquilada' => $esta_alquilada
+    ];
 }
 
-// Procesar inquilinos
-if ($res_inquilinos) {
-    while ($usuario = mysqli_fetch_assoc($res_inquilinos)) {
-        $usuario_id = (int)$usuario['id'];
-        if (isset($ids_procesados[$usuario_id])) continue;
-        
-        $sql_saldo = "SELECT COALESCE(SUM(monto), 0) AS saldo FROM cuentas WHERE usuario_id = $usuario_id";
-        $res_saldo = mysqli_query($conexion, $sql_saldo);
-        $row_saldo = mysqli_fetch_assoc($res_saldo);
-        $saldo = (float)($row_saldo['saldo'] ?? 0);
-        
-        // Obtener propiedades que alquila
-        $sql_propiedades = "SELECT p.propiedad 
-                           FROM alquileres a
-                           INNER JOIN propiedades p ON p.propiedad_id = a.propiedad_id
-                           WHERE a.inquilino1_id = $usuario_id AND a.estado = 'VIGENTE'
-                           ORDER BY p.propiedad ASC";
-        $res_propiedades = mysqli_query($conexion, $sql_propiedades);
-        $propiedades = [];
-        while ($prop = mysqli_fetch_assoc($res_propiedades)) {
-            $propiedades[] = strtoupper(trim($prop['propiedad']));
-        }
-        $propiedades_str = !empty($propiedades) ? implode(', ', $propiedades) : '';
-        
-        if ($saldo != 0) {
-            $cuentas[] = [
-                'id' => $usuario_id,
-                'nombre' => strtoupper(trim($usuario['apellido'])),
-                'saldo' => $saldo,
-                'tipo' => 'INQUILINO',
-                'orden' => 1,
-                'propiedades' => $propiedades_str
-            ];
-            $ids_procesados[$usuario_id] = true;
-        }
-    }
-}
+// Total general: suma de cuentas de todos excepto Caja (id 1)
+$res_total = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id != 1");
+$total_general = ($res_total && $r = mysqli_fetch_assoc($res_total)) ? (float)$r['total'] : 0;
 
-// Procesar propietarios
-if ($res_propietarios) {
-    while ($usuario = mysqli_fetch_assoc($res_propietarios)) {
-        $usuario_id = (int)$usuario['id'];
-        if (isset($ids_procesados[$usuario_id])) continue;
-        
-        $sql_saldo = "SELECT COALESCE(SUM(monto), 0) AS saldo FROM cuentas WHERE usuario_id = $usuario_id";
-        $res_saldo = mysqli_query($conexion, $sql_saldo);
-        $row_saldo = mysqli_fetch_assoc($res_saldo);
-        $saldo = (float)($row_saldo['saldo'] ?? 0);
-        
-        if ($saldo != 0) {
-            $cuentas[] = [
-                'id' => $usuario_id,
-                'nombre' => strtoupper(trim($usuario['apellido'])),
-                'saldo' => $saldo,
-                'tipo' => 'PROPIETARIO',
-                'orden' => 2,
-                'propiedades' => ''
-            ];
-            $ids_procesados[$usuario_id] = true;
-        }
-    }
-}
-
-// Ordenar: primero por orden (Caja=0, Inquilino=1, Propietario=2), luego por nombre
-usort($cuentas, function($a, $b) {
-    if ($a['orden'] !== $b['orden']) {
-        return $a['orden'] - $b['orden'];
-    }
-    return strcmp($a['nombre'], $b['nombre']);
-});
-
-// Paginación: 40 registros por hoja
-$cuentas_por_pagina = 40;
-$pagina_param = $_GET['pagina'] ?? '1';
 $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
-$mostrar_todas = ($pagina_param === 'todas' || $imprimir);
-$pagina_actual = $mostrar_todas ? 1 : max(1, (int)$pagina_param);
-$total_cuentas = count($cuentas);
-$total_paginas = ceil($total_cuentas / $cuentas_por_pagina);
-$inicio = ($pagina_actual - 1) * $cuentas_por_pagina;
-$cuentas_pagina = array_slice($cuentas, $inicio, $cuentas_por_pagina);
-
-// Calcular suma de deudas (sin caja)
-$suma_deudas = 0;
-foreach ($cuentas as $c) {
-    // Excluir Caja (ID 1) y solo sumar saldos negativos (deudas)
-    if ($c['id'] != 1 && $c['saldo'] < 0) {
-        $suma_deudas += $c['saldo'];
-    }
-}
-
-// Calcular total general: todas las cuentas sin caja
-$total_saldo_general = 0;
-foreach ($cuentas as $c) {
-    // Excluir Caja (ID 1)
-    if ($c['id'] != 1) {
-        $total_saldo_general += $c['saldo'];
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -153,95 +56,28 @@ foreach ($cuentas as $c) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resumen de Cuentas</title>
     <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; font-size: 14px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; color: #007bff; margin-bottom: 8px; }
+        .fecha { text-align: center; color: #666; margin-bottom: 16px; font-size: 12px; }
+        .botones { text-align: center; margin-bottom: 20px; }
+        .botones button, .botones a { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 0 5px; text-decoration: none; display: inline-block; }
+        .botones button:hover, .botones a:hover { background: #0056b3; color: white; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #007bff; color: white; padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; }
+        td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 13px; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .saldo-pos { color: #28a745; font-weight: bold; text-align: right; }
+        .saldo-neg { color: #dc3545; font-weight: bold; text-align: right; }
+        .saldo-cero { color: #666; text-align: right; }
+        .total-final { font-weight: bold; background: #e7f3ff; font-size: 15px; padding: 12px; margin-top: 16px; border: 1px solid #007bff; border-radius: 4px; text-align: right; }
         @media print {
             .no-print { display: none !important; }
-            body { margin: 0; padding: 10px; font-size: 75%; }
-            .pagina { page-break-after: always; }
-            .pagina:last-child { page-break-after: auto; }
-        }
-        .pagina {
-            margin-bottom: 30px;
-        }
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background: #f5f5f5;
-            font-size: 75%;
-        }
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1 {
-            text-align: center;
-            color: #007bff;
-            margin-bottom: 20px;
-        }
-        .fecha {
-            text-align: center;
-            color: #666;
-            margin-bottom: 20px;
-        }
-        .botones {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .botones button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin: 0 5px;
-        }
-        .botones button:hover {
-            background: #0056b3;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th {
-            background: #007bff;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: bold;
-        }
-        td {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-        }
-        tr:hover {
-            background: #f8f9fa;
-        }
-        .saldo-positivo {
-            color: #28a745;
-            font-weight: bold;
-        }
-        .saldo-negativo {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        .saldo-cero {
-            color: #666;
-        }
-        .tipo {
-            font-size: 11px;
-            color: #666;
-            font-style: italic;
-        }
-        .total {
-            font-weight: bold;
-            background: #f8f9fa;
-            font-size: 14px;
+            body { margin: 0; padding: 10px; font-size: 75%; background: white; }
+            .container { box-shadow: none; }
+            table { font-size: 11px; }
+            th, td { padding: 4px 6px; }
+            .total-final { font-size: 13px; }
         }
     </style>
 </head>
@@ -252,112 +88,40 @@ foreach ($cuentas as $c) {
         
         <div class="botones no-print">
             <button onclick="window.location.href='descargar_resumen_cuentas.php'">📥 Descargar Excel (.csv)</button>
-            <button onclick="window.location.href='?pagina=todas&imprimir=1'">🖨️ Imprimir</button>
+            <button onclick="window.location.href='?imprimir=1'">🖨️ Imprimir</button>
             <button onclick="window.close()">Cerrar</button>
-            <?php if ($total_paginas > 1 && !$mostrar_todas): ?>
-                <span style="margin: 0 10px;">Página <?= $pagina_actual ?> de <?= $total_paginas ?></span>
-                <?php if ($pagina_actual > 1): ?>
-                    <button onclick="window.location.href='?pagina=<?= $pagina_actual - 1 ?>'">« Anterior</button>
-                <?php endif; ?>
-                <?php if ($pagina_actual < $total_paginas): ?>
-                    <button onclick="window.location.href='?pagina=<?= $pagina_actual + 1 ?>'">Siguiente »</button>
-                <?php endif; ?>
-                <button onclick="window.location.href='?pagina=todas'">Ver Todas</button>
-            <?php endif; ?>
         </div>
         
         <?php if ($imprimir): ?>
-        <script>
-        window.onload = function() {
-            setTimeout(function() {
-                window.print();
-            }, 500);
-        };
-        </script>
+        <script>window.onload = function() { setTimeout(function() { window.print(); }, 100); };</script>
         <?php endif; ?>
         
-        <?php 
-        // Dividir en páginas de 20 cuentas
-        $paginas = array_chunk($cuentas, $cuentas_por_pagina);
+        <table>
+            <thead>
+                <tr>
+                    <th>Consorcio</th>
+                    <th>Propiedad</th>
+                    <th>Inquilino / Propietario</th>
+                    <th style="text-align:right;">Saldo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($filas as $f): 
+                    $clase = $f['saldo'] > 0 ? 'saldo-pos' : ($f['saldo'] < 0 ? 'saldo-neg' : 'saldo-cero');
+                ?>
+                <tr>
+                    <td><?= htmlspecialchars($f['consorcio']) ?></td>
+                    <td><?= htmlspecialchars($f['propiedad']) ?></td>
+                    <td><?= htmlspecialchars($f['nombre']) ?></td>
+                    <td class="<?= $clase ?>">$ <?= number_format($f['saldo'], 2, ',', '.') ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
         
-        if ($mostrar_todas) {
-            // Mostrar todas las páginas (para impresión o vista completa)
-            $paginas_a_mostrar = $paginas;
-        } else {
-            // Mostrar solo la página actual
-            $paginas_a_mostrar = [($pagina_actual - 1) => $cuentas_pagina];
-        }
-        
-        foreach ($paginas_a_mostrar as $num_pagina => $cuentas_pagina_actual):
-            $num_pagina_real = $num_pagina + 1;
-        ?>
-        <div class="pagina">
-            <h2 style="text-align: center; color: #666; margin-bottom: 15px; font-size: 14px;">
-                Página <?= $num_pagina_real ?> de <?= count($paginas) ?>
-            </h2>
-            <table>
-                <thead>
-                    <tr>
-                    <th style="width: 50%;">Nombre</th>
-                    <th style="width: 30%;">Propiedades</th>
-                    <th style="width: 20%; text-align: right;">Saldo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $total_saldo_pagina = 0;
-                    foreach ($cuentas_pagina_actual as $cuenta): 
-                        $total_saldo_pagina += $cuenta['saldo'];
-                        
-                        $clase_saldo = '';
-                        if ($cuenta['saldo'] > 0) {
-                            $clase_saldo = 'saldo-positivo';
-                        } elseif ($cuenta['saldo'] < 0) {
-                            $clase_saldo = 'saldo-negativo';
-                        } else {
-                            $clase_saldo = 'saldo-cero';
-                        }
-                    ?>
-                    <tr>
-                        <td><?= htmlspecialchars($cuenta['nombre']) ?></td>
-                        <td style="font-size: 11px; color: #666;"><?= htmlspecialchars($cuenta['propiedades'] ?? '') ?></td>
-                        <td class="<?= $clase_saldo ?>" style="text-align: right;">
-                            $ <?= number_format($cuenta['saldo'], 2, ',', '.') ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-                <tfoot>
-                    <tr class="total">
-                        <td colspan="3" style="text-align: right; padding-right: 20px;">
-                            Total Página <?= $num_pagina_real ?>:
-                        </td>
-                        <td style="text-align: right; <?= $total_saldo_pagina >= 0 ? 'color: #28a745;' : 'color: #dc3545;' ?>">
-                            $ <?= number_format($total_saldo_pagina, 2, ',', '.') ?>
-                        </td>
-                    </tr>
-                    <?php if ($num_pagina_real === count($paginas)): ?>
-                    <tr class="total" style="background: #fff3cd;">
-                        <td colspan="2" style="text-align: right; padding-right: 20px; font-size: 15px;">
-                            <strong>SUMA DEUDAS (sin Caja):</strong>
-                        </td>
-                        <td style="text-align: right; font-size: 15px; color: #dc3545;">
-                            <strong>$ <?= number_format($suma_deudas, 2, ',', '.') ?></strong>
-                        </td>
-                    </tr>
-                    <tr class="total" style="background: #e7f3ff;">
-                        <td colspan="2" style="text-align: right; padding-right: 20px; font-size: 16px;">
-                            <strong>TOTAL GENERAL (sin Caja):</strong>
-                        </td>
-                        <td style="text-align: right; font-size: 16px; <?= $total_saldo_general >= 0 ? 'color: #28a745;' : 'color: #dc3545;' ?>">
-                            <strong>$ <?= number_format($total_saldo_general, 2, ',', '.') ?></strong>
-                        </td>
-                    </tr>
-                    <?php endif; ?>
-                </tfoot>
-            </table>
+        <div class="total-final">
+            TOTAL GENERAL (sin Caja): $ <?= number_format($total_general, 2, ',', '.') ?>
         </div>
-        <?php endforeach; ?>
     </div>
 </body>
 </html>
