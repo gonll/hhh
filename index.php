@@ -279,6 +279,7 @@ if ($nivelAcceso === 3) {
             </div>
             <a href="propiedades.php" class="btn-abm-prop btn-admin-prop">⚙️ Admin. Propiedades</a>
             <a href="contrato_alquiler.php" class="btn-abm-prop btn-contrato">📜 Contrato de Alquiler</a>
+            <a href="gestion_trabajos.php" class="btn-abm-prop">🔧 Trabajos</a>
             <a href="abm_indices.php" class="btn-abm-prop btn-indice">📈 ABM INDICE IPC</a>
         <?php endif; ?>
 

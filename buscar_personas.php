@@ -2,10 +2,15 @@
 include 'db.php';
 include 'verificar_sesion.php';
 
-$q = mysqli_real_escape_string($conexion, $_GET['q']);
+$q = mysqli_real_escape_string($conexion, $_GET['q'] ?? '');
+$excluir = isset($_GET['excluir']) ? (int)$_GET['excluir'] : 0;
 
 // Buscamos personas que coincidan con lo escrito
-$sql = "SELECT id, apellido FROM usuarios WHERE apellido LIKE '%$q%' LIMIT 10";
+$where = "apellido LIKE '%$q%'";
+if ($excluir > 0) {
+    $where .= " AND id != $excluir";
+}
+$sql = "SELECT id, apellido FROM usuarios WHERE $where ORDER BY apellido ASC LIMIT 15";
 $res = mysqli_query($conexion, $sql);
 
 $personas = [];
