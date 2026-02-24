@@ -395,7 +395,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt { table-layout: auto; width: 100%; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
         /* Columnas de datos: mostrar contenido; ellipsis solo si es muy largo */
-        .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tipo, .tabla-listado-pdt td.col-tractor { min-width: 80px; overflow: visible; }
+        .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; overflow: visible; }
         .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; position: relative; z-index: 2; background: #fff !important; }
         .tabla-listado-pdt th.col-acciones { background: #007bff !important; }
         .tabla-listado-pdt td.col-acciones { background: #fff !important; }
@@ -415,16 +415,17 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         #modalObservaciones .modal-caja h4 { margin: 0 0 12px 0; color: #333; font-size: 16px; }
         #modalObservaciones .modal-caja .obs-contenido { white-space: pre-wrap; color: #333; margin-bottom: 16px; }
         #modalObservaciones .modal-caja .btn { cursor: pointer; }
-        .tabla-listado-pdt th.col-id, .tabla-listado-pdt td.col-id { min-width: 40px; }
-        .tabla-listado-pdt th.col-personal, .tabla-listado-pdt td.col-personal { min-width: 80px; }
-        .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { min-width: 80px; }
+        .tabla-listado-pdt th.col-id, .tabla-listado-pdt td.col-id { width: 6ch; max-width: 6ch; min-width: 6ch; overflow: hidden; text-overflow: ellipsis; }
+        .tabla-listado-pdt thead th.col-id { padding-right: 2ch; }
+        .tabla-listado-pdt th.col-personal, .tabla-listado-pdt td.col-personal { max-width: 30ch; width: 30ch; min-width: 30ch; padding-left: 1cm; padding-right: 0.2cm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; position: relative; left: -6cm; }
+        .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 2.5cm; max-width: 2.5cm; min-width: 2.5cm; padding-left: 0.2cm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; left: -14cm; }
         .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { min-width: 90px; }
         .tabla-listado-pdt th.col-fecha, .tabla-listado-pdt td.col-fecha { min-width: 85px; }
         .tabla-listado-pdt th.col-cantidad, .tabla-listado-pdt td.col-cantidad { min-width: 55px; }
         .tabla-listado-pdt th.col-gasoil, .tabla-listado-pdt td.col-gasoil { min-width: 55px; }
         .tabla-listado-pdt th.col-cambio, .tabla-listado-pdt td.col-cambio { min-width: 50px; text-align: center; }
         .tabla-listado-pdt th.col-cc, .tabla-listado-pdt td.col-cc { min-width: 40px; text-align: center; }
-        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 220px; white-space: nowrap; overflow: visible; }
+        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { width: 1%; white-space: nowrap; overflow: visible; text-align: right; }
         .icono-tractor { width: 15px; height: 15px; display: inline-block; margin-right: 3px; vertical-align: middle; }
         #tractorGroup { display: none; }
         /* Iconos tractores por marca: John Deere verde, New Holland azul, Massey Ferguson rojo */
@@ -711,6 +712,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <tr>
                     <th class="col-id">ID</th>
                     <th class="col-personal">Personal</th>
+                    <th class="col-tipo">Tipo</th>
+                    <th class="col-acciones">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -719,9 +722,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php foreach ($lista_pdt as $pdt): ?>
                         <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
                         <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
-                            <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
+                            <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?></td>
+                            <td class="col-personal" title="<?= htmlspecialchars($pdt['usuario_nombre']) ?>"><?php $nom = htmlspecialchars($pdt['usuario_nombre']); echo mb_strlen($nom) > 30 ? mb_substr($nom, 0, 30) . '…' : $nom; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
+                            <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 15 ? mb_substr($t, 0, 15) . '…' : $t; ?></td>
                             <td class="col-acciones">
-                                <div class="acciones-botones">
+                                <div class="acciones-botones" style="justify-content: flex-end; display: inline-flex;">
                                     <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
                                         <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
                                         <button type="submit" name="editar" class="btn btn-secondary">Modificar</button>
@@ -738,21 +743,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                                     <?php endif; ?>
                                 </div>
                             </td>
-                            <td class="col-personal" title="<?= htmlspecialchars($pdt['usuario_nombre']) ?>"><?= htmlspecialchars($pdt['usuario_nombre']) ?></td>
-                            <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 20 ? mb_substr($t, 0, 20) . '…' : $t; ?></td>
-                            <td class="col-tractor"><?= htmlspecialchars($pdt['tractor'] ?? '-') ?></td>
-                            <td class="col-fecha" title="<?= date('d/m/Y', strtotime($pdt['fecha'])) ?>"><?php $f = date('d/m/Y', strtotime($pdt['fecha'])); echo mb_strlen($f) > 20 ? mb_substr($f, 0, 20) . '…' : $f; ?></td>
-                            <td class="col-cantidad"><?= number_format($pdt['horas'], 2, ',', '.') ?></td>
-                            <td class="col-gasoil"><?= isset($pdt['cant_gasoil']) && $pdt['cant_gasoil'] !== null ? number_format($pdt['cant_gasoil'], 2, ',', '.') : '-' ?></td>
-                            <td class="col-cambio"><?= (isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-' ?></td>
-                            <td class="col-cc" style="font-weight: bold; <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color: #28a745;' : 'color: #dc3545;' ?>">
-                                <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO' ?>
-                            </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="2" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="4" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
