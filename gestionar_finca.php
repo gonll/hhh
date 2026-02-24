@@ -398,7 +398,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         /* grid1: tamaño reducido por defecto; .tamano-original restaura el tamaño completo */
         #grid1 { min-height: 200px; max-height: 35vh; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; display: block; }
         #grid1.tamano-original { min-height: 400px; max-height: 70vh; }
-        #grid2 { min-height: 200px; max-height: 35vh; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; display: block; margin-top: 15px; }
         .tabla-listado-pdt tr.fila-con-observaciones { cursor: pointer; }
         #modalObservaciones { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; }
         #modalObservaciones.activo { display: flex; }
@@ -646,7 +645,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 
                 <div class="form-group form-group-observaciones">
                     <label>Observaciones</label>
-                    <textarea name="observaciones" id="observaciones" rows="1" tabindex="4" style="resize: vertical; min-height: 28px;"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
+                    <textarea name="observaciones" id="observaciones" rows="1" tabindex="4" style="resize: vertical; min-height: 28px;" onkeydown="if((event||window.event).key==='Enter'&&!(event||window.event).shiftKey){(event||window.event).preventDefault();var g=document.getElementById('btnGuardar');if(g)g.focus();}"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
                 </div>
                 
                 <div class="form-group" id="gasoilGroup" style="display: none;">
@@ -717,8 +716,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <?php if ($tiene_datos): ?>
                     <?php foreach ($lista_pdt as $pdt): ?>
                         <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
-<tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
-                                                            <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
+                        <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
+                            <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
                             <td class="col-acciones">
                                 <div class="acciones-botones">
                                     <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
@@ -752,66 +751,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <?php else: ?>
                     <tr>
                         <td colspan="10" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
-        </div>
-        
-        <h3 style="margin-top: 25px;">Grid 2</h3>
-        <div id="grid2" class="wrap-tabla-pdt">
-        <table class="tabla-listado-pdt tabla-grid2">
-            <thead>
-                <tr>
-                    <th class="col-acciones">Acciones</th>
-                    <th class="col-personal">Personal</th>
-                    <th class="col-tipo">Tipo</th>
-                    <th class="col-tractor">Tractor</th>
-                    <th class="col-fecha">Fecha</th>
-                    <th class="col-cantidad">Cant.</th>
-                    <th class="col-gasoil">Gasoil</th>
-                    <th class="col-cambio">C.aceite</th>
-                    <th class="col-cc">CC</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if ($tiene_datos): ?>
-                    <?php foreach ($lista_pdt as $pdt): ?>
-                        <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
-                        <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
-                            <td class="col-acciones"><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?>
-                                <div class="acciones-botones">
-                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
-                                        <button type="submit" name="editar" class="btn btn-secondary">Modificar</button>
-                                    </form>
-                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
-                                        <button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm('¿Eliminar este PDT?')">Eliminar</button>
-                                    </form>
-                                    <?php if ((!isset($pdt['en_cc']) || $pdt['en_cc'] == 0)): ?>
-                                    <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
-                                        <button type="submit" name="cargar_cc" class="btn btn-success">Cargar en CC</button>
-                                    </form>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                            <td class="col-personal" title="<?= htmlspecialchars($pdt['usuario_nombre']) ?>"><?= htmlspecialchars($pdt['usuario_nombre']) ?></td>
-                            <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 20 ? mb_substr($t, 0, 20) . '…' : $t; ?></td>
-                            <td class="col-tractor"><?= htmlspecialchars($pdt['tractor'] ?? '-') ?></td>
-                            <td class="col-fecha" title="<?= date('d/m/Y', strtotime($pdt['fecha'])) ?>"><?php $f = date('d/m/Y', strtotime($pdt['fecha'])); echo mb_strlen($f) > 20 ? mb_substr($f, 0, 20) . '…' : $f; ?></td>
-                            <td class="col-cantidad"><?= number_format($pdt['horas'], 2, ',', '.') ?></td>
-                            <td class="col-gasoil"><?= isset($pdt['cant_gasoil']) && $pdt['cant_gasoil'] !== null ? number_format($pdt['cant_gasoil'], 2, ',', '.') : '-' ?></td>
-                            <td class="col-cambio"><?= (isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-' ?></td>
-                            <td class="col-cc" style="font-weight: bold; <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color: #28a745;' : 'color: #dc3545;' ?>">
-                                <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO' ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="9" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
