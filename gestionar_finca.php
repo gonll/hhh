@@ -415,17 +415,16 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         #modalObservaciones .modal-caja h4 { margin: 0 0 12px 0; color: #333; font-size: 16px; }
         #modalObservaciones .modal-caja .obs-contenido { white-space: pre-wrap; color: #333; margin-bottom: 16px; }
         #modalObservaciones .modal-caja .btn { cursor: pointer; }
-        .tabla-listado-pdt th.col-id, .tabla-listado-pdt td.col-id { width: 6ch; max-width: 6ch; min-width: 6ch; overflow: hidden; text-overflow: ellipsis; }
-        .tabla-listado-pdt thead th.col-id { padding-right: 2ch; }
-        .tabla-listado-pdt th.col-personal, .tabla-listado-pdt td.col-personal { max-width: 30ch; width: 30ch; min-width: 30ch; padding-left: 1cm; padding-right: 0.2cm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; position: relative; left: -6cm; }
-        .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 2.5cm; max-width: 2.5cm; min-width: 2.5cm; padding-left: 0.2cm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; left: -14cm; }
+        .tabla-listado-pdt th.col-id, .tabla-listado-pdt td.col-id { min-width: 40px; }
+        .tabla-listado-pdt th.col-personal, .tabla-listado-pdt td.col-personal { min-width: 80px; }
         .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { min-width: 90px; }
         .tabla-listado-pdt th.col-fecha, .tabla-listado-pdt td.col-fecha { min-width: 85px; }
         .tabla-listado-pdt th.col-cantidad, .tabla-listado-pdt td.col-cantidad { min-width: 55px; }
         .tabla-listado-pdt th.col-gasoil, .tabla-listado-pdt td.col-gasoil { min-width: 55px; }
         .tabla-listado-pdt th.col-cambio, .tabla-listado-pdt td.col-cambio { min-width: 50px; text-align: center; }
         .tabla-listado-pdt th.col-cc, .tabla-listado-pdt td.col-cc { min-width: 40px; text-align: center; }
-        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { width: 1%; white-space: nowrap; overflow: visible; text-align: right; }
+        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 220px; white-space: nowrap; overflow: visible; text-align: right !important; }
+        .tabla-listado-pdt td.col-acciones .acciones-botones { margin-left: auto; display: block; width: fit-content; }
         .icono-tractor { width: 15px; height: 15px; display: inline-block; margin-right: 3px; vertical-align: middle; }
         #tractorGroup { display: none; }
         /* Iconos tractores por marca: John Deere verde, New Holland azul, Massey Ferguson rojo */
@@ -443,6 +442,36 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .acciones-botones .btn { padding: 4px 8px; font-size: 10px; flex-shrink: 0; }
         textarea { font-size: 11px; padding: 5px; }
         #usuarioSeleccionado { font-size: 10px; padding: 3px 5px !important; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            body { margin: 8px; font-size: 12px; }
+            .container { padding: 10px; margin: 0; max-width: 100%; }
+            h2 { font-size: 16px; }
+            h2 a { display: block; margin-top: 4px; }
+            .container > div:first-of-type { flex-direction: column; align-items: stretch; gap: 12px; }
+            .container > div:first-of-type > div:last-child { text-align: left; }
+            .buscador-usuario-container { width: 100% !important; }
+            .form-row { flex-direction: column; }
+            .form-row .form-group.form-group-compact { max-width: 100%; min-width: 100%; }
+            .form-group-observaciones { max-width: 100% !important; }
+            .form-row .form-group.checkbox-group { flex: 1 1 auto; }
+            #grid1 { min-height: 250px; max-height: 50vh; }
+            .acciones-botones { flex-wrap: wrap !important; }
+            .acciones-botones .btn { font-size: 11px; padding: 6px 10px; }
+            .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 180px; }
+            table { font-size: 11px; }
+            th, td { padding: 6px 4px; font-size: 11px; }
+        }
+        @media (max-width: 480px) {
+            body { margin: 5px; }
+            .container { padding: 8px; }
+            h2 { font-size: 14px; }
+            .btn { padding: 8px 10px; font-size: 12px; }
+            .acciones-botones .btn { padding: 5px 8px; font-size: 10px; }
+            .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 150px; }
+            #formCargaGasoilSisterna form { flex-direction: column; align-items: stretch; }
+        }
     </style>
 </head>
 <?php
@@ -713,6 +742,12 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <th class="col-id">ID</th>
                     <th class="col-personal">Personal</th>
                     <th class="col-tipo">Tipo</th>
+                    <th class="col-tractor">Tractor</th>
+                    <th class="col-fecha">Fecha</th>
+                    <th class="col-cantidad">Cant.</th>
+                    <th class="col-gasoil">Gasoil</th>
+                    <th class="col-cambio">C.aceite</th>
+                    <th class="col-cc">CC</th>
                     <th class="col-acciones">Acciones</th>
                 </tr>
             </thead>
@@ -722,11 +757,20 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php foreach ($lista_pdt as $pdt): ?>
                         <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
                         <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
-                            <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?></td>
-                            <td class="col-personal" title="<?= htmlspecialchars($pdt['usuario_nombre']) ?>"><?php $nom = htmlspecialchars($pdt['usuario_nombre']); echo mb_strlen($nom) > 30 ? mb_substr($nom, 0, 30) . '…' : $nom; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
-                            <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 15 ? mb_substr($t, 0, 15) . '…' : $t; ?></td>
+                            <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
+                            <td class="col-personal" title="<?= htmlspecialchars($pdt['usuario_nombre']) ?>"><?= htmlspecialchars($pdt['usuario_nombre']) ?></td>
+                            <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 20 ? mb_substr($t, 0, 20) . '…' : $t; ?></td>
+                            <td class="col-tractor"><?= htmlspecialchars($pdt['tractor'] ?? '-') ?></td>
+                            <td class="col-fecha" title="<?= date('d/m/Y', strtotime($pdt['fecha'])) ?>"><?php $f = date('d/m/Y', strtotime($pdt['fecha'])); echo mb_strlen($f) > 20 ? mb_substr($f, 0, 20) . '…' : $f; ?></td>
+                            <td class="col-cantidad"><?= number_format($pdt['horas'], 2, ',', '.') ?></td>
+                            <td class="col-gasoil"><?= isset($pdt['cant_gasoil']) && $pdt['cant_gasoil'] !== null ? number_format($pdt['cant_gasoil'], 2, ',', '.') : '-' ?></td>
+                            <td class="col-cambio"><?= (isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-' ?></td>
+                            <td class="col-cc" style="font-weight: bold; <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color: #28a745;' : 'color: #dc3545;' ?>">
+                                <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO' ?>
+                            </td>
                             <td class="col-acciones">
-                                <div class="acciones-botones" style="justify-content: flex-end; display: inline-flex;">
+                                <div style="display: flex; justify-content: flex-end; width: 100%;">
+                                <div class="acciones-botones">
                                     <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
                                         <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
                                         <button type="submit" name="editar" class="btn btn-secondary">Modificar</button>
@@ -742,12 +786,13 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                                     </form>
                                     <?php endif; ?>
                                 </div>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="4" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="10" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
