@@ -50,7 +50,8 @@ $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_sal
             .no-print { display: none !important; }
             .ocultar-en-print { display: none !important; }
             body { margin: 4mm 6mm; font-size: 18px; line-height: 1.15; }
-            h1 { font-size: 22px; margin: 0 0 6px 0; padding: 0; }
+            h1 { font-size: 22px; margin: 0 0 4px 0; padding: 0; }
+            .fecha-hora-print { font-size: 14px; margin: 0 0 8px 0; color: #333; }
             table { font-size: 16px; }
             th, td { padding: 4px 8px; line-height: 1.2; }
             th { font-size: 14px; }
@@ -65,15 +66,16 @@ $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_sal
         <a href="propiedades.php" style="margin-left:10px; color:#007bff;">← Volver a Gestión de Propiedades</a>
     </div>
     <h1>Propiedades – Consorcio, Propiedad, Propietario, Inquilino, Inicio y Fin de alquiler</h1>
+    <p class="fecha-hora-print" style="margin: 0 0 12px 0; font-size: 12px; color: #555;">Fecha y hora: <?= date('d/m/Y H:i:s') ?></p>
     <table>
         <thead>
             <tr>
                 <th>Consorcio</th>
                 <th>Propiedad</th>
-                <th class="ocultar-en-print">Propietario</th>
+                <th>Propietario</th>
                 <th>Inquilino</th>
-                <th class="ocultar-en-print">Inicio alquiler</th>
-                <th class="ocultar-en-print">Fin alquiler</th>
+                <th>Inicio alquiler</th>
+                <th>Fin alquiler</th>
                 <th>Monto alquiler actual</th>
                 <th>Saldo a la fecha</th>
             </tr>
@@ -100,10 +102,10 @@ $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_sal
             <tr>
                 <td><?= htmlspecialchars($f['consorcio']) ?></td>
                 <td><?= htmlspecialchars($f['propiedad']) ?></td>
-                <td class="ocultar-en-print"><?= $propietario ?></td>
+                <td><?= $propietario ?></td>
                 <td><?= $inquilino ?></td>
-                <td class="ocultar-en-print"><?= $inicio ?></td>
-                <td class="ocultar-en-print"><?= $venc ?></td>
+                <td><?= $inicio ?></td>
+                <td><?= $venc ?></td>
                 <td style="text-align:right;"><?= $monto ?></td>
                 <td style="text-align:right;"><?= $saldo_txt ?></td>
             </tr>
