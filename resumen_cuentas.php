@@ -77,11 +77,6 @@ foreach ($filas as $f) {
 }
 
 $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
-
-function truncar($s, $max = 30) {
-    $s = trim($s);
-    return mb_strlen($s) > $max ? mb_substr($s, 0, $max) . '…' : $s;
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -99,12 +94,11 @@ function truncar($s, $max = 30) {
         .botones button:hover, .botones a:hover { background: #0056b3; color: white; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th { background: #007bff; color: white; padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; }
-        th:nth-child(1), td:nth-child(1) { width: 12%; overflow: hidden; }
-        th:nth-child(2), td:nth-child(2) { width: 18%; max-width: 30ch; overflow: hidden; }
-        th:nth-child(3), td:nth-child(3) { width: 42%; overflow: hidden; }
-        th:nth-child(4), td:nth-child(4) { width: 28%; min-width: 95px; }
-        td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 13px; }
-        td:nth-child(1), td:nth-child(2), td:nth-child(3) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        th:nth-child(1), td:nth-child(1) { width: 15%; }
+        th:nth-child(2), td:nth-child(2) { width: 25%; }
+        th:nth-child(3), td:nth-child(3) { width: 35%; }
+        th:nth-child(4), td:nth-child(4) { width: 25%; min-width: 100px; }
+        td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 13px; white-space: nowrap; }
         tr:nth-child(even) { background: #f9f9f9; }
         .saldo-pos { color: #28a745; font-weight: bold; text-align: right; }
         .saldo-neg { color: #dc3545; font-weight: bold; text-align: right; }
@@ -116,15 +110,11 @@ function truncar($s, $max = 30) {
             .no-print { display: none !important; }
             body { margin: 0; padding: 10px; font-size: 75%; background: white; }
             .container { box-shadow: none; }
-            table { font-size: 11px; table-layout: fixed; width: 100%; }
-            th, td { padding: 4px 6px; overflow: hidden !important; }
-            th:nth-child(1), td:nth-child(1) { width: 12%; }
-            th:nth-child(2), td:nth-child(2) { width: 18%; max-width: 30ch; }
-            th:nth-child(3), td:nth-child(3) { width: 42%; }
-            th:nth-child(4), td:nth-child(4) { width: 28%; min-width: 95px; white-space: nowrap; }
-            td:nth-child(1), td:nth-child(2), td:nth-child(3) { text-overflow: ellipsis; white-space: nowrap; }
+            table { font-size: 11px; }
+            th, td { padding: 4px 6px; }
             .total-final { font-size: 13px; }
             .simbolo-pantalla { display: none !important; }
+            td { white-space: nowrap; }
         }
     </style>
 </head>
@@ -158,8 +148,8 @@ function truncar($s, $max = 30) {
                     $saldo_fmt = number_format($f['saldo'], 2, ',', '.');
                 ?>
                 <tr>
-                    <td><?= htmlspecialchars(truncar($f['consorcio'], 20)) ?></td>
-                    <td title="<?= htmlspecialchars($f['propiedad']) ?>"><?= htmlspecialchars(truncar($f['propiedad'], 30)) ?></td>
+                    <td><?= htmlspecialchars($f['consorcio']) ?></td>
+                    <td><?= htmlspecialchars($f['propiedad']) ?></td>
                     <td><?= htmlspecialchars($f['nombre']) ?></td>
                     <td class="<?= $clase ?> saldo-cell"><span class="simbolo-pantalla">$ </span><?= $saldo_fmt ?></td>
                 </tr>

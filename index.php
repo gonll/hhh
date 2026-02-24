@@ -361,7 +361,6 @@ if ($nivelAcceso === 3) {
             <button id="btnIngreso" class="btn-caja" style="background:#28a745;" onclick="preparar('INGRESO')">INGRESO</button>
             <button id="btnRetiro" class="btn-caja" style="background:#dc3545;" onclick="preparar('RETIRO')">RETIRO</button>
             <button type="button" id="btnResumenCtas" class="btn-caja btn-activo" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; display:none;" onclick="abrirResumenCtas()">Resumen de Ctas.</button>
-            <button type="button" id="btnImprimirPropiedades" class="btn-caja btn-activo" style="background:#007bff; color:white; border:none; display:none;" onclick="window.open('imprimir_propiedades.php','_blank','width=900,height=700')">🖨️ Imprimir</button>
             <div id="resumenConsorcioLinea" style="display:none; align-self:stretch; flex:0 1 38%; max-width:420px; min-width:280px; font-size:10px; line-height:1.35; padding:8px 10px; background:#fff3cd; border-radius:4px; border:1px solid #ffeeba; color:#856404; box-sizing:border-box; flex-direction:column; justify-content:space-between;">
                 <div style="flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right;">LIQUIDACIÓN DE EXPENSAS anteriores Ordinarias: $<span id="resumenLiqOrdinarias">0,00</span></div>
                 <div style="flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right;">LIQUIDACIÓN DE EXPENSAS anteriores Extraordinarias: $<span id="resumenLiqExtraordinarias">0,00</span></div>
@@ -606,7 +605,6 @@ function cargarMovimientos(fila, id) {
     if (panelExtra) panelExtra.style.display = esConsorcioUsuario ? "none" : "grid";
     if (resumenLinea) resumenLinea.style.display = esConsorcioUsuario ? "flex" : "none";
     if (btnResumenCtas) btnResumenCtas.style.display = esCajaUsuario ? "block" : "none";
-    if (btnImprimirPropiedades) btnImprimirPropiedades.style.display = esCajaUsuario ? "block" : "none";
     // Mostrar botón Word si es consorcio (aunque no haya movimiento seleccionado)
     if (esConsorcioUsuario) {
         document.getElementById("btnWord").style.display = "block";
