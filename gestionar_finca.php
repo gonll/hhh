@@ -710,15 +710,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <thead>
                 <tr>
                     <th class="col-id">ID</th>
-                    <th class="col-acciones">Acciones</th>
                     <th class="col-personal">Personal</th>
-                    <th class="col-tipo">Tipo</th>
-                    <th class="col-tractor">Tractor</th>
-                    <th class="col-fecha">Fecha</th>
-                    <th class="col-cantidad">Cant.</th>
-                    <th class="col-gasoil">Gasoil</th>
-                    <th class="col-cambio">C.aceite</th>
-                    <th class="col-cc">CC</th>
                 </tr>
             </thead>
             <tbody>
@@ -760,7 +752,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="10" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="2" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
