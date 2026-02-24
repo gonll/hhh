@@ -93,16 +93,15 @@ echo escaparCsv('RESUMEN DE CUENTAS') . "\n";
 echo escaparCsv('Fecha: ' . date('d/m/Y H:i:s') . ' (Argentina)') . "\n";
 echo "\n";
 
-echo escaparCsv('Consorcio') . $sep . escaparCsv('Propiedad') . $sep . escaparCsv('Inquilino / Propietario') . $sep . escaparCsv('Saldo') . "\n";
+echo escaparCsv('Propiedad') . $sep . escaparCsv('Inquilino / Propietario') . $sep . escaparCsv('Saldo') . "\n";
 
 foreach ($filas as $f) {
-    echo escaparCsv($f['consorcio']) . $sep . 
-         escaparCsv($f['propiedad']) . $sep . 
+    echo escaparCsv($f['propiedad']) . $sep . 
          escaparCsv($f['nombre']) . $sep . 
          escaparCsv(number_format($f['saldo'], 2, ',', '.')) . "\n";
 }
 
 echo "\n";
-echo $sep . $sep . escaparCsv('TOTAL GENERAL (sin Caja)') . $sep . escaparCsv(number_format($total_general, 2, ',', '.')) . "\n";
+echo $sep . escaparCsv('TOTAL GENERAL (sin Caja)') . $sep . escaparCsv(number_format($total_general, 2, ',', '.')) . "\n";
 
 exit;
