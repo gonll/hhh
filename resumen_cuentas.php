@@ -4,8 +4,8 @@ include 'verificar_sesion.php';
 
 date_default_timezone_set('America/Argentina/Buenos_Aires');
 
-// Obtener todas las propiedades con inquilino o propietario según corresponda
-$sql = "SELECT p.propiedad_id, p.propiedad, p.consorcio, p.propietario_id,
+// Obtener todas las propiedades con porcentaje, inquilino/propietario y saldos
+$sql = "SELECT p.propiedad_id, p.propiedad, p.consorcio, p.propietario_id, COALESCE(p.porcentaje, 0) AS porcentaje,
         prop.apellido AS nombre_propietario,
         u.apellido AS nombre_inquilino,
         u2.apellido AS nombre_inquilino2,
@@ -22,28 +22,58 @@ $sql = "SELECT p.propiedad_id, p.propiedad, p.consorcio, p.propietario_id,
         ORDER BY p.consorcio ASC, p.propiedad ASC";
 $resultado = mysqli_query($conexion, $sql);
 
-$filas = [];
+// Agrupar por usuario: para cada usuario, guardar la propiedad de mayor %
+$por_usuario = []; // usuario_id => ['consorcio','propiedad','nombre','saldo','porcentaje']
+
 while ($f = mysqli_fetch_assoc($resultado)) {
-    $esta_alquilada = !empty($f['inquilino1_id']);
-    if ($esta_alquilada) {
-        $nombre = trim($f['nombre_inquilino'] ?? '');
-        if (!empty($f['nombre_inquilino2'])) $nombre .= ' / ' . trim($f['nombre_inquilino2']);
-        $saldo = (float)($f['saldo_inq1'] ?? 0);
-        if (!empty($f['inquilino2_id'])) $saldo += (float)($f['saldo_inq2'] ?? 0);
+    $porcentaje = (float)($f['porcentaje'] ?? 0);
+    $consorcio = $f['consorcio'] ?? '';
+    $propiedad = $f['propiedad'] ?? '';
+
+    if (!empty($f['inquilino1_id'])) {
+        // Alquilada: inquilino(s)
+        $inq1_id = (int)$f['inquilino1_id'];
+        $saldo1 = (float)($f['saldo_inq1'] ?? 0);
+        $nombre1 = trim($f['nombre_inquilino'] ?? '');
+        if (!empty($inq1_id) && $inq1_id != 1) {
+            $key = 'inq_' . $inq1_id;
+            if (!isset($por_usuario[$key]) || $porcentaje > ($por_usuario[$key]['porcentaje'] ?? 0)) {
+                $por_usuario[$key] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre1 ?: '-', 'saldo' => $saldo1, 'porcentaje' => $porcentaje];
+            }
+        }
+        if (!empty($f['inquilino2_id'])) {
+            $inq2_id = (int)$f['inquilino2_id'];
+            $saldo2 = (float)($f['saldo_inq2'] ?? 0);
+            $nombre2 = trim($f['nombre_inquilino2'] ?? '');
+            if ($inq2_id != 1) {
+                $key = 'inq_' . $inq2_id;
+                if (!isset($por_usuario[$key]) || $porcentaje > ($por_usuario[$key]['porcentaje'] ?? 0)) {
+                    $por_usuario[$key] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre2 ?: '-', 'saldo' => $saldo2, 'porcentaje' => $porcentaje];
+                }
+            }
+        }
     } else {
-        $nombre = trim($f['nombre_propietario'] ?? '');
-        $saldo = (float)($f['saldo_prop'] ?? 0);
+        // No alquilada: propietario
+        $prop_id = (int)($f['propietario_id'] ?? 0);
+        if ($prop_id > 0 && $prop_id != 1) {
+            $nombre = trim($f['nombre_propietario'] ?? '');
+            $saldo = (float)($f['saldo_prop'] ?? 0);
+            $key = 'prop_' . $prop_id;
+            if (!isset($por_usuario[$key]) || $porcentaje > ($por_usuario[$key]['porcentaje'] ?? 0)) {
+                $por_usuario[$key] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre ?: '-', 'saldo' => $saldo, 'porcentaje' => $porcentaje];
+            }
+        }
     }
-    $filas[] = [
-        'consorcio' => $f['consorcio'] ?? '',
-        'propiedad' => $f['propiedad'] ?? '',
-        'nombre' => $nombre ?: '-',
-        'saldo' => $saldo,
-        'alquilada' => $esta_alquilada
-    ];
 }
 
-// Total general: suma de cuentas de todos excepto Caja (id 1)
+// Ordenar por consorcio, propiedad
+$filas = array_values($por_usuario);
+usort($filas, function($a, $b) {
+    $c = strcmp($a['consorcio'], $b['consorcio']);
+    return $c !== 0 ? $c : strcmp($a['propiedad'], $b['propiedad']);
+});
+
+// Total general (sin Caja)
 $res_total = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id != 1");
 $total_general = ($res_total && $r = mysqli_fetch_assoc($res_total)) ? (float)$r['total'] : 0;
 
@@ -65,12 +95,14 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
         .botones button:hover, .botones a:hover { background: #0056b3; color: white; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #007bff; color: white; padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; }
-        td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 13px; }
+        td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 13px; white-space: nowrap; }
         tr:nth-child(even) { background: #f9f9f9; }
         .saldo-pos { color: #28a745; font-weight: bold; text-align: right; }
         .saldo-neg { color: #dc3545; font-weight: bold; text-align: right; }
         .saldo-cero { color: #666; text-align: right; }
+        .saldo-cell { white-space: nowrap; }
         .total-final { font-weight: bold; background: #e7f3ff; font-size: 15px; padding: 12px; margin-top: 16px; border: 1px solid #007bff; border-radius: 4px; text-align: right; }
+        .simbolo-pantalla { display: inline; }
         @media print {
             .no-print { display: none !important; }
             body { margin: 0; padding: 10px; font-size: 75%; background: white; }
@@ -78,6 +110,8 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
             table { font-size: 11px; }
             th, td { padding: 4px 6px; }
             .total-final { font-size: 13px; }
+            .simbolo-pantalla { display: none !important; }
+            td { white-space: nowrap; }
         }
     </style>
 </head>
@@ -108,19 +142,20 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
             <tbody>
                 <?php foreach ($filas as $f): 
                     $clase = $f['saldo'] > 0 ? 'saldo-pos' : ($f['saldo'] < 0 ? 'saldo-neg' : 'saldo-cero');
+                    $saldo_fmt = number_format($f['saldo'], 2, ',', '.');
                 ?>
                 <tr>
                     <td><?= htmlspecialchars($f['consorcio']) ?></td>
                     <td><?= htmlspecialchars($f['propiedad']) ?></td>
                     <td><?= htmlspecialchars($f['nombre']) ?></td>
-                    <td class="<?= $clase ?>">$ <?= number_format($f['saldo'], 2, ',', '.') ?></td>
+                    <td class="<?= $clase ?> saldo-cell"><span class="simbolo-pantalla">$ </span><?= $saldo_fmt ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
         
         <div class="total-final">
-            TOTAL GENERAL (sin Caja): $ <?= number_format($total_general, 2, ',', '.') ?>
+            <span class="simbolo-pantalla">$ </span><?= number_format($total_general, 2, ',', '.') ?> — TOTAL GENERAL (sin Caja)
         </div>
     </div>
 </body>
