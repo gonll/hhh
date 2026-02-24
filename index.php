@@ -325,14 +325,22 @@ if ($nivelAcceso === 3) {
                 
                 <?php if (!$soloLectura): ?>
                 <tfoot id="filaCarga" style="display:none; background:#f8f9fa;">
+                    <tr id="filaCheckCaja" style="display:none;">
+                        <td colspan="4" style="padding: 4px 8px; font-size: 11px;">
+                            <label style="cursor:pointer; white-space:nowrap;">
+                                <input type="checkbox" id="ins_grabar_caja"> Grabar en Caja (efectivo)
+                            </label>
+                        </td>
+                        <td colspan="3"></td>
+                    </tr>
                     <tr>
                         <td class="al-cen" style="position:relative;">
                             <input type="text" id="ins_fecha" style="width:95%" placeholder="dd/mm/aaaa" maxlength="10" title="Formato: dd/mm/aaaa. Doble clic: calendario." onfocus="cursorAlInicioFecha()" ondblclick="abrirCalendarioFecha(event)">
                             <input type="date" id="ins_fecha_cal" style="display:none; position:absolute; left:0; top:0; width:95%; height:100%; margin:0; border:1px solid #007bff; box-sizing:border-box; font-size:inherit;">
                         </td>
-                        <td><input type="text" id="ins_concepto" style="width:95%" onfocus="ponerFechaActual()"></td>
+                        <td><input type="text" id="ins_concepto" style="width:95%" onfocus="ponerFechaActual()" oninput="actualizarCheckGrabarCaja()"></td>
                         <td>
-                            <select id="ins_compro" style="width:95%" onchange="avisarComprobanteCaja()">
+                            <select id="ins_compro" style="width:95%" onchange="actualizarCheckGrabarCaja(); avisarComprobanteCaja();">
                                 <option value="ALQUILER">ALQUILER</option>
                                 <option value="EXPENSAS">EXPENSAS</option>
                                 <option value="VARIOS">VARIOS</option>
@@ -372,7 +380,7 @@ if ($nivelAcceso === 3) {
             <div id="panelBotonesExtra" style="display:none;">
                 <div class="grid-botones-extra">
                     <button type="button" id="btnCobroExpTransf" class="btn-caja btn-extra" style="background:#28a745; color:white; display:none;" onclick="abrirModalCobroExp(false)">Cobro Exp/transferencia</button>
-                    <button type="button" id="btnCobroExpEfvo" class="btn-caja btn-extra" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; display:none;" onclick="abrirModalCobroExp(true)">Cobro expensas efvo</button>
+                    <button type="button" id="btnCobroExpEfvo" class="btn-caja btn-extra" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; display:none;" onclick="abrirModalCobroExp(true)">Cobro expensas en efectivo (grabar en Caja)</button>
                     <button type="button" id="btnSueldoExtras" class="btn-caja btn-extra" style="background:#D4A5A5; color:white;" onclick="cargarSueldoExtras()">Sueldo/Extras</button>
                 </div>
             </div>
@@ -596,7 +604,6 @@ function cargarMovimientos(fila, id) {
     var panelExtra = document.getElementById("panelBotonesExtra");
     var resumenLinea = document.getElementById("resumenConsorcioLinea");
     var btnResumenCtas = document.getElementById("btnResumenCtas");
-    var btnImprimirPropiedades = document.getElementById("btnImprimirPropiedades");
     var btnCobroExpTransf = document.getElementById("btnCobroExpTransf");
     var btnCobroExpEfvo = document.getElementById("btnCobroExpEfvo");
     var btnSueldoExtras = document.getElementById("btnSueldoExtras");
@@ -678,7 +685,7 @@ function abrirEditor(id) {
 var cobroExpEsEfvo = false;
 function abrirModalCobroExp(esEfvo) {
     cobroExpEsEfvo = !!esEfvo;
-    document.getElementById('modalCobroExpTitulo').textContent = cobroExpEsEfvo ? 'Cobro expensas efvo' : 'Cobro Exp/transferencia';
+    document.getElementById('modalCobroExpTitulo').textContent = cobroExpEsEfvo ? 'Cobro expensas en efectivo (grabar en Caja)' : 'Cobro Exp/transferencia';
     if (!uSel) { alert('Seleccioná un usuario primero.'); return; }
     var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
     var nomUsu = fila ? fila.querySelector('.nombre-txt').innerText : '';
@@ -1017,6 +1024,11 @@ function seleccionarFila(el, movimientoId, fecha, concepto, compro, ref, monto) 
     el.classList.add('fila-mov-seleccionada');
     movSel = { movimientoId, fecha, concepto, compro, ref, monto, usuario: document.querySelector('.fila-seleccionada .nombre-txt').innerText };
     document.getElementById("btnWord").style.display = "block";
+    if (tipo === 'INGRESO' && concepto) {
+        document.getElementById("filaCarga").style.display = "table-footer-group";
+        document.getElementById("ins_concepto").value = "Cobro de: " + concepto;
+        ponerFechaActual();
+    }
 }
 
 function eliminarMovSeguro(movId) {
@@ -1180,17 +1192,25 @@ function cargarExpensa(botonEl) {
         alert("Seleccione un usuario primero.");
         return;
     }
-    tipo = 'RETIRO';
     var concepto = botonEl.getAttribute('data-concepto');
-    document.getElementById("filaCarga").style.display = "table-footer-group";
-    ponerFechaActual();
-    document.getElementById("ins_concepto").value = concepto;
+    if (tipo === 'INGRESO') {
+        document.getElementById("filaCarga").style.display = "table-footer-group";
+        ponerFechaActual();
+        document.getElementById("ins_concepto").value = "Cobro de: " + concepto;
+    } else {
+        tipo = 'RETIRO';
+        document.getElementById("filaCarga").style.display = "table-footer-group";
+        ponerFechaActual();
+        document.getElementById("ins_concepto").value = concepto;
+    }
     document.getElementById("ins_refer").value = "";
     document.getElementById("ins_monto").value = "";
+    actualizarCheckGrabarCaja();
     setTimeout(function() {
         document.getElementById("ins_refer").focus();
     }, 0);
 }
+
 
 function cargarExpensaExtraordinaria() {
     if (!uSel) {
@@ -1207,6 +1227,7 @@ function cargarExpensaExtraordinaria() {
     document.getElementById("ins_compro").value = "Exp Extraordinaria";
     document.getElementById("ins_refer").value = mes + "/" + anio;
     document.getElementById("ins_monto").value = "";
+    actualizarCheckGrabarCaja();
     setTimeout(function() {
         var inp = document.getElementById("ins_concepto");
         inp.focus();
@@ -1242,17 +1263,14 @@ function cargarSueldoExtras() {
     document.getElementById("ins_compro").value = "SUELDO/EXTRAS";
     document.getElementById("ins_refer").value = mesRef + "/" + anioAnterior;
     document.getElementById("ins_monto").value = "";
+    actualizarCheckGrabarCaja();
     setTimeout(function() {
         document.getElementById("ins_monto").focus();
     }, 0);
 }
 
 function avisarComprobanteCaja() {
-    if (!esConsorcioUsuario) return;
-    var compro = document.getElementById("ins_compro").value;
-    if (compro === "BOLETA" || compro === "EFVO") {
-        alert("⚠️ Con BOLETA o EFVO el movimiento se grabará también en Caja (efectivo).\n\nSi no es correcto, cambiá el comprobante antes de guardar.");
-    }
+    // El checkbox "Grabar en Caja" indica y permite cambiar si se graba en caja
 }
 
 function preparar(t) { 
@@ -1271,7 +1289,7 @@ function preparar(t) {
             document.getElementById("ins_refer").value = ref;
             document.getElementById("ins_compro").value = "CHEQUE/ECHEQ";
         } else {
-            document.getElementById("ins_concepto").value = "";
+            document.getElementById("ins_concepto").value = "Cobro de: " + movSel.concepto;
             document.getElementById("ins_refer").value = "";
         }
     } else {
@@ -1279,9 +1297,25 @@ function preparar(t) {
         document.getElementById("ins_refer").value = "";
     }
     document.getElementById("ins_monto").value = "";
+    actualizarCheckGrabarCaja();
     setTimeout(function() {
         document.getElementById("ins_concepto").focus();
     }, 0);
+}
+
+function actualizarCheckGrabarCaja() {
+    var chk = document.getElementById("ins_grabar_caja");
+    var fila = document.getElementById("filaCheckCaja");
+    if (!chk || !fila) return;
+    if (uSel === 1) {
+        fila.style.display = "none";
+        return;
+    }
+    fila.style.display = "";
+    var compro = (document.getElementById("ins_compro").value || "").toUpperCase();
+    // BOLETA, EFVO, ALQUILER, EXPENSAS y VARIOS graban en Caja.
+    var grabarPorDefecto = (compro === "BOLETA" || compro === "EFVO" || compro === "ALQUILER" || compro === "EXPENSAS" || compro === "VARIOS");
+    chk.checked = grabarPorDefecto;
 }
 
 function fechaTextoAISO() {
@@ -1297,13 +1331,15 @@ function fechaTextoAISO() {
 function guardar() {
     let m = document.getElementById("ins_monto").value;
     if(!m || !uSel) return;
+    var grabarCaja = (uSel !== 1 && document.getElementById("ins_grabar_caja") && document.getElementById("ins_grabar_caja").checked) ? 1 : 0;
     let p = new URLSearchParams({ 
         id: uSel, 
         fecha: fechaTextoAISO(), 
         concepto: document.getElementById("ins_concepto").value, 
         compro: document.getElementById("ins_compro").value, 
         refer: document.getElementById("ins_refer").value, 
-        monto: (tipo === 'INGRESO' ? Math.abs(m) : -Math.abs(m)) 
+        monto: (tipo === 'INGRESO' ? Math.abs(m) : -Math.abs(m)),
+        grabar_caja: grabarCaja
     });
     fetch('guardar_movimiento.php', { method: 'POST', body: p })
     .then(r => r.text())

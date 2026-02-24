@@ -44,8 +44,10 @@ if (isset($_POST['id'])) {
         exit;
     }
 
-    // 3. Grabar en Caja: para usuarios normales siempre; para Consorcio solo si comprobante es BOLETA o EFVO
+    // 3. Grabar en Caja: según checkbox "Grabar en Caja" (si se envía); si no, lógica anterior
     $grabado_en_caja = false;
+    $grabar_caja_param = isset($_POST['grabar_caja']) ? (int)$_POST['grabar_caja'] : -1;
+    
     if ($usuario_id != ID_CAJA) {
         $res_usuario = mysqli_query($conexion, "SELECT apellido FROM usuarios WHERE id = $usuario_id LIMIT 1");
         $row_usuario = mysqli_fetch_assoc($res_usuario);
@@ -57,8 +59,17 @@ if (isset($_POST['id'])) {
         $compro_es_anticipo = ($compro === 'ANTICIPO');
         $concepto_es_cobro = (stripos($concepto, 'COBRO') === 0);
 
-        // No grabar en Caja si es SUELDO/EXTRAS, TRANSFERENCIA, ANTICIPO o COBRO (para cualquier usuario) o si es Consorcio sin BOLETA/EFVO
-        if (!$compro_es_sueldo && !$compro_es_transferencia && !$compro_es_anticipo && !$concepto_es_cobro && (!$es_consorcio || $compro_es_efvo_boleta)) {
+        $debe_grabar = false;
+        if ($grabar_caja_param === 1) {
+            $debe_grabar = true;
+        } elseif ($grabar_caja_param === 0) {
+            $debe_grabar = false;
+        } else {
+            // Lógica anterior (compatibilidad)
+            $debe_grabar = (!$compro_es_sueldo && !$compro_es_transferencia && !$compro_es_anticipo && !$concepto_es_cobro && (!$es_consorcio || $compro_es_efvo_boleta));
+        }
+
+        if ($debe_grabar) {
             $concepto_caja = $nom_usuario ? ($nom_usuario . ' - ' . $concepto) : $concepto;
             $concepto_caja = mysqli_real_escape_string($conexion, $concepto_caja);
             $sql_caja = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
@@ -67,7 +78,7 @@ if (isset($_POST['id'])) {
                 echo "Error al grabar en Caja: " . mysqli_error($conexion);
                 exit;
             }
-            $grabado_en_caja = ($es_consorcio && $compro_es_efvo_boleta);  // Para avisar al usuario
+            $grabado_en_caja = true;
         }
     }
 
