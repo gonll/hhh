@@ -95,7 +95,7 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th { background: #007bff; color: white; padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; }
         th:nth-child(1), td:nth-child(1) { width: 35%; }
-        th:nth-child(2), td:nth-child(2) { width: 45%; }
+        th:nth-child(2), td:nth-child(2) { width: 45%; padding-left: 5cm; }
         th:nth-child(3), td:nth-child(3) { width: 20%; min-width: 100px; }
         td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 13px; white-space: nowrap; }
         tr:nth-child(even) { background: #f9f9f9; }
@@ -112,7 +112,7 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
             table { font-size: 11px; table-layout: fixed; width: 100%; }
             th, td { padding: 4px 6px; }
             th:nth-child(1), td:nth-child(1) { width: 30%; }
-            th:nth-child(2), td:nth-child(2) { width: 45%; }
+            th:nth-child(2), td:nth-child(2) { width: 45%; padding-left: 4px; }
             th:nth-child(3), td:nth-child(3) { width: 25%; }
             .total-final { font-size: 13px; }
             .simbolo-pantalla { display: none !important; }
