@@ -77,6 +77,11 @@ foreach ($filas as $f) {
 }
 
 $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
+
+function truncar($s, $max = 30) {
+    $s = trim($s);
+    return mb_strlen($s) > $max ? mb_substr($s, 0, $max) . '…' : $s;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -149,7 +154,7 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
                 ?>
                 <tr>
                     <td><?= htmlspecialchars($f['consorcio']) ?></td>
-                    <td><?= htmlspecialchars($f['propiedad']) ?></td>
+                    <td title="<?= htmlspecialchars($f['propiedad']) ?>"><?= htmlspecialchars(truncar($f['propiedad'], 30)) ?></td>
                     <td><?= htmlspecialchars($f['nombre']) ?></td>
                     <td class="<?= $clase ?> saldo-cell"><span class="simbolo-pantalla">$ </span><?= $saldo_fmt ?></td>
                 </tr>
