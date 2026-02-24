@@ -76,6 +76,10 @@ foreach ($filas as $f) {
     $total_general += $f['saldo'];
 }
 
+// Saldo cuenta Caja Central (usuario_id = 1)
+$res_caja = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id = 1");
+$saldo_caja_central = ($res_caja && $r = mysqli_fetch_assoc($res_caja)) ? (float)$r['total'] : 0;
+
 $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
 ?>
 <!DOCTYPE html>
@@ -159,6 +163,9 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
         
         <div class="total-final">
             <span class="simbolo-pantalla">$ </span><?= number_format($total_general, 2, ',', '.') ?> — TOTAL GENERAL (sin Caja)
+        </div>
+        <div class="total-final" style="margin-top: 8px; background: #fff8e1; border-color: #ffc107;">
+            <span class="simbolo-pantalla">$ </span><?= number_format($saldo_caja_central, 2, ',', '.') ?> — Saldo cuenta Caja Central
         </div>
     </div>
 </body>
