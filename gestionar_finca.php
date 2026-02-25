@@ -841,8 +841,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         </form>
         
         
-        <h3 style="margin-top: 12px;">Listado de PDTs</h3>
-        <div id="grid1" class="wrap-tabla-pdt">
+        <div style="margin-top: 12px;">
+            <h3 style="margin: 0 0 8px 0;">Listado de PDTs</h3>
+            <div id="grid1" class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
             <thead>
                 <tr>
@@ -904,6 +905,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <?php endif; ?>
             </tbody>
         </table>
+            </div>
         </div>
         
         <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
