@@ -1126,9 +1126,26 @@ function actualizarCobroCajaVuelto() {
 function aceptarCobroCaja() {
     if (!uSel || uSel === 1) { alert("Seleccioná un usuario válido."); return; }
     if (!cobroCajaItem1 && !cobroCajaItem2) { alert("Seleccioná al menos un registro en la grilla."); return; }
+    var dinero = parseFloat((document.getElementById("cobroCaja_dinero") || {}).value) || 0;
+    if (dinero <= 0) { alert("Ingresá el monto de dinero recibido."); return; }
+    var totalItems = (cobroCajaItem1 ? cobroCajaItem1.monto : 0) + (cobroCajaItem2 ? cobroCajaItem2.monto : 0);
     var items = [];
-    if (cobroCajaItem1) items.push({ concepto: cobroCajaItem1.concepto, monto: cobroCajaItem1.monto });
-    if (cobroCajaItem2) items.push({ concepto: cobroCajaItem2.concepto, monto: cobroCajaItem2.monto });
+    if (dinero < totalItems) {
+        if (!cobroCajaItem2) {
+            items.push({ concepto: "PAGO A CUENTA", monto: dinero });
+        } else {
+            var m1 = cobroCajaItem1.monto;
+            if (dinero >= m1) {
+                items.push({ concepto: cobroCajaItem1.concepto, monto: m1 });
+                items.push({ concepto: "PAGO A CUENTA", monto: dinero - m1 });
+            } else {
+                items.push({ concepto: cobroCajaItem1.concepto, monto: dinero });
+            }
+        }
+    } else {
+        if (cobroCajaItem1) items.push({ concepto: cobroCajaItem1.concepto, monto: cobroCajaItem1.monto });
+        if (cobroCajaItem2) items.push({ concepto: cobroCajaItem2.concepto, monto: cobroCajaItem2.monto });
+    }
     var fechaEl = document.getElementById("ins_fecha");
     var fechaVal = fechaEl ? fechaEl.value.trim() : "";
     if (!fechaVal) {
@@ -1143,9 +1160,7 @@ function aceptarCobroCaja() {
         fechaISO = a + "-" + m + "-" + d;
     }
     if (!fechaISO) fechaISO = new Date().toISOString().slice(0, 10);
-    var dinero = parseFloat((document.getElementById("cobroCaja_dinero") || {}).value) || 0;
-    var total = (cobroCajaItem1 ? cobroCajaItem1.monto : 0) + (cobroCajaItem2 ? cobroCajaItem2.monto : 0);
-    var vuelto = dinero - total;
+    var vuelto = dinero - totalItems;
     var chkDejar = document.getElementById("cobroCaja_dejarCuenta");
     var fd = new FormData();
     fd.append("usuario_id", uSel);
