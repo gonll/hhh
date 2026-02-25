@@ -421,8 +421,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .form-row .form-group.checkbox-group { flex: 0 0 auto; display: flex; align-items: flex-end; padding-bottom: 0; }
         /* Campos compactos: tipo trabajo, fecha, cantidad - mitad de ancho */
         .form-row .form-group.form-group-compact { flex: 0 0 auto; max-width: 110px; min-width: 80px; }
-        /* Observaciones: expandir ancho, textarea a la altura de Cantidad */
-        .form-group-observaciones { flex: 1 1 200px; min-width: 150px; align-self: flex-end; display: flex; flex-direction: column; justify-content: flex-end; }
+        /* Observaciones: expandir ancho hasta el botón Guardar */
+        .form-group-observaciones { flex: 1 1 0; min-width: 300px; align-self: flex-end; display: flex; flex-direction: column; justify-content: flex-end; }
         .form-group-observaciones textarea { width: 100%; font-size: 10px; padding: 4px 6px; height: 28px; min-height: 28px; resize: vertical; box-sizing: border-box; line-height: 1.2; }
         .form-row .form-group.form-group-compact select,
         .form-row .form-group.form-group-compact input { width: 100%; font-size: 10px; padding: 4px 6px; height: 28px; box-sizing: border-box; }
@@ -603,7 +603,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <div id="mensajeCC" class="mensaje <?= (strpos($mensaje, 'Error') !== false || strpos($mensaje, 'Falta dato') !== false) ? 'error' : 'ok' ?>">
                 <?= htmlspecialchars($mensaje) ?>
             </div>
-            <?php if (isset($_GET['cc']) && $_GET['cc'] === 'ok'): ?>
+            <?php if ((isset($_GET['cc']) && $_GET['cc'] === 'ok') || $mensaje === 'Parte diario de trabajo eliminado correctamente.'): ?>
             <script>
             (function(){ var m=document.getElementById('mensajeCC'); if(m) setTimeout(function(){ m.style.display='none'; }, 2000); })();
             </script>
@@ -806,9 +806,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <textarea name="observaciones" id="observaciones" rows="1" tabindex="4" style="resize: vertical; min-height: 28px;" onkeydown="if((event||window.event).key==='Enter'&&!(event||window.event).shiftKey){(event||window.event).preventDefault();var g=document.getElementById('btnGuardar');if(g)g.focus();}"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
                 </div>
                 
-                <div class="form-group" style="flex: 0 0 auto; flex-shrink: 0; align-self: flex-end; margin-left: auto; padding-left: 4cm;">
+                <div class="form-group" style="flex: 0 0 auto; flex-shrink: 0; align-self: flex-end; margin-left: auto; padding-left: 2cm;">
                     <label>&nbsp;</label>
-                    <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary" tabindex="5">Guardar</button>
+                    <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary" tabindex="5" style="min-width: 140px; padding: 6px 24px;">Guardar</button>
                 </div>
                 
                 <div class="form-group" id="gasoilGroup" style="display: none;">
@@ -840,12 +840,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             </div>
         </form>
         
-        <?php if ($mostrar_vista_completa): ?>
-        <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline; margin-right:10px;" onsubmit="return confirm('¿Eliminar TODOS los registros PDT? Esta acción no se puede deshacer.');">
-            <input type="hidden" name="eliminar_todos" value="1">
-            <button type="submit" class="btn btn-danger" style="font-size: 11px; padding: 5px 10px;">Eliminar todos los PDT</button>
-        </form>
-        <?php endif; ?>
         
         <h3 style="margin-top: 12px;">Listado de PDTs</h3>
         <div id="grid1" class="wrap-tabla-pdt">
