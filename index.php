@@ -76,7 +76,7 @@ if ($nivelAcceso === 3) {
 
         /* Botón Word - Posicionado a la izquierda del reloj */
         .btn-word-recibo { 
-            position: absolute; top: 15px; right: 180px; 
+            position: absolute; top: 15px; right: calc(150px - 2cm); 
             background: #007bff; color: white; border: none; padding: 5px 10px; 
             border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; 
             display: none; z-index: 100; 
