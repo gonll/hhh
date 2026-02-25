@@ -57,15 +57,16 @@ if (!mysqli_query($conexion, "UPDATE pdt SET en_cc = 1 WHERE usuario_id = $usuar
     exit;
 }
 
-// 2) Cargar en cuentas: un movimiento por horas tractor y otro por horas comunes (indicando valor/hora en concepto)
+// 2) Cargar en cuentas: un movimiento por horas tractor y otro por horas comunes (mismo criterio que registro individual)
+$comprobante = mysqli_real_escape_string($conexion, 'trabajo');
 if ($horas_tractor > 0 && $valor_hora_tractor > 0) {
     $monto_tractor = round($horas_tractor * $valor_hora_tractor, 2);
     $cant_tractor = number_format($horas_tractor, 2, ',', '.');
     $valor_h_t = number_format($valor_hora_tractor, 2, ',', '.');
-    $concepto_t = "Horas tractor $cant_tractor (valor hora \$ $valor_h_t)";
+    $concepto_t = "Trabajo: Horas tractos, Cantidad $cant_tractor, y valor $valor_h_t";
     $concepto_t = mysqli_real_escape_string($conexion, $concepto_t);
     $sql_t = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-              VALUES ($usuario_id, '$fecha_hoy', '$concepto_t', 'Trabajo', '$ref_esc', $monto_tractor)";
+              VALUES ($usuario_id, '$fecha_hoy', '$concepto_t', '$comprobante', '$ref_esc', $monto_tractor)";
     if (!mysqli_query($conexion, $sql_t)) {
         header('Location: ' . $redir . '?cc=error&msg=' . urlencode(mysqli_error($conexion)));
         exit;
@@ -75,15 +76,15 @@ if ($horas_comunes > 0 && $valor_hora_comun > 0) {
     $monto_comun = round($horas_comunes * $valor_hora_comun, 2);
     $cant_comun = number_format($horas_comunes, 2, ',', '.');
     $valor_h_c = number_format($valor_hora_comun, 2, ',', '.');
-    $concepto_c = "Horas comunes $cant_comun (valor hora \$ $valor_h_c)";
+    $concepto_c = "Trabajo: Horas Comunes, Cantidad $cant_comun, y valor $valor_h_c";
     $concepto_c = mysqli_real_escape_string($conexion, $concepto_c);
     $sql_c = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-              VALUES ($usuario_id, '$fecha_hoy', '$concepto_c', 'Trabajo', '$ref_esc', $monto_comun)";
+              VALUES ($usuario_id, '$fecha_hoy', '$concepto_c', '$comprobante', '$ref_esc', $monto_comun)";
     if (!mysqli_query($conexion, $sql_c)) {
         header('Location: ' . $redir . '?cc=error&msg=' . urlencode(mysqli_error($conexion)));
         exit;
     }
 }
 
-header('Location: ' . $redir . '?cc=ok');
+header('Location: ' . $redir . '?cc=ok&usuario=' . $usuario_id);
 exit;

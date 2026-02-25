@@ -89,6 +89,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['guardado']) && $_GET['g
         $preseleccionar_usuario_id = (int)$_GET['usuario'];
     }
 }
+// Redirect desde cargar_pdt_cc.php
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['cc'])) {
+    if ($_GET['cc'] === 'ok') $mensaje = 'Trabajos CC=NO cargados en cuenta corriente correctamente.';
+    elseif ($_GET['cc'] === 'sin_usuario') $mensaje = 'Seleccione un usuario.';
+    elseif ($_GET['cc'] === 'sin_datos' || $_GET['cc'] === 'sin_horas') $mensaje = 'No hay trabajos con CC=NO para cargar.';
+    elseif ($_GET['cc'] === 'sin_tabla_salarial') $mensaje = 'Falta configurar tabla salarial.';
+    elseif ($_GET['cc'] === 'error') $mensaje = 'Error: ' . ($_GET['msg'] ?? '');
+    if (!empty($_GET['usuario'])) $preseleccionar_usuario_id = (int)$_GET['usuario'];
+}
 
 // Procesar acciones
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -219,11 +228,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['cargar_cc'])) {
         $pdt_id = (int)$_POST['pdt_id'];
-        $sql = "UPDATE pdt SET en_cc = 1 WHERE id = $pdt_id";
-        if (mysqli_query($conexion, $sql)) {
-            $mensaje = 'PDT marcado como cargado en cuenta corriente.';
+        $res_pdt = mysqli_query($conexion, "SELECT usuario_id, tipo_horas, tractor, fecha, horas FROM pdt WHERE id = $pdt_id LIMIT 1");
+        if (!$res_pdt || !$pdt_row = mysqli_fetch_assoc($res_pdt)) {
+            $mensaje = 'PDT no encontrado.';
         } else {
-            $mensaje = 'Falta dato o corregir.';
+            $usuario_id = (int)$pdt_row['usuario_id'];
+            $tipo_horas = trim($pdt_row['tipo_horas'] ?? 'Horas Comunes');
+            $tractor = trim($pdt_row['tractor'] ?? '');
+            $fecha_pdt = $pdt_row['fecha'];
+            $horas = (float)($pdt_row['horas'] ?? 0);
+            $es_tractor = (stripos($tipo_horas, 'tractor') !== false);
+            $res_ts = mysqli_query($conexion, "SELECT valor_hora_comun, valor_hora_tractor FROM tabla_salarial ORDER BY id DESC LIMIT 1");
+            $precio = 0;
+            if ($res_ts && $ts = mysqli_fetch_assoc($res_ts)) {
+                $precio = $es_tractor ? (float)$ts['valor_hora_tractor'] : (float)$ts['valor_hora_comun'];
+            }
+            if ($precio <= 0) {
+                $mensaje = 'Configure la tabla salarial antes de cargar en CC.';
+            } elseif ($horas <= 0) {
+                $mensaje = 'El PDT no tiene horas válidas.';
+            } else {
+                $sql_up = "UPDATE pdt SET en_cc = 1 WHERE id = $pdt_id";
+                if (!mysqli_query($conexion, $sql_up)) {
+                    $mensaje = 'Error al actualizar PDT.';
+                } else {
+                    $tipo_trabajo = $es_tractor ? ('Horas tractos' . ($tractor ? ' ' . $tractor : '')) : 'Horas Comunes';
+                    $cantidad_str = number_format($horas, 2, ',', '.');
+                    $precio_str = number_format($precio, 2, ',', '.');
+                    $mes_anio = date('m/Y', strtotime($fecha_pdt));
+                    $concepto = 'Trabajo: ' . $tipo_trabajo . ', Cantidad ' . $cantidad_str . ', y valor ' . $precio_str;
+                    $concepto = mysqli_real_escape_string($conexion, $concepto);
+                    $comprobante = mysqli_real_escape_string($conexion, 'trabajo');
+                    $referencia = mysqli_real_escape_string($conexion, $mes_anio);
+                    $monto = round($horas * $precio, 2);
+                    $sql_cuenta = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+                                   VALUES ($usuario_id, '$fecha_pdt', '$concepto', '$comprobante', '$referencia', $monto)";
+                    if (mysqli_query($conexion, $sql_cuenta)) {
+                        $mensaje = 'PDT cargado en CC e ingreso registrado en cuenta.';
+                    } else {
+                        $mensaje = 'PDT marcado en CC pero error al cargar ingreso: ' . mysqli_error($conexion);
+                    }
+                }
+            }
         }
     } elseif (isset($_POST['editar'])) {
         $pdt_id = (int)$_POST['pdt_id'];
@@ -385,8 +431,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         input[type="text"], input[type="number"], input[type="date"], select, textarea {
             width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; font-size: 11px;
         }
-        .buscador-usuario { position: relative; }
-        #buscadorUsuario { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px; }
+        .buscador-usuario { position: relative; overflow: visible; }
+        .buscador-usuario input[type="text"] { padding-right: 36px; }
+        .buscador-usuario .ico-lupa { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #6c757d; font-size: 1rem; }
+        #buscadorUsuario { width: 100%; padding: 5px 36px 5px 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px; }
         #resultadosUsuario { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-top: none; max-height: 150px; overflow-y: auto; z-index: 1000; display: none; font-size: 11px; }
         #resultadosUsuario .usuario-item { padding: 6px; cursor: pointer; border-bottom: 1px solid #eee; }
         #resultadosUsuario .usuario-item:hover { background: #f0f0f0; }
@@ -449,12 +497,15 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         #tractor.tractor-mf { color: #c41e3a; font-weight: bold; }
         .checkbox-label { display: flex; align-items: center; margin-top: 0; padding-top: 15px; font-size: 11px; }
         input[type="checkbox"] { width: 15px; height: 15px; margin-right: 4px; }
-        .buscador-usuario-container { width: 25%; }
+        .buscador-usuario-container { width: 25%; overflow: visible; }
         .acciones-botones { display: inline-flex; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
         .acciones-botones form { display: inline-block; margin: 0; }
         .acciones-botones .btn { padding: 4px 8px; font-size: 10px; flex-shrink: 0; }
         textarea { font-size: 11px; padding: 5px; }
         #usuarioSeleccionado { font-size: 10px; padding: 3px 5px !important; }
+        .badge-horas-ccno { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .badge-horas-ccno.badge-comunes { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+        .badge-horas-ccno.badge-tractor { background: #d1ecf1; color: #0c5460; border: 1px solid #17a2b8; }
         
         /* Responsive */
         @media (max-width: 768px) {
@@ -549,9 +600,14 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         }
         ?>
         <?php if ($mensaje && $mensaje !== 'Parte guardado.'): ?>
-            <div class="mensaje <?= (strpos($mensaje, 'Error') !== false || strpos($mensaje, 'Falta dato') !== false) ? 'error' : 'ok' ?>">
+            <div id="mensajeCC" class="mensaje <?= (strpos($mensaje, 'Error') !== false || strpos($mensaje, 'Falta dato') !== false) ? 'error' : 'ok' ?>">
                 <?= htmlspecialchars($mensaje) ?>
             </div>
+            <?php if (isset($_GET['cc']) && $_GET['cc'] === 'ok'): ?>
+            <script>
+            (function(){ var m=document.getElementById('mensajeCC'); if(m) setTimeout(function(){ m.style.display='none'; }, 2000); })();
+            </script>
+            <?php endif; ?>
         <?php endif; ?>
         
         <?php
@@ -580,20 +636,30 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <?php endif; ?>
             
             <div style="display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 4px;">
-                <div class="form-group buscador-usuario-container">
+                <div class="form-group buscador-usuario-container" style="flex: 1 1 auto; min-width: 200px;">
                     <label>Personal *</label>
-                    <div class="buscador-usuario">
-                        <input type="text" id="buscadorUsuario" tabindex="-1" placeholder="Buscar..." autocomplete="off" value="<?= htmlspecialchars($nombre_personal_mostrar) ?>" oninput="if(window.buscarPersonalPdt)window.buscarPersonalPdt();" onkeyup="if(window.buscarPersonalPdt)window.buscarPersonalPdt();">
-                        <input type="hidden" name="usuario_id" id="usuario_id" value="<?= $pdt_edit ? $pdt_edit['usuario_id'] : ($preseleccionar_usuario_id ?? '') ?>" required>
-                        <div id="resultadosUsuario"></div>
-                        <div id="usuarioSeleccionado" style="margin-top: 5px; padding: 3px 5px; background: #e7f3ff; border-radius: 4px; font-size: 11px; <?= ($nombre_personal_mostrar !== '') ? '' : 'display: none;' ?>">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <div class="buscador-usuario" style="flex: 0 0 180px; min-width: 140px;">
+                            <input type="text" id="buscadorUsuario" tabindex="-1" placeholder="Buscar..." autocomplete="off" value="<?= htmlspecialchars($nombre_personal_mostrar) ?>" oninput="if(window.buscarPersonalPdt)window.buscarPersonalPdt();" onkeyup="if(window.buscarPersonalPdt)window.buscarPersonalPdt();">
+                            <span class="ico-lupa" aria-hidden="true">🔍</span>
+                            <input type="hidden" name="usuario_id" id="usuario_id" value="<?= $pdt_edit ? $pdt_edit['usuario_id'] : ($preseleccionar_usuario_id ?? '') ?>" required>
+                            <div id="resultadosUsuario"></div>
+                        </div>
+                        <div id="usuarioSeleccionado" style="padding: 3px 5px; background: #e7f3ff; border-radius: 4px; font-size: 11px; flex-shrink: 0; <?= ($nombre_personal_mostrar !== '') ? '' : 'display: none;' ?>">
                             <strong>Sel:</strong> <span id="nombreUsuarioSel"><?= htmlspecialchars($nombre_personal_mostrar) ?></span>
                         </div>
+                        <div id="etiquetasHorasCCNo" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"></div>
+                        <?php if ($mostrar_vista_completa): ?>
+                        <div id="btnCargarCCContainer" style="display: none; align-items: center; margin-left: auto;">
+                            <button type="button" id="btnCargarCC" class="btn btn-success" style="font-size: 10px; padding: 5px 8px; flex-shrink: 0; white-space: nowrap;" title="Cargar en cuenta corriente">Cargar en cuenta corriente trabajos CC=NO</button>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <script>
                 (function(){
                     var u = <?= json_encode(array_values($usuarios), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+                    var resumenCCNo = <?= json_encode($resumen_horas_cc_no, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?> || {};
                     var b = document.getElementById('buscadorUsuario');
                     var r = document.getElementById('resultadosUsuario');
                     var uid = document.getElementById('usuario_id');
@@ -603,7 +669,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     var minC = 2;
                     function buscar(){
                         var t = (b.value||'').toLowerCase().trim();
-                        if(t.length < minC){ r.style.display='none'; if(!t){ uid.value=''; if(divSel) divSel.style.display='none'; } return; }
+                        if(t.length < minC){ r.style.display='none'; r.innerHTML=''; if(!t){ uid.value=''; if(divSel) divSel.style.display='none'; actualizarResumenCCNo(''); filtrarGrillaPorUsuario(''); if(window.filtrarGridPorUsuarioPdt) window.filtrarGridPorUsuarioPdt(''); if(window.actualizarResumenHorasUsuarioPdt) window.actualizarResumenHorasUsuarioPdt(); } return; }
                         if(!u.length) return;
                         var list = [];
                         for(var i=0;i<u.length;i++){ var ap = (u[i].apellido||'').toLowerCase(); if(ap.indexOf(t)!==-1) list.push(u[i]); }
@@ -620,22 +686,71 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     window.buscarPersonalPdt = buscar;
                     b.oninput = buscar;
                     b.onkeyup = buscar;
-                    r.onclick = function(e){
-                        var el = e.target;
-                        if(!el || !el.getAttribute('data-id')) return;
-                        if(el.className && el.className.indexOf('usuario-item')===-1) return;
-                        var id = el.getAttribute('data-id');
-                        var nom = el.getAttribute('data-nombre')||'';
+                    b.onfocus = function(){ if((b.value||'').trim().length>=minC) buscar(); };
+                    function findItem(tgt, cont){ var n=(tgt&&tgt.nodeType===1)?tgt:(tgt?tgt.parentElement:null); while(n&&n!==cont){ if(n.classList&&n.classList.contains('usuario-item')) return n; n=n.parentElement||n.parentNode; } return null; }
+                    function filtrarGrillaPorUsuario(idStr){
+                        var filas = document.querySelectorAll('tr.fila-pdt');
+                        var id = (idStr||'').toString().trim();
+                        for(var i=0;i<filas.length;i++){ var tr=filas[i]; tr.style.display = (id==='' || (tr.getAttribute('data-usuario-id')||'')===id) ? '' : 'none'; }
+                    }
+                    function actualizarResumenCCNo(idStr){
+                        var cont = document.getElementById('etiquetasHorasCCNo');
+                        var btnCont = document.getElementById('btnCargarCCContainer');
+                        var btnCC = document.getElementById('btnCargarCC');
+                        if(!cont) return;
+                        var id = (idStr||'').toString().trim();
+                        if(!id){ cont.innerHTML=''; cont.style.display='none'; if(btnCont) btnCont.style.display='none'; if(btnCC) btnCC.disabled=true; return; }
+                        var d = resumenCCNo[id] || {};
+                        var hc = parseFloat(d.horas_comunes)||0, ht = parseFloat(d.horas_tractor)||0;
+                        var html = '';
+                        if(hc>0) html += '<span class="badge-horas-ccno badge-comunes">Horas Comunes: '+hc+' h (CC=NO)</span>';
+                        if(ht>0) html += '<span class="badge-horas-ccno badge-tractor">Horas tractos: '+ht+' h (CC=NO)</span>';
+                        cont.innerHTML = html;
+                        var tieneCCNo = (hc>0||ht>0);
+                        cont.style.display = tieneCCNo ? 'flex' : 'none';
+                        if(btnCont) btnCont.style.display = (id && tieneCCNo) ? 'flex' : 'none';
+                        if(btnCC) btnCC.disabled = !(id && tieneCCNo);
+                    }
+                    function onSelect(id, nom){
                         uid.value = id;
                         b.value = nom;
                         if(nomSel) nomSel.textContent = nom;
                         if(divSel) divSel.style.display = 'block';
                         r.style.display = 'none';
+                        filtrarGrillaPorUsuario(id);
+                        actualizarResumenCCNo(id);
+                        if(window.filtrarGridPorUsuarioPdt) window.filtrarGridPorUsuarioPdt(id);
+                        if(window.actualizarResumenHorasUsuarioPdt) window.actualizarResumenHorasUsuarioPdt();
+                    }
+                    r.onclick = function(e){
+                        var el = findItem(e.target, r);
+                        if(!el||!el.getAttribute('data-id')) return;
+                        onSelect(el.getAttribute('data-id'), el.getAttribute('data-nombre')||'');
                     };
                     r.ontouchend = function(e){
-                        var el = e.target;
-                        if(el && el.getAttribute('data-id')){ e.preventDefault(); var id=el.getAttribute('data-id'); var nom=el.getAttribute('data-nombre')||''; uid.value=id; b.value=nom; if(nomSel) nomSel.textContent=nom; if(divSel) divSel.style.display='block'; r.style.display='none'; }
+                        var el = findItem(e.target, r);
+                        if(el&&el.getAttribute('data-id')){ e.preventDefault(); onSelect(el.getAttribute('data-id'), el.getAttribute('data-nombre')||''); }
                     };
+                    var btnCC = document.getElementById('btnCargarCC');
+                    if(btnCC){
+                        btnCC.onclick = function(){
+                            var id = uid ? (uid.value||'').trim() : '';
+                            if(!id){ alert('Seleccione un usuario.'); return; }
+                            if(!confirm('¿Cargar en cuenta corriente los trabajos CC=NO de este usuario? Se generarán uno o dos movimientos (Horas Comunes / Horas tractos) con fecha de hoy.')) return;
+                            var f = document.createElement('form');
+                            f.method = 'POST';
+                            f.action = 'cargar_pdt_cc.php';
+                            f.style.display = 'none';
+                            var inp = document.createElement('input');
+                            inp.type = 'hidden';
+                            inp.name = 'usuario_id';
+                            inp.value = id;
+                            f.appendChild(inp);
+                            document.body.appendChild(f);
+                            f.submit();
+                        };
+                    }
+                    if(uid&&uid.value){ actualizarResumenCCNo(uid.value); }
                 })();
                 </script>
             </div>
@@ -695,12 +810,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <label>&nbsp;</label>
                     <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary" tabindex="5">Guardar</button>
                 </div>
-                <?php if ($mostrar_vista_completa): ?>
-                <div class="form-group" style="flex: 0 0 auto; flex-shrink: 0; align-self: flex-end; display: flex; align-items: center; gap: 8px;">
-                    <span id="resumenHorasUsuario" style="font-size: 10px; color: #555; padding: 4px 6px; background: #f0f0f0; border-radius: 4px; min-height: 24px; display: inline-flex; align-items: center; white-space: nowrap;">Seleccione un usuario para ver el resumen (horas con CC=NO)</span>
-                    <button type="button" id="btnCargarCC" class="btn btn-success" style="font-size: 10px; padding: 5px 8px; flex-shrink: 0;" disabled title="Seleccione un usuario">Cargar en cuenta corriente</button>
-                </div>
-                <?php endif; ?>
                 
                 <div class="form-group" id="gasoilGroup" style="display: none;">
                     <label>Cant Gasoil *</label>
@@ -982,53 +1091,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
                 <?php endif; ?>
     
-                // Buscador de usuarios (mínimo 2 caracteres)
-                var minCaracteresBusqueda = 2;
-                function ejecutarBusquedaUsuarios() {
-                    if (!buscador || !resultados || !usuarioIdInput || !Array.isArray(usuarios)) return;
-                    const termino = buscador.value.toLowerCase().trim();
-                    if (termino.length < minCaracteresBusqueda) {
-                        resultados.style.display = 'none';
-                        if (termino === '') {
-                            usuarioIdInput.value = '';
-                            if (usuarioSeleccionado) usuarioSeleccionado.style.display = 'none';
-                            filtrarGridPorUsuario('');
-                            actualizarResumenHorasUsuario();
-                        }
-                        return;
-                    }
-                    const filtrados = usuarios.filter(u =>
-                        u.apellido && u.apellido.toLowerCase().includes(termino)
-                    );
-                    if (filtrados.length === 0) {
-                        resultados.innerHTML = '<div class="usuario-item">No se encontraron usuarios</div>';
-                        resultados.style.display = 'block';
-                        return;
-                    }
-                    resultados.innerHTML = filtrados.slice(0, 10).map(u =>
-                        '<div class="usuario-item" data-id="' + u.id + '" data-nombre="' + (u.apellido || '') + '">' + (u.apellido || '') + '</div>'
-                    ).join('');
-                    resultados.style.display = 'block';
-                }
-                // Solo agregar listeners si los elementos existen
-                // Ejecutar de forma independiente para asegurar que siempre funcione
-                (function() {
-                    try {
-                        if (buscador && resultados && Array.isArray(usuarios) && usuarios.length > 0) {
-                            buscador.addEventListener('input', ejecutarBusquedaUsuarios);
-                            buscador.addEventListener('keyup', ejecutarBusquedaUsuarios);
-                        } else {
-                            console.warn('Buscador no inicializado:', {
-                                buscador: !!buscador,
-                                resultados: !!resultados,
-                                usuarios: Array.isArray(usuarios) ? usuarios.length : 'no es array'
-                            });
-                        }
-                    } catch (err) {
-                        console.error('Error al inicializar buscador:', err);
-                    }
-                })();
-    
                 function filtrarGridPorUsuario(usuarioId) {
                     const filas = document.querySelectorAll('tr.fila-pdt');
                     const id = usuarioId ? String(usuarioId).trim() : '';
@@ -1036,79 +1098,56 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         tr.style.display = (id === '' || tr.getAttribute('data-usuario-id') === id) ? '' : 'none';
                     });
                 }
+                window.filtrarGridPorUsuarioPdt = filtrarGridPorUsuario;
 
-                function actualizarResumenHorasUsuario() {
-                    if (!usuarioIdInput) return;
-                    var id = usuarioIdInput.value;
-                    var el = document.getElementById('resumenHorasUsuario');
+                function actualizarResumenHorasUsuario(idOverride) {
+                    var id = (idOverride !== undefined && idOverride !== null) ? String(idOverride).trim() : (usuarioIdInput ? String(usuarioIdInput.value || '').trim() : '');
+                    var contBtnCC = document.getElementById('btnCargarCCContainer');
                     var btnCC = document.getElementById('btnCargarCC');
-                    if (!el) return;
+                    if (contBtnCC) contBtnCC.style.display = id ? 'flex' : 'none';
                     if (btnCC) btnCC.disabled = !id;
-                    if (!id) {
-                        el.textContent = 'Seleccione un usuario para ver el resumen (horas con CC=NO)';
-                        return;
+                    var contEtiquetas = document.getElementById('etiquetasHorasCCNo');
+                    if (contEtiquetas) {
+                        if (!id) {
+                            contEtiquetas.innerHTML = '';
+                            contEtiquetas.style.display = 'none';
+                            return;
+                        }
+                        var datos = resumenHorasCCNo[id] || {};
+                        var hc = parseFloat(datos.horas_comunes) || 0;
+                        var ht = parseFloat(datos.horas_tractor) || 0;
+                        var html = '';
+                        if (hc > 0) html += '<span class="badge-horas-ccno badge-comunes">Comunes: ' + hc + ' h</span>';
+                        if (ht > 0) html += '<span class="badge-horas-ccno badge-tractor">Tractor: ' + ht + ' h</span>';
+                        contEtiquetas.innerHTML = html;
+                        contEtiquetas.style.display = (hc > 0 || ht > 0) ? 'flex' : 'none';
                     }
-                    var r = resumenHorasCCNo[id] || { horas_comunes: 0, horas_tractor: 0 };
-                    var fmt = function(n) { return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); };
-                    el.textContent = 'Horas Comunes (CC=NO): ' + fmt(r.horas_comunes) + ' | Horas tractor (CC=NO): ' + fmt(r.horas_tractor);
                 }
+                window.actualizarResumenHorasUsuarioPdt = actualizarResumenHorasUsuario;
 
-                function seleccionarUsuarioDesdeItem(item) {
-                    if (!item || !item.classList.contains('usuario-item')) return;
-                    if (!usuarioIdInput || !buscador || !nombreUsuarioSel || !usuarioSeleccionado || !resultados) return;
-                    const id = item.getAttribute('data-id');
-                    const nombre = item.getAttribute('data-nombre');
-                    if (!id) return;
-                    usuarioIdInput.value = id;
-                    buscador.value = nombre;
-                    nombreUsuarioSel.textContent = nombre;
-                    usuarioSeleccionado.style.display = 'block';
-                    resultados.style.display = 'none';
-                    filtrarGridPorUsuario(id);
-                    actualizarResumenHorasUsuario();
-                }
-                if (resultados) {
-                    resultados.addEventListener('click', function(e) {
-                        if (e.target.classList.contains('usuario-item')) {
-                            e.preventDefault();
-                            seleccionarUsuarioDesdeItem(e.target);
-                        }
-                    });
-                    resultados.addEventListener('touchend', function(e) {
-                        var item = e.target.closest && e.target.closest('.usuario-item') || (e.target.classList && e.target.classList.contains('usuario-item') ? e.target : null);
-                        if (item) {
-                            e.preventDefault();
-                            seleccionarUsuarioDesdeItem(item);
-                        }
-                    }, { passive: false });
-                }
+                // Botón Cargar en cuenta corriente: manejado en el script inline del buscador Personal
 
-                // Botón Cargar en cuenta corriente: enviar POST a cargar_pdt_cc.php (no se puede anidar otro form)
-                var btnCargarCC = document.getElementById('btnCargarCC');
-                if (btnCargarCC && usuarioIdInput) {
-                    btnCargarCC.addEventListener('click', function() {
-                        var uid = usuarioIdInput.value;
-                        if (!uid) return;
-                        if (!confirm('¿Cargar en cuenta corriente las horas con CC=NO de este usuario? Se generarán los movimientos con fecha de hoy y comprobante Trabajo.')) return;
-                        var f = document.createElement('form');
-                        f.method = 'POST';
-                        f.action = 'cargar_pdt_cc.php';
-                        f.style.display = 'none';
-                        var inp = document.createElement('input');
-                        inp.type = 'hidden';
-                        inp.name = 'usuario_id';
-                        inp.value = uid;
-                        f.appendChild(inp);
-                        document.body.appendChild(f);
-                        f.submit();
-                    });
-                }
-
-                // Al cargar, si ya hay un usuario seleccionado (ej. edición o tras guardar), filtrar la grid y actualizar resumen
+                // Al cargar: si hay usuario preseleccionado (ej. tras guardar), filtrar y mostrar resumen
                 if (usuarioIdInput && usuarioIdInput.value) {
                     filtrarGridPorUsuario(usuarioIdInput.value);
                     actualizarResumenHorasUsuario();
                 }
+
+                // Clic en fila de la grilla: seleccionar ese usuario en el buscador Personal
+                document.addEventListener('click', function(e) {
+                    var tr = e.target.closest('tr.fila-pdt');
+                    if (!tr || e.target.closest('form') || e.target.closest('button') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+                    var uid = tr.getAttribute('data-usuario-id');
+                    if (!uid || !usuarioIdInput) return;
+                    var tdPersonal = tr.querySelector('.col-personal');
+                    var nombre = tdPersonal ? (tdPersonal.textContent || tdPersonal.getAttribute('title') || '').trim() : '';
+                    usuarioIdInput.value = uid;
+                    if (buscador) buscador.value = nombre;
+                    if (nombreUsuarioSel) nombreUsuarioSel.textContent = nombre;
+                    if (usuarioSeleccionado) usuarioSeleccionado.style.display = 'block';
+                    filtrarGridPorUsuario(uid);
+                    actualizarResumenHorasUsuario();
+                });
 
                 // Modal observaciones: clic en fila con observaciones (no en botones)
                 var modalObs = document.getElementById('modalObservaciones');
@@ -1338,6 +1377,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 if (enfocarTipoTrabajo && tractorSelect) {
                     tractorSelect.focus();
                 }
+
+                // Mostrar etiquetas CC=NO del usuario seleccionado (si hay)
+                actualizarResumenHorasUsuario();
 
                 // Debug: confirmar que el código se ejecutó
                 console.log('Gestión finca inicializada correctamente');
