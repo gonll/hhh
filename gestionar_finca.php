@@ -298,17 +298,16 @@ if (!empty($_SESSION['pdt_ultimo_tractor'])) {
     }
 }
 
-// Obtener lista de PDTs (vista completa: 200 registros; móvil nivel 0: solo 3)
-// SELECT explícito para compatibilidad con servidores que puedan tener columnas en distinto orden
+// Obtener lista de PDTs (siempre 200 registros, igual en servidor y PC)
+// IMPORTANTE: subir esta versión al servidor para que muestre todos los registros
 $lista_pdt = [];
-$sql_lista = $mostrar_vista_completa
-    ? "SELECT p.id, p.usuario_id, p.tipo_horas, p.tractor, p.fecha, p.horas, p.cant_gasoil, p.cambio_aceite, p.en_cc, p.observaciones, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 200"
-    : "SELECT p.id, p.usuario_id, p.tipo_horas, p.tractor, p.fecha, p.horas, p.cant_gasoil, p.cambio_aceite, p.en_cc, p.observaciones, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 3";
+$sql_lista = "SELECT p.id, p.usuario_id, p.tipo_horas, p.tractor, p.fecha, p.horas, p.cant_gasoil, p.cambio_aceite, p.en_cc, p.observaciones, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 200";
 $res_lista = mysqli_query($conexion, $sql_lista);
 if ($res_lista) {
     while ($row = mysqli_fetch_assoc($res_lista)) {
-        // Normalizar claves a minúsculas para compatibilidad con servidores que devuelven mayúsculas
-        $lista_pdt[] = array_combine(array_map('strtolower', array_keys($row)), array_values($row));
+        $keys = array_map('strtolower', array_keys($row));
+        $combined = @array_combine($keys, array_values($row));
+        $lista_pdt[] = (is_array($combined) ? $combined : $row);
     }
 }
 
@@ -933,6 +932,15 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     </div>
     
     <script>
+    // Polyfill Element.prototype.closest para navegadores antiguos (IE11)
+    if (!Element.prototype.closest) {
+        Element.prototype.closest = function(s) {
+            var el = this; do { if (el.matches && el.matches(s)) return el; el = el.parentElement || el.parentNode; } while (el && el.nodeType === 1); return null;
+        };
+    }
+    if (!Element.prototype.matches) {
+        Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector || function(s) { var m = (this.document || this.ownerDocument).querySelectorAll(s), i = m.length; while (--i >= 0 && m.item(i) !== this) {} return i > -1; };
+    }
     // ESC: volver al formulario principal. Funciona en servidor y local.
     (function() {
         var urlVolver = '<?= $desde_cel ? ($es_nivel_0 ? "logout.php" : "gestionar_finca.php") : "index.php" ?>';
@@ -1131,6 +1139,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
 
                 // Clic en fila de la grilla: seleccionar ese usuario en el buscador Personal
                 document.addEventListener('click', function(e) {
+                    if (!e.target || !e.target.closest) return;
                     var tr = e.target.closest('tr.fila-pdt');
                     if (!tr || e.target.closest('form') || e.target.closest('button') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
                     var uid = tr.getAttribute('data-usuario-id');
@@ -1151,27 +1160,30 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 var modalObsCerrar = document.getElementById('modalObservacionesCerrar');
                 if (modalObs && modalObsTexto) {
                     document.addEventListener('click', function(e) {
-                        var tbody = e.target.closest('.wrap-tabla-pdt tbody');
+                        var tgt = e && e.target;
+                        if (!tgt || !tgt.closest) return;
+                        var tbody = tgt.closest('.wrap-tabla-pdt tbody');
                         if (!tbody) return;
-                            var tr = e.target.closest('tr.fila-con-observaciones');
-                            if (!tr) return;
-                            if (e.target.closest('form') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
-                            var span = tr.querySelector('.obs-text-hidden');
-                            if (!span) return;
-                            modalObsTexto.textContent = span.textContent;
-                            modalObs.classList.add('activo');
-                        });
-                    }
+                        var tr = tgt.closest('tr.fila-con-observaciones');
+                        if (!tr) return;
+                        if (tgt.closest('form') || tgt.tagName === 'BUTTON' || tgt.tagName === 'INPUT') return;
+                        var span = tr.querySelector('.obs-text-hidden');
+                        if (!span) return;
+                        modalObsTexto.textContent = span.textContent;
+                        modalObs.classList.add('activo');
+                    });
                     function cerrarModalObs() { if (modalObs) modalObs.classList.remove('activo'); }
                     if (modalObsCerrar) modalObsCerrar.addEventListener('click', cerrarModalObs);
                     if (modalObs) {
-                        modalObs.addEventListener('click', function(e) { if (e.target === modalObs) cerrarModalObs(); });
+                        modalObs.addEventListener('click', function(e) { if (e && e.target === modalObs) cerrarModalObs(); });
                     }
                 }
 
                 // Ocultar resultados al hacer clic fuera
                 document.addEventListener('click', function(e) {
-                    if (buscador && resultados && !buscador.contains(e.target) && !resultados.contains(e.target)) {
+                    var tgt = e && e.target;
+                    if (!buscador || !resultados || !tgt) return;
+                    if (!buscador.contains(tgt) && !resultados.contains(tgt)) {
                         resultados.style.display = 'none';
                     }
                 });
@@ -1184,6 +1196,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 const cantGasoilInput = document.getElementById('cant_gasoil');
                 const cambioAceiteInput = document.getElementById('cambio_aceite');
                 const observacionesTextarea = document.querySelector('textarea[name="observaciones"]');
+                const btnGuardar = document.getElementById('btnGuardar');
                 
                 // Cargar último elegido en Horas Comunes / Tractor (si no estamos editando)
                 <?php if (!$pdt_edit): ?>
@@ -1353,8 +1366,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
                 
                 // Trigger inicial para cargar valores guardados y mostrar campos según tipo
-                if (typeof manejarCambioTipoHoras === 'function') {
-                    manejarCambioTipoHoras();
+                if (typeof manejarCambioTractor === 'function') {
+                    manejarCambioTractor();
                 }
                 // Aplicar color del tractor seleccionado al cargar
                 if (tractorSelect) {
