@@ -117,9 +117,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$check || mysqli_num_rows($check) === 0) {
                 $mensaje = 'Falta dato o corregir.';
             } else {
-        $tipo_horas = mysqli_real_escape_string($conexion, $_POST['tipo_horas'] ?? 'Horas Comunes');
-        $tractor = ($tipo_horas === 'Horas tractos' && !empty($_POST['tractor']))
-            ? mysqli_real_escape_string($conexion, $_POST['tractor']) : NULL;
+        $tractor_post = trim($_POST['tractor'] ?? '');
+        $tipo_horas = ($tractor_post !== '' && $tractor_post !== 'Horas Comunes') ? 'Horas tractos' : 'Horas Comunes';
+        $tractor = ($tipo_horas === 'Horas tractos') ? mysqli_real_escape_string($conexion, $tractor_post) : NULL;
         $fecha = trim($_POST['fecha'] ?? '');
         $horas = isset($_POST['horas']) && $_POST['horas'] !== '' ? (int)$_POST['horas'] : null;
         $cant_gasoil = ($tipo_horas === 'Horas tractos' && isset($_POST['cant_gasoil']) && $_POST['cant_gasoil'] !== '')
@@ -175,6 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $mensaje = 'Parte guardado.';
                 $preseleccionar_usuario_id = $usuario_id;
+                $_SESSION['pdt_ultimo_tractor'] = $tipo_horas === 'Horas tractos' ? $tractor_post : 'Horas Comunes';
             } else {
                 $mensaje = 'Falta dato o corregir.';
             }
@@ -192,6 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $mensaje = 'Parte guardado.';
                 $preseleccionar_usuario_id = $usuario_id;
+                $_SESSION['pdt_ultimo_tractor'] = $tipo_horas === 'Horas tractos' ? $tractor_post : 'Horas Comunes';
             } else {
                 $mensaje = 'Falta dato o corregir.';
             }
@@ -238,6 +240,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         header('Location: ' . $redir);
         exit;
+    }
+}
+
+// Valor por defecto para Horas Comunes / Tractor (último elegido)
+$tractor_default = 'Horas Comunes';
+if (!empty($_SESSION['pdt_ultimo_tractor'])) {
+    $tr = $_SESSION['pdt_ultimo_tractor'];
+    if ($tr === 'Horas Comunes' || in_array($tr, ['John Deere 200 hp', 'John Deere 110 hp', 'New Holland TM150', 'New Holland 7630', 'Massey Ferguson 1165'])) {
+        $tractor_default = $tr;
     }
 }
 
@@ -359,17 +370,18 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .cartel-parte-guardado { background: #c9a0a0; color: #4a3030; font-size: 14px; font-weight: bold; padding: 8px 14px; border-radius: 6px; border: 1px solid #b08080; }
         .mensaje.error { background: #f8d7da; color: #721c24; }
         .form-group { margin-bottom: 11px; }
-        .form-row { display: flex; gap: 8px; margin-bottom: 11px; }
+        .form-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: nowrap; overflow-x: auto; overflow-y: visible; align-items: flex-end; }
         .form-row .form-group { flex: 1; margin-bottom: 0; }
         .form-row .form-group.checkbox-group { flex: 0 0 auto; display: flex; align-items: flex-end; padding-bottom: 0; }
         /* Campos compactos: tipo trabajo, fecha, cantidad - mitad de ancho */
-        .form-row .form-group.form-group-compact { flex: 0 0 auto; max-width: 110px; min-width: 90px; }
-        /* Observaciones: misma línea que cantidad, 80% ancho */
-        .form-group-observaciones { flex: 1 1 auto; min-width: 120px; max-width: 80%; }
-        .form-group-observaciones textarea { width: 100%; font-size: 10px; padding: 4px 6px; min-height: 28px; resize: vertical; box-sizing: border-box; }
+        .form-row .form-group.form-group-compact { flex: 0 0 auto; max-width: 110px; min-width: 80px; }
+        /* Observaciones: expandir ancho, textarea a la altura de Cantidad */
+        .form-group-observaciones { flex: 1 1 200px; min-width: 150px; align-self: flex-end; display: flex; flex-direction: column; justify-content: flex-end; }
+        .form-group-observaciones textarea { width: 100%; font-size: 10px; padding: 4px 6px; height: 28px; min-height: 28px; resize: vertical; box-sizing: border-box; line-height: 1.2; }
         .form-row .form-group.form-group-compact select,
-        .form-row .form-group.form-group-compact input { width: 100%; font-size: 10px; padding: 4px 6px; }
+        .form-row .form-group.form-group-compact input { width: 100%; font-size: 10px; padding: 4px 6px; height: 28px; box-sizing: border-box; }
         label { display: block; margin-bottom: 4px; font-weight: bold; color: #333; font-size: 10px; }
+        .form-row .form-group > label { min-height: 18px; }
         input[type="text"], input[type="number"], input[type="date"], select, textarea {
             width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; font-size: 11px;
         }
@@ -426,7 +438,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 220px; white-space: nowrap; overflow: visible; text-align: right !important; }
         .tabla-listado-pdt td.col-acciones .acciones-botones { margin-left: auto; display: block; width: fit-content; }
         .icono-tractor { width: 15px; height: 15px; display: inline-block; margin-right: 3px; vertical-align: middle; }
-        #tractorGroup { display: none; }
+        #tractorGroup { min-width: 150px; flex: 0 0 auto; }
+        .form-row { flex-wrap: wrap; }
         /* Iconos tractores por marca: John Deere verde, New Holland azul, Massey Ferguson rojo */
         #tractor option.tractor-jd { color: #367c2b; font-weight: bold; }
         #tractor option.tractor-nh { color: #0066b3; font-weight: bold; }
@@ -489,10 +502,17 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <?php if ($desde_cel && !$es_nivel_0 && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 2): ?>
             <a href="gestionar_finca.php?modo=completo" style="font-size: 12px; color: #28a745; font-weight: bold; margin-left: 8px;">Ver gestión completa (modo PC)</a>
             <?php endif; ?>
-            <div style="text-align: right; flex-shrink: 0;">
-                <div style="margin-bottom: 6px;">
-                    <button type="button" id="btnCargaGasoilSisterna" class="btn btn-secondary" style="font-size: 12px;" onclick="var f=document.getElementById('formCargaGasoilSisterna');if(f){f.style.display=(f.style.display==='block')?'none':'block';}" ontouchend="var f=document.getElementById('formCargaGasoilSisterna');if(f){f.style.display=(f.style.display==='block')?'none':'block';}event.preventDefault();">Carga gasoil en cisterna</button>
-                </div>
+            <div style="text-align: right; flex-shrink: 0; display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+                <?php if ($mostrar_vista_completa): ?>
+                <a href="gestionar_tabla_salarial.php" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">ABM Tabla salarial</a>
+                <span id="valoresSalarialesFinca" style="font-size: 11px; color: #333; padding: 4px 8px; background: #e8f4e8; border-radius: 4px; border: 1px solid #c8e6c9;">
+                    Hora común: $ <?= number_format($ultima_tabla_salarial['valor_hora_comun'], 2, ',', '.') ?> | Hora tractor: $ <?= number_format($ultima_tabla_salarial['valor_hora_tractor'], 2, ',', '.') ?>
+                </span>
+                <?php endif; ?>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button type="button" id="btnCargaGasoilSisterna" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="var f=document.getElementById('formCargaGasoilSisterna');if(f){f.style.display=(f.style.display==='block')?'none':'block';}" ontouchend="var f=document.getElementById('formCargaGasoilSisterna');if(f){f.style.display=(f.style.display==='block')?'none':'block';}event.preventDefault();">Carga gasoil en cisterna</button>
+                    </div>
                 <div style="font-size: 13px;">
                     <strong>Gestión de gasoil</strong><br>
                     Gasoil en cisterna: <span id="gasoilEnSisternaVal"><?= number_format($gasoil_en_sisterna, 2, ',', '') ?></span> L
@@ -559,7 +579,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <input type="hidden" name="pdt_id" value="<?= $pdt_edit['id'] ?>">
             <?php endif; ?>
             
-            <div style="display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 11px;">
+            <div style="display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 4px;">
                 <div class="form-group buscador-usuario-container">
                     <label>Personal *</label>
                     <div class="buscador-usuario">
@@ -618,50 +638,33 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     };
                 })();
                 </script>
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 20px;">
-                    <?php if ($mostrar_vista_completa): ?>
-                    <a href="gestionar_tabla_salarial.php" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">ABM Tabla salarial</a>
-                    <span id="valoresSalarialesFinca" style="font-size: 11px; color: #333; padding: 4px 8px; background: #e8f4e8; border-radius: 4px; border: 1px solid #c8e6c9;">
-                        Hora común: $ <?= number_format($ultima_tabla_salarial['valor_hora_comun'], 2, ',', '.') ?> &nbsp;|&nbsp; Hora tractor: $ <?= number_format($ultima_tabla_salarial['valor_hora_tractor'], 2, ',', '.') ?>
-                    </span>
-                    <?php endif; ?>
-                </div>
             </div>
             
             <div class="form-row">
-                <div class="form-group form-group-compact">
-                    <label>Tipo de trabajo *</label>
-                    <select name="tipo_horas" id="tipo_horas" tabindex="1" required>
-                        <optgroup label="Horas tractos">
-                            <option value="Horas tractos" <?= ($pdt_edit && $pdt_edit['tipo_horas'] === 'Horas tractos') ? 'selected' : '' ?>>Horas tractos</option>
-                        </optgroup>
-                        <optgroup label="Horas Comunes">
-                            <option value="Horas Comunes" <?= ($pdt_edit && $pdt_edit['tipo_horas'] === 'Horas Comunes') ? 'selected' : (!isset($pdt_edit) ? 'selected' : '') ?>>Horas Comunes</option>
-                        </optgroup>
-                    </select>
-                </div>
-                
                 <div class="form-group" id="tractorGroup">
-                    <label>Tractor *</label>
-                    <select name="tractor" id="tractor" tabindex="-1">
+                    <label>Horas Comunes / Tractor *</label>
+                    <select name="tractor" id="tractor" tabindex="1" required>
+                        <optgroup label="Horas Comunes">
+                            <option value="Horas Comunes" <?= (($pdt_edit && ($pdt_edit['tipo_horas'] ?? '') === 'Horas Comunes') || (!$pdt_edit && $tractor_default === 'Horas Comunes')) ? 'selected' : '' ?>>Horas Comunes</option>
+                        </optgroup>
                         <optgroup label="John Deere">
-                            <option class="tractor-jd" value="John Deere 200 hp" <?= ($pdt_edit && $pdt_edit['tractor'] === 'John Deere 200 hp') ? 'selected' : '' ?>>
+                            <option class="tractor-jd" value="John Deere 200 hp" <?= (($pdt_edit && ($pdt_edit['tractor'] ?? '') === 'John Deere 200 hp') || (!$pdt_edit && $tractor_default === 'John Deere 200 hp')) ? 'selected' : '' ?>>
                                 🚜 John Deere 200 hp
                             </option>
-                            <option class="tractor-jd" value="John Deere 110 hp" <?= ($pdt_edit && $pdt_edit['tractor'] === 'John Deere 110 hp') ? 'selected' : '' ?>>
+                            <option class="tractor-jd" value="John Deere 110 hp" <?= (($pdt_edit && ($pdt_edit['tractor'] ?? '') === 'John Deere 110 hp') || (!$pdt_edit && $tractor_default === 'John Deere 110 hp')) ? 'selected' : '' ?>>
                                 🚜 John Deere 110 hp
                             </option>
                         </optgroup>
                         <optgroup label="New Holland">
-                            <option class="tractor-nh" value="New Holland TM150" <?= ($pdt_edit && $pdt_edit['tractor'] === 'New Holland TM150') ? 'selected' : '' ?>>
+                            <option class="tractor-nh" value="New Holland TM150" <?= (($pdt_edit && ($pdt_edit['tractor'] ?? '') === 'New Holland TM150') || (!$pdt_edit && $tractor_default === 'New Holland TM150')) ? 'selected' : '' ?>>
                                 🚜 New Holland TM150
                             </option>
-                            <option class="tractor-nh" value="New Holland 7630" <?= ($pdt_edit && $pdt_edit['tractor'] === 'New Holland 7630') ? 'selected' : '' ?>>
+                            <option class="tractor-nh" value="New Holland 7630" <?= (($pdt_edit && ($pdt_edit['tractor'] ?? '') === 'New Holland 7630') || (!$pdt_edit && $tractor_default === 'New Holland 7630')) ? 'selected' : '' ?>>
                                 🚜 New Holland 7630
                             </option>
                         </optgroup>
                         <optgroup label="Massey Ferguson">
-                            <option class="tractor-mf" value="Massey Ferguson 1165" <?= ($pdt_edit && $pdt_edit['tractor'] === 'Massey Ferguson 1165') ? 'selected' : '' ?>>
+                            <option class="tractor-mf" value="Massey Ferguson 1165" <?= (($pdt_edit && ($pdt_edit['tractor'] ?? '') === 'Massey Ferguson 1165') || (!$pdt_edit && $tractor_default === 'Massey Ferguson 1165')) ? 'selected' : '' ?>>
                                 🚜 Massey Ferguson 1165
                             </option>
                         </optgroup>
@@ -688,6 +691,17 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <textarea name="observaciones" id="observaciones" rows="1" tabindex="4" style="resize: vertical; min-height: 28px;" onkeydown="if((event||window.event).key==='Enter'&&!(event||window.event).shiftKey){(event||window.event).preventDefault();var g=document.getElementById('btnGuardar');if(g)g.focus();}"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
                 </div>
                 
+                <div class="form-group" style="flex: 0 0 auto; flex-shrink: 0; align-self: flex-end; margin-left: auto; padding-left: 4cm;">
+                    <label>&nbsp;</label>
+                    <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary" tabindex="5">Guardar</button>
+                </div>
+                <?php if ($mostrar_vista_completa): ?>
+                <div class="form-group" style="flex: 0 0 auto; flex-shrink: 0; align-self: flex-end; display: flex; align-items: center; gap: 8px;">
+                    <span id="resumenHorasUsuario" style="font-size: 10px; color: #555; padding: 4px 6px; background: #f0f0f0; border-radius: 4px; min-height: 24px; display: inline-flex; align-items: center; white-space: nowrap;">Seleccione un usuario para ver el resumen (horas con CC=NO)</span>
+                    <button type="button" id="btnCargarCC" class="btn btn-success" style="font-size: 10px; padding: 5px 8px; flex-shrink: 0;" disabled title="Seleccione un usuario">Cargar en cuenta corriente</button>
+                </div>
+                <?php endif; ?>
+                
                 <div class="form-group" id="gasoilGroup" style="display: none;">
                     <label>Cant Gasoil *</label>
                     <input type="number" name="cant_gasoil" id="cant_gasoil" tabindex="-1" step="0.01" min="0" value="<?= $pdt_edit ? ($pdt_edit['cant_gasoil'] ?? '0') : '0' ?>">
@@ -701,8 +715,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 </div>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary" tabindex="5">Guardar</button>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px;">
                 <?php if ($mensaje === 'Parte guardado.'): ?>
                     <div id="cartelMensaje" class="cartel-parte-guardado parte-guardado">Parte guardado.</div>
                     <script>
@@ -712,14 +725,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     })();
                     </script>
                 <?php endif; ?>
-                <?php if ($mostrar_vista_completa): ?>
-                <span id="resumenHorasUsuario" style="font-size: 11px; color: #555; padding: 4px 8px; background: #f0f0f0; border-radius: 4px; min-height: 24px; display: inline-flex; align-items: center;">Seleccione un usuario para ver el resumen (horas con CC=NO)</span>
-                <?php endif; ?>
                 <?php if ($pdt_edit && $mostrar_vista_completa): ?>
                     <a href="<?= htmlspecialchars($form_action_url) ?>" class="btn btn-secondary">Cancelar</a>
-                <?php endif; ?>
-                <?php if ($mostrar_vista_completa): ?>
-                <button type="button" id="btnCargarCC" class="btn btn-success" style="font-size: 11px; padding: 5px 10px;" disabled title="Seleccione un usuario">Cargar en cuenta corriente</button>
                 <?php endif; ?>
             </div>
         </form>
@@ -731,10 +738,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         </form>
         <?php endif; ?>
         
-        <h3 style="margin-top: 30px;">Listado de PDTs</h3>
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-            <button type="button" id="btnRestaurarGrid1" class="btn btn-secondary" style="font-size: 11px;" title="Restaurar tamaño original de grid1">Restaurar tamaño original</button>
-        </div>
+        <h3 style="margin-top: 12px;">Listado de PDTs</h3>
         <div id="grid1" class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
             <thead>
@@ -907,28 +911,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     })();
     
     (function() {
-        function initGrid1Toggle() {
-            var grid1 = document.getElementById('grid1');
-            var btn = document.getElementById('btnRestaurarGrid1');
-            if (!grid1 || !btn) return;
-            btn.addEventListener('click', function() {
-                if (grid1.classList.contains('tamano-original')) {
-                    grid1.classList.remove('tamano-original');
-                    btn.textContent = 'Restaurar tamaño original';
-                } else {
-                    grid1.classList.add('tamano-original');
-                    btn.textContent = 'Reducir tamaño';
-                }
-            });
-        }
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initGrid1Toggle);
-        } else {
-            initGrid1Toggle();
-        }
-    })();
-    
-    (function() {
         // Esperar a que el DOM esté completamente cargado
         function init() {
             try {
@@ -955,9 +937,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 const usuarioIdInput = document.getElementById('usuario_id');
                 const usuarioSeleccionado = document.getElementById('usuarioSeleccionado');
                 const nombreUsuarioSel = document.getElementById('nombreUsuarioSel');
-                const tipoHoras = document.getElementById('tipo_horas');
                 const tractorGroup = document.getElementById('tractorGroup');
                 const tractorSelect = document.getElementById('tractor');
+                function esHorasTractor() { return tractorSelect && tractorSelect.value !== '' && tractorSelect.value !== 'Horas Comunes'; }
                 
                 // Verificar que los elementos críticos existan (no retornar, solo registrar error)
                 if (!buscador || !resultados || !usuarioIdInput) {
@@ -982,18 +964,21 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 var cambioAceiteGroupEdit = document.getElementById('cambioAceiteGroup');
                 var labelCantidadEdit = document.getElementById('labelCantidad');
                 var cantGasoilInputEdit = document.getElementById('cant_gasoil');
-                if (tractorGroup && tractorSelect && '<?= $pdt_edit['tipo_horas'] ?>' === 'Horas tractos') {
+                if (tractorGroup && tractorSelect) {
                     tractorGroup.style.display = 'block';
-                    tractorSelect.required = true;
-                    if (gasoilGroupEdit) gasoilGroupEdit.style.display = 'block';
-                    if (cambioAceiteGroupEdit) cambioAceiteGroupEdit.style.display = 'block';
-                    if (labelCantidadEdit) labelCantidadEdit.textContent = 'Cantidad horas *';
-                    if (cantGasoilInputEdit) cantGasoilInputEdit.required = true;
-                } else if (tractorGroup) {
-                    tractorGroup.style.display = 'none';
-                    if (gasoilGroupEdit) gasoilGroupEdit.style.display = 'none';
-                    if (cambioAceiteGroupEdit) cambioAceiteGroupEdit.style.display = 'none';
-                    if (cantGasoilInputEdit) cantGasoilInputEdit.required = false;
+                    var esTractorEdit = '<?= ($pdt_edit['tipo_horas'] ?? '') === 'Horas tractos' ? '1' : '0' ?>' === '1';
+                    if (esTractorEdit) {
+                        tractorSelect.required = true;
+                        if (gasoilGroupEdit) gasoilGroupEdit.style.display = 'block';
+                        if (cambioAceiteGroupEdit) cambioAceiteGroupEdit.style.display = 'block';
+                        if (labelCantidadEdit) labelCantidadEdit.textContent = 'Cantidad horas *';
+                        if (cantGasoilInputEdit) cantGasoilInputEdit.required = true;
+                    } else {
+                        tractorSelect.required = false;
+                        if (gasoilGroupEdit) gasoilGroupEdit.style.display = 'none';
+                        if (cambioAceiteGroupEdit) cambioAceiteGroupEdit.style.display = 'none';
+                        if (cantGasoilInputEdit) cantGasoilInputEdit.required = false;
+                    }
                 }
                 <?php endif; ?>
     
@@ -1165,47 +1150,43 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 const cambioAceiteInput = document.getElementById('cambio_aceite');
                 const observacionesTextarea = document.querySelector('textarea[name="observaciones"]');
                 
-                // Cargar valores guardados previamente (si no estamos editando)
+                // Cargar último elegido en Horas Comunes / Tractor (si no estamos editando)
                 <?php if (!$pdt_edit): ?>
-                if (tipoHoras && fechaInput) {
-                    const valoresGuardados = JSON.parse(localStorage.getItem('pdt_ultimos_valores') || '{}');
-                    if (valoresGuardados.tipo_horas && tipoHoras) {
-                        tipoHoras.value = valoresGuardados.tipo_horas;
-                    }
-                    if (valoresGuardados.tractor && tipoHoras && tipoHoras.value === 'Horas tractos' && tractorSelect) {
-                        tractorSelect.value = valoresGuardados.tractor;
-                    }
-                    if (valoresGuardados.fecha && fechaInput) {
-                        fechaInput.value = valoresGuardados.fecha;
-                    }
+                if (tractorSelect) {
+                    try {
+                        const serverTractor = <?= json_encode($tractor_default) ?>;
+                        const v = JSON.parse(localStorage.getItem('pdt_ultimos_valores') || '{}');
+                        // Priorizar valor del servidor (sesión) sobre localStorage para que tras guardar se mantenga
+                        tractorSelect.value = serverTractor || (v.tractor || 'Horas Comunes');
+                        if (fechaInput && v.fecha) fechaInput.value = v.fecha;
+                    } catch (e) {}
                 }
                 // Cant gasoil y cambio de aceite: siempre por defecto 0 y destildado (no restaurar desde localStorage)
                 <?php endif; ?>
                 
-                // Guardar valores cuando cambian
+                // Guardar valores cuando cambian (tractor siempre para persistir último elegido)
                 function guardarValores() {
-                    if (!tipoHoras || !fechaInput || !cantGasoilInput || !cambioAceiteInput) return;
+                    if (!tractorSelect || !fechaInput) return;
                     const valores = {
-                        tipo_horas: tipoHoras.value,
-                        tractor: tractorSelect ? tractorSelect.value : '',
+                        tractor: tractorSelect.value || 'Horas Comunes',
                         fecha: fechaInput.value,
-                        cant_gasoil: cantGasoilInput.value,
-                        cambio_aceite: cambioAceiteInput.checked ? '1' : '0'
+                        cant_gasoil: cantGasoilInput ? cantGasoilInput.value : '',
+                        cambio_aceite: cambioAceiteInput ? (cambioAceiteInput.checked ? '1' : '0') : '0'
                     };
-                    localStorage.setItem('pdt_ultimos_valores', JSON.stringify(valores));
+                    try { localStorage.setItem('pdt_ultimos_valores', JSON.stringify(valores)); } catch (e) {}
                 }
                 
-                // Función para manejar cambio de tipo de horas
-                function manejarCambioTipoHoras() {
-                    if (!tipoHoras || !tractorGroup || !tractorSelect || !gasoilGroup || !cambioAceiteGroup || !labelCantidad || !cantGasoilInput) return;
-                    guardarValores();
-                    if (tipoHoras.value === 'Horas tractos') {
+                // Función para manejar cambio (Horas Comunes / Tractor)
+                function manejarCambioTractor() {
+                    if (!tractorGroup || !tractorSelect) return;
+                    if (typeof guardarValores === 'function') guardarValores();
+                    if (esHorasTractor()) {
                         tractorGroup.style.display = 'block';
                         tractorSelect.required = true;
-                        gasoilGroup.style.display = 'block';
-                        cambioAceiteGroup.style.display = 'block';
-                        cantGasoilInput.required = true;
-                        labelCantidad.textContent = 'Cantidad horas *';
+                        if (gasoilGroup) gasoilGroup.style.display = 'block';
+                        if (cambioAceiteGroup) cambioAceiteGroup.style.display = 'block';
+                        if (cantGasoilInput) cantGasoilInput.required = true;
+                        if (labelCantidad) labelCantidad.textContent = 'Cantidad horas *';
                         // Cargar valores guardados si existen (solo al cambiar, no al cargar inicial)
                         <?php if (!$pdt_edit): ?>
                         const valoresGuardados = JSON.parse(localStorage.getItem('pdt_ultimos_valores') || '{}');
@@ -1213,29 +1194,29 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                             tractorSelect.value = valoresGuardados.tractor;
                         }
                         <?php endif; ?>
-                        actualizarTractorDesdeCambioAceite();
+                        if (typeof actualizarTractorDesdeCambioAceite === 'function') actualizarTractorDesdeCambioAceite();
                     } else {
-                        tractorGroup.style.display = 'none';
                         tractorSelect.required = false;
-                        gasoilGroup.style.display = 'none';
-                        cambioAceiteGroup.style.display = 'none';
-                        cantGasoilInput.required = false;
-                        labelCantidad.textContent = 'Cantidad *';
+                        if (gasoilGroup) gasoilGroup.style.display = 'none';
+                        if (cambioAceiteGroup) cambioAceiteGroup.style.display = 'none';
+                        if (cantGasoilInput) cantGasoilInput.required = false;
+                        if (labelCantidad) labelCantidad.textContent = 'Cantidad *';
                     }
                 }
                 
-                if (tipoHoras) {
-                    tipoHoras.addEventListener('change', manejarCambioTipoHoras);
+                if (tractorSelect) {
+                    tractorSelect.addEventListener('change', manejarCambioTractor);
+                    manejarCambioTractor();
                 }
     
                 
                 // Guardar valores cuando cambian los campos
                 function actualizarTractorDesdeCambioAceite() {
-                    if (!tractorSelect || !tipoHoras) return;
+                    if (!tractorSelect) return;
                     var div = document.getElementById('tractorDesdeCambioAceite');
                     if (!div) return;
                     var tractor = tractorSelect.value;
-                    if (!tractor || tipoHoras.value !== 'Horas tractos') {
+                    if (!tractor || !esHorasTractor()) {
                         div.style.display = 'none';
                         return;
                     }
@@ -1293,8 +1274,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
                 
                 // Navegación con Enter entre campos hasta el botón Guardar
-                if (btnGuardar && buscador && tipoHoras) {
-                    const camposOrden = [buscador, tipoHoras, tractorSelect, fechaInput, horasInput, cantGasoilInput, cambioAceiteInput, observacionesTextarea, btnGuardar].filter(c => c !== null);
+                if (btnGuardar && buscador && tractorSelect) {
+                    const camposOrden = [buscador, tractorSelect, fechaInput, horasInput, cantGasoilInput, cambioAceiteInput, observacionesTextarea, btnGuardar].filter(c => c !== null);
                     
                     camposOrden.forEach((campo, index) => {
                         if (!campo) return;
@@ -1308,7 +1289,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                                     const primerItem = resultados.querySelector('.usuario-item');
                                     if (primerItem) {
                                         primerItem.click();
-                                        setTimeout(() => { if (tipoHoras) tipoHoras.focus(); }, 100);
+                                        setTimeout(() => { if (tractorSelect) tractorSelect.focus(); }, 100);
                                         return;
                                     }
                                 }
@@ -1327,11 +1308,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
                 
                 // También permitir Enter en resultados del buscador
-                if (resultados && tipoHoras) {
+                if (resultados && tractorSelect) {
                     resultados.addEventListener('keydown', function(e) {
                         if (e.key === 'Enter' && e.target.classList.contains('usuario-item')) {
                             e.target.click();
-                            setTimeout(() => { if (tipoHoras) tipoHoras.focus(); }, 100);
+                            setTimeout(() => { if (tractorSelect) tractorSelect.focus(); }, 100);
                         }
                     });
                 }
@@ -1354,8 +1335,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
 
                 var enfocarTipoTrabajo = <?= (!empty($preseleccionar_usuario_id) && !$pdt_edit) ? 'true' : 'false' ?>;
-                if (enfocarTipoTrabajo && tipoHoras) {
-                    tipoHoras.focus();
+                if (enfocarTipoTrabajo && tractorSelect) {
+                    tractorSelect.focus();
                 }
 
                 // Debug: confirmar que el código se ejecutó
@@ -1435,15 +1416,16 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             initGasoil();
         }
     })();
+    
     </script>
     <script>
     (function(){
         function setupTabPDT(){
-            var f=document.getElementById('formPDT'),t=document.getElementById('tipo_horas'),tr=document.getElementById('tractor'),fe=document.getElementById('fecha'),h=document.getElementById('horas'),cg=document.getElementById('cant_gasoil'),ca=document.getElementById('cambio_aceite'),o=document.getElementById('observaciones'),g=document.getElementById('btnGuardar');
-            if(!f||!t||!fe||!h||!o||!g)return false;
+            var f=document.getElementById('formPDT'),tr=document.getElementById('tractor'),fe=document.getElementById('fecha'),h=document.getElementById('horas'),cg=document.getElementById('cant_gasoil'),ca=document.getElementById('cambio_aceite'),o=document.getElementById('observaciones'),g=document.getElementById('btnGuardar');
+            if(!f||!tr||!fe||!h||!o||!g)return false;
             if(f.dataset.tabInit)return true;
             f.dataset.tabInit='1';
-            var campos=[t,tr,fe,h,cg,ca,o,g].filter(function(x){return x;});
+            var campos=[tr,fe,h,cg,ca,o,g].filter(function(x){return x;});
             function siguiente(i,dir){var j=i+dir;while(j>=0&&j<campos.length){var c=campos[j];if(c&&c.offsetParent!==null&&c.style.display!=='none')return c;j+=dir;}return null;}
             f.addEventListener('keydown',function(e){
                 var k=(e.key==='Tab')?9:(e.keyCode||e.which||0);

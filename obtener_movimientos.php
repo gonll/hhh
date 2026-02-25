@@ -11,18 +11,31 @@ if (!isset($_GET['id'])) {
 
 $id = (int)$_GET['id'];
 
-// Tabla cuentas: columna usuario_id (FK a usuarios.id)
-$sql = "SELECT * FROM cuentas WHERE usuario_id = $id ORDER BY fecha ASC";
+// Obtener total de la cuenta para calcular saldo correcto con los 10 últimos
+$res_total = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id = $id");
+$total_cuenta = ($r = mysqli_fetch_assoc($res_total)) ? (float)$r['total'] : 0;
+
+// Últimos 10 movimientos (ordenados cronológicamente para mostrar)
+$sql = "SELECT * FROM (SELECT * FROM cuentas WHERE usuario_id = $id ORDER BY fecha DESC, movimiento_id DESC LIMIT 10) AS sub ORDER BY fecha ASC, movimiento_id ASC";
 $res = mysqli_query($conexion, $sql);
 
 if (!$res) {
     die("Error en la consulta: " . mysqli_error($conexion));
 }
 
-$saldo = 0;
-
+$saldo = $total_cuenta;
+$suma_mostrados = 0;
+$filas = [];
 if (mysqli_num_rows($res) > 0) {
     while ($m = mysqli_fetch_array($res)) {
+        $suma_mostrados += $m['monto'];
+        $filas[] = $m;
+    }
+    $saldo = $total_cuenta - $suma_mostrados;
+}
+
+if (count($filas ?? []) > 0) {
+    foreach ($filas as $m) {
         $saldo += $m['monto'];
         $colorMonto = ($m['monto'] >= 0) ? "#28a745" : "#dc3545";  /* ingresos verde, egresos rojo */
         $colorSaldo = ($saldo >= 0) ? "#28a745" : "#dc3545";

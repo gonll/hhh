@@ -71,7 +71,7 @@ if ($nivelAcceso === 3) {
         /* Panel Central de Movimientos */
         .contenedor-grid { 
             background: white; padding: 15px; border-radius: 8px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 71vw; height: 90vh; position: relative; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 71vw; height: calc(90vh - 2cm); position: relative; 
         }
 
         /* Botón Word - Posicionado a la izquierda del reloj */
@@ -328,8 +328,8 @@ if ($nivelAcceso === 3) {
                 <tfoot id="filaCarga" style="display:none; background:#f8f9fa;">
                     <tr id="filaCheckCaja" style="display:none;">
                         <td colspan="4" style="padding: 4px 8px; font-size: 11px;">
-                            <label style="cursor:pointer; white-space:nowrap;">
-                                <input type="checkbox" id="ins_grabar_caja"> Grabar en Caja (efectivo)
+                            <label style="white-space:nowrap; cursor:default;">
+                                <input type="checkbox" id="ins_grabar_caja" disabled readonly tabindex="-1"> Grabar en Caja (efectivo)
                             </label>
                         </td>
                         <td colspan="3"></td>
@@ -342,8 +342,8 @@ if ($nivelAcceso === 3) {
                         <td><input type="text" id="ins_concepto" style="width:95%" onfocus="ponerFechaActual()" oninput="actualizarCheckGrabarCaja()"></td>
                         <td>
                             <select id="ins_compro" style="width:95%" onchange="actualizarCheckGrabarCaja(); avisarComprobanteCaja();">
-                                <option value="ALQUILER">ALQUILER</option>
-                                <option value="EXPENSAS">EXPENSAS</option>
+                                <option value="ALQUILER EFVO">ALQUILER EFVO</option>
+                                <option value="ALQUILER TRANSF">ALQUILER TRANSF</option>
                                 <option value="VARIOS">VARIOS</option>
                                 <option value="DEBITO AUTOMATICO">DEBITO AUTOMATICO</option>
                                 <option value="TARJETA">TARJETA</option>
@@ -353,7 +353,6 @@ if ($nivelAcceso === 3) {
                                 <option value="EFVO">EFVO</option>
                                 <option value="CHEQUE/ECHEQ">CHEQUE/ECHEQ</option>
                                 <option value="SUELDO/EXTRAS">SUELDO/EXTRAS</option>
-                                <option value="Exp Extraordinaria">Exp Extraordinaria</option>
                             </select>
                         </td>
                         <td><input type="text" id="ins_refer" style="width:95%"></td>
@@ -366,6 +365,36 @@ if ($nivelAcceso === 3) {
         </div>
 
         <?php if (!$soloLectura): ?>
+        <!-- Panel Cobro en caja (sin título visible) -->
+        <div id="panelCobroCaja" style="display:none; margin-top:10px; margin-bottom:10px; padding:12px; background:#e8f5e9; border-radius:6px; border:1px solid #a5d6a7;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px; font-size:11px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-weight:bold;">Dinero Ingresado</label>
+                    <input type="number" id="cobroCaja_dinero" step="0.01" min="0" placeholder="0" oninput="actualizarCobroCajaVuelto()" style="width:100px; padding:6px 8px; border:1px solid #a5d6a7; border-radius:4px;">
+                </div>
+                <div id="cobroCaja_item1Wrap" style="display:none; flex:0 0 auto; align-items:center; gap:6px;">
+                    <label style="font-weight:bold;">Item 1</label>
+                    <span id="cobroCaja_item1" style="min-width:180px; padding:6px 8px; background:#fff; border:1px solid #ced4da; border-radius:4px; color:#666;"></span>
+                </div>
+                <div id="cobroCaja_item2Wrap" style="display:none; flex:0 0 auto; align-items:center; gap:6px;">
+                    <label style="font-weight:bold;">Item 2</label>
+                    <span id="cobroCaja_item2" style="min-width:180px; padding:6px 8px; background:#fff; border:1px solid #ced4da; border-radius:4px; color:#666;"></span>
+                </div>
+                <div id="cobroCaja_vueltoWrap" style="display:none; flex:0 0 auto; align-items:center; gap:6px;">
+                    <label style="font-weight:bold;">Vuelto</label>
+                    <input type="text" id="cobroCaja_vuelto" readonly placeholder="0" style="width:90px; padding:6px 8px; background:#f8f9fa; border:1px solid #ced4da; border-radius:4px; text-align:right;">
+                </div>
+                <label style="display:flex; align-items:center; gap:6px; cursor:default;">
+                    <input type="checkbox" id="cobroCaja_dejarCuenta" style="cursor:default;">
+                    <span>Dejar a cuenta próximo pago</span>
+                </label>
+                <div style="display:flex; gap:8px; margin-left:auto;">
+                    <button type="button" onclick="aceptarCobroCaja()" style="background:#28a745; color:white; border:none; padding:6px 14px; border-radius:4px; font-weight:bold; cursor:pointer;">Aceptar</button>
+                    <button type="button" onclick="cancelarCobroCaja()" style="background:#6c757d; color:white; border:none; padding:6px 14px; border-radius:4px; font-weight:bold; cursor:pointer;">Cancelar</button>
+                </div>
+            </div>
+        </div>
+        <div id="indicadorVueltoEntregar" style="display:none; margin-top:8px; padding:10px 14px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; font-weight:bold; color:#856404; font-size:13px;">⚠️ Entregar vuelto: $ <span id="indicadorVueltoMonto">0,00</span></div>
         <div style="display:flex; align-items:stretch; gap:10px; margin-top:15px; flex-wrap:wrap;">
             <button id="btnIngreso" class="btn-caja" style="background:#28a745;" onclick="preparar('INGRESO')">INGRESO</button>
             <button id="btnRetiro" class="btn-caja" style="background:#dc3545;" onclick="preparar('RETIRO')">RETIRO</button>
@@ -611,6 +640,11 @@ function cargarMovimientos(fila, id) {
     
     if (panelCons) panelCons.style.display = esConsorcioUsuario ? "block" : "none";
     if (panelExtra) panelExtra.style.display = esConsorcioUsuario ? "none" : "grid";
+    var panelCobroCaja = document.getElementById("panelCobroCaja");
+    if (panelCobroCaja) {
+        panelCobroCaja.style.display = "none";
+        resetCobroCaja();
+    }
     if (resumenLinea) resumenLinea.style.display = esConsorcioUsuario ? "flex" : "none";
     if (btnResumenCtas) btnResumenCtas.style.display = esCajaUsuario ? "block" : "none";
     // Mostrar botón Word si es consorcio (aunque no haya movimiento seleccionado)
@@ -628,14 +662,20 @@ function cargarMovimientos(fila, id) {
             .then(function(r) { return r.json(); })
             .then(function(props) {
                 var esPropOInq = props && props.length > 0;
+                var esInquilino = props && props.some(function(p) { return (p.rol || "").toUpperCase() === "INQUILINO"; });
                 if (btnCobroExpTransf) btnCobroExpTransf.style.display = esPropOInq ? "block" : "none";
                 if (btnCobroExpEfvo) btnCobroExpEfvo.style.display = esPropOInq ? "block" : "none";
                 if (btnSueldoExtras) btnSueldoExtras.style.display = esPropOInq ? "none" : "block";
+                if (panelCobroCaja) {
+                    panelCobroCaja.style.display = esInquilino ? "block" : "none";
+                    if (esInquilino) resetCobroCaja();
+                }
             })
             .catch(function() {
                 if (btnCobroExpTransf) btnCobroExpTransf.style.display = "none";
                 if (btnCobroExpEfvo) btnCobroExpEfvo.style.display = "none";
                 if (btnSueldoExtras) btnSueldoExtras.style.display = "block";
+                if (panelCobroCaja) panelCobroCaja.style.display = "none";
             });
     }
     if (!esConsorcioUsuario) {
@@ -1020,11 +1060,130 @@ function migrarSaldo() {
         });
 }
 
+var cobroCajaItem1 = null, cobroCajaItem2 = null;
+
+function resetCobroCaja() {
+    cobroCajaItem1 = null;
+    cobroCajaItem2 = null;
+    var wrap1 = document.getElementById("cobroCaja_item1Wrap");
+    var wrap2 = document.getElementById("cobroCaja_item2Wrap");
+    var wrapV = document.getElementById("cobroCaja_vueltoWrap");
+    var el1 = document.getElementById("cobroCaja_item1");
+    var el2 = document.getElementById("cobroCaja_item2");
+    var dinero = document.getElementById("cobroCaja_dinero");
+    var vuelto = document.getElementById("cobroCaja_vuelto");
+    var chk = document.getElementById("cobroCaja_dejarCuenta");
+    if (wrap1) wrap1.style.display = "none";
+    if (wrap2) wrap2.style.display = "none";
+    if (wrapV) wrapV.style.display = "none";
+    if (el1) el1.textContent = "";
+    if (el2) el2.textContent = "";
+    if (dinero) dinero.value = "";
+    if (vuelto) vuelto.value = "";
+    if (chk) chk.checked = false;
+}
+
+function asignarCobroCajaItem(concepto, monto) {
+    var montoAbs = Math.abs(parseFloat(monto) || 0);
+    if (montoAbs <= 0) return;
+    var texto = "Cobro de: " + (concepto || "") + " $ " + montoAbs.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var wrap1 = document.getElementById("cobroCaja_item1Wrap");
+    var wrap2 = document.getElementById("cobroCaja_item2Wrap");
+    var wrapV = document.getElementById("cobroCaja_vueltoWrap");
+    var el2 = document.getElementById("cobroCaja_item2");
+    if (!cobroCajaItem1) {
+        cobroCajaItem1 = { concepto: "COBRO DE: " + (concepto || "").toUpperCase(), monto: montoAbs };
+        cobroCajaItem2 = null;
+        var el1 = document.getElementById("cobroCaja_item1");
+        if (el1) el1.textContent = texto;
+        if (wrap1) wrap1.style.display = "flex";
+        if (wrapV) wrapV.style.display = "flex";
+        if (wrap2) wrap2.style.display = "none";
+        if (el2) el2.textContent = "";
+    } else if (!cobroCajaItem2) {
+        var conceptoNorm = ("COBRO DE: " + (concepto || "").toUpperCase()).trim();
+        if (cobroCajaItem1.concepto === conceptoNorm && Math.abs(cobroCajaItem1.monto - montoAbs) < 0.01) return;
+        cobroCajaItem2 = { concepto: conceptoNorm, monto: montoAbs };
+        if (el2) el2.textContent = texto;
+        if (wrap2) wrap2.style.display = "flex";
+    } else {
+        var conceptoNorm2 = ("COBRO DE: " + (concepto || "").toUpperCase()).trim();
+        if (cobroCajaItem1.concepto === conceptoNorm2 && Math.abs(cobroCajaItem1.monto - montoAbs) < 0.01) return;
+        cobroCajaItem2 = { concepto: conceptoNorm2, monto: montoAbs };
+        if (el2) el2.textContent = texto;
+    }
+    actualizarCobroCajaVuelto();
+}
+
+function actualizarCobroCajaVuelto() {
+    var dinero = parseFloat((document.getElementById("cobroCaja_dinero") || {}).value) || 0;
+    var total = (cobroCajaItem1 ? cobroCajaItem1.monto : 0) + (cobroCajaItem2 ? cobroCajaItem2.monto : 0);
+    var vuelto = dinero - total;
+    var el = document.getElementById("cobroCaja_vuelto");
+    if (el) el.value = vuelto >= 0 ? vuelto.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (vuelto.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " (falta)");
+}
+
+function aceptarCobroCaja() {
+    if (!uSel || uSel === 1) { alert("Seleccioná un usuario válido."); return; }
+    if (!cobroCajaItem1 && !cobroCajaItem2) { alert("Seleccioná al menos un registro en la grilla."); return; }
+    var items = [];
+    if (cobroCajaItem1) items.push({ concepto: cobroCajaItem1.concepto, monto: cobroCajaItem1.monto });
+    if (cobroCajaItem2) items.push({ concepto: cobroCajaItem2.concepto, monto: cobroCajaItem2.monto });
+    var fechaEl = document.getElementById("ins_fecha");
+    var fechaVal = fechaEl ? fechaEl.value.trim() : "";
+    if (!fechaVal) {
+        ponerFechaActual();
+        fechaVal = document.getElementById("ins_fecha").value.trim();
+    }
+    var partes = (fechaVal || "").split(/[\/\-\.]/);
+    var fechaISO = "";
+    if (partes.length === 3) {
+        var d = partes[0].padStart(2, "0"), m = partes[1].padStart(2, "0"), a = partes[2];
+        if (a.length === 2) a = "20" + a;
+        fechaISO = a + "-" + m + "-" + d;
+    }
+    if (!fechaISO) fechaISO = new Date().toISOString().slice(0, 10);
+    var dinero = parseFloat((document.getElementById("cobroCaja_dinero") || {}).value) || 0;
+    var total = (cobroCajaItem1 ? cobroCajaItem1.monto : 0) + (cobroCajaItem2 ? cobroCajaItem2.monto : 0);
+    var vuelto = dinero - total;
+    var chkDejar = document.getElementById("cobroCaja_dejarCuenta");
+    var fd = new FormData();
+    fd.append("usuario_id", uSel);
+    fd.append("fecha", fechaISO);
+    fd.append("items", JSON.stringify(items));
+    fd.append("dejar_cuenta", chkDejar && chkDejar.checked ? "1" : "0");
+    fd.append("vuelto", vuelto >= 0 ? vuelto.toFixed(2) : "0");
+    fetch("guardar_cobro_caja.php", { method: "POST", body: fd })
+        .then(function(r) { return r.text(); })
+        .then(function(txt) {
+            if (txt.trim() === "OK") {
+                var msgVuelto = "";
+                if (!chkDejar || !chkDejar.checked) {
+                    if (vuelto > 0) msgVuelto = "\n\nEntregar vuelto: $ " + vuelto.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+                resetCobroCaja();
+                var fila = document.querySelector("#cuerpo tr.fila-seleccionada");
+                if (fila) cargarMovimientos(fila, uSel);
+                if (msgVuelto) alert("Cobro guardado correctamente." + msgVuelto);
+            } else {
+                alert(txt.trim() || "Error al grabar.");
+            }
+        });
+}
+
+function cancelarCobroCaja() {
+    resetCobroCaja();
+}
+
 function seleccionarFila(el, movimientoId, fecha, concepto, compro, ref, monto) {
     document.querySelectorAll('.fila-mov').forEach(f => f.classList.remove('fila-mov-seleccionada'));
     el.classList.add('fila-mov-seleccionada');
     movSel = { movimientoId, fecha, concepto, compro, ref, monto, usuario: document.querySelector('.fila-seleccionada .nombre-txt').innerText };
     document.getElementById("btnWord").style.display = "block";
+    var panelCobro = document.getElementById("panelCobroCaja");
+    if (panelCobro && panelCobro.style.display !== "none" && uSel !== 1) {
+        asignarCobroCajaItem(concepto, monto);
+    }
     if (tipo === 'INGRESO' && concepto) {
         document.getElementById("filaCarga").style.display = "table-footer-group";
         document.getElementById("ins_concepto").value = "Cobro de: " + concepto;
@@ -1271,7 +1430,7 @@ function cargarSueldoExtras() {
 }
 
 function avisarComprobanteCaja() {
-    // El checkbox "Grabar en Caja" indica y permite cambiar si se graba en caja
+    // El checkbox "Grabar en Caja" es solo indicador (no modificable por el usuario)
 }
 
 function preparar(t) { 
@@ -1314,8 +1473,8 @@ function actualizarCheckGrabarCaja() {
     }
     fila.style.display = "";
     var compro = (document.getElementById("ins_compro").value || "").toUpperCase();
-    // BOLETA, EFVO, ALQUILER, EXPENSAS y VARIOS graban en Caja.
-    var grabarPorDefecto = (compro === "BOLETA" || compro === "EFVO" || compro === "ALQUILER" || compro === "EXPENSAS" || compro === "VARIOS");
+    // BOLETA, EFVO, ALQUILER EFVO y VARIOS graban en Caja. ALQUILER TRANSF no.
+    var grabarPorDefecto = (compro === "BOLETA" || compro === "EFVO" || compro === "ALQUILER EFVO" || compro === "VARIOS");
     chk.checked = grabarPorDefecto;
 }
 
@@ -1332,7 +1491,9 @@ function fechaTextoAISO() {
 function guardar() {
     let m = document.getElementById("ins_monto").value;
     if(!m || !uSel) return;
-    var grabarCaja = (uSel !== 1 && document.getElementById("ins_grabar_caja") && document.getElementById("ins_grabar_caja").checked) ? 1 : 0;
+    var compro = (document.getElementById("ins_compro").value || "").toUpperCase();
+    var grabaEnCaja = (compro === "BOLETA" || compro === "EFVO" || compro === "ALQUILER EFVO" || compro === "VARIOS");
+    var grabarCaja = (uSel !== 1 && grabaEnCaja) ? 1 : 0;
     let p = new URLSearchParams({ 
         id: uSel, 
         fecha: fechaTextoAISO(), 

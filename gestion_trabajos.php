@@ -260,15 +260,18 @@ if ($res_lista) {
                     <label>Cambio aceite</label>
                     <input type="checkbox" name="cambio_aceite" id="campoCambio" value="1" <?= ($editar && isset($editar['cambio_aceite']) && $editar['cambio_aceite'] == 1) ? 'checked' : '' ?>>
                 </div>
-                <div style="grid-column: span 2;">
-                    <label>Observaciones</label>
-                    <textarea name="observaciones" id="campoObservaciones" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();var g=document.getElementById('btnGuardar');if(g)g.focus();}"><?= htmlspecialchars($editar['observaciones'] ?? '') ?></textarea>
-                </div>
-                <div>
-                    <button type="submit" name="guardar" id="btnGuardar" class="btn btn-guardar"><?= $editar ? 'Modificar' : 'Guardar' ?></button>
-                    <?php if ($editar): ?>
-                    <a href="gestion_trabajos.php" class="btn btn-cancelar" style="margin-left: 8px;">Cancelar</a>
-                    <?php endif; ?>
+                <div style="grid-column: span 2; display: flex; gap: 12px; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label>Observaciones</label>
+                        <textarea name="observaciones" id="campoObservaciones" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();var g=document.getElementById('btnGuardar');if(g)g.focus();}"><?= htmlspecialchars($editar['observaciones'] ?? '') ?></textarea>
+                    </div>
+                    <div>
+                        <label>&nbsp;</label>
+                        <button type="submit" name="guardar" id="btnGuardar" class="btn btn-guardar"><?= $editar ? 'Modificar' : 'Guardar' ?></button>
+                        <?php if ($editar): ?>
+                        <a href="gestion_trabajos.php" class="btn btn-cancelar" style="margin-left: 8px;">Cancelar</a>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </form>
@@ -432,14 +435,21 @@ document.addEventListener('keydown', function(e) {
 
 // Mostrar tractor solo cuando Tipo = Horas tractos
 (function() {
-    var tipo = document.getElementById('campoTipo');
-    var tractorGroup = document.getElementById('tractorGroup');
-    if (!tipo || !tractorGroup) return;
-    function actualizarTractor() {
-        tractorGroup.style.display = (tipo.value === 'Horas tractos') ? 'block' : 'none';
+    function initTractor() {
+        var tipo = document.getElementById('campoTipo');
+        var tractorGroup = document.getElementById('tractorGroup');
+        if (!tipo || !tractorGroup) return;
+        function actualizarTractor() {
+            tractorGroup.style.display = (tipo.value === 'Horas tractos') ? 'block' : 'none';
+        }
+        tipo.addEventListener('change', actualizarTractor);
+        actualizarTractor();
     }
-    tipo.addEventListener('change', actualizarTractor);
-    actualizarTractor();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTractor);
+    } else {
+        initTractor();
+    }
 })();
 
 // Aplicar color del tractor seleccionado al select
