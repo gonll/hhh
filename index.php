@@ -449,9 +449,13 @@ if ($nivelAcceso === 3) {
             <h3 id="modalCobroExpTitulo">Cobro Exp/transferencia</h3>
             <p id="cobroUsuarioNombre" style="margin:0 0 12px; font-weight:bold; color:#333; font-size:13px;"></p>
             <label>Propiedad</label>
-            <select id="cobroPropiedad" required>
+            <select id="cobroPropiedad" required onchange="mostrarOcultarReciboCobro()">
                 <option value="">-- Cargando... --</option>
             </select>
+            <div id="cobroReciboWrap" style="display:none;">
+                <label>Recibo N°</label>
+                <input type="text" id="cobroRecibo" placeholder="Ej: 123" maxlength="20">
+            </div>
             <label>Período (MM/AAAA)</label>
             <input type="text" id="cobroPeriodo" placeholder="Ej: 01/2025" maxlength="7">
             <label>Monto</label>
@@ -779,6 +783,20 @@ function abrirModalCobroExp(esEfvo) {
                 opt.textContent = texto;
                 sel.appendChild(opt);
             });
+            // Agregar opciones de consorcio para pago de varias propiedades
+            var consorciosVistos = {};
+            props.forEach(function(p) {
+                if (p.consorcio && p.consorcio.trim()) {
+                    var c = p.consorcio.trim().toUpperCase();
+                    if (!consorciosVistos[c]) {
+                        consorciosVistos[c] = true;
+                        var optCons = document.createElement('option');
+                        optCons.value = 'consorcio:' + c;
+                        optCons.textContent = 'CONSORCIO ' + c + ' - Recibo N°';
+                        sel.appendChild(optCons);
+                    }
+                }
+            });
             if (props.length === 0) sel.innerHTML = '<option value="">-- Sin propiedades --</option>';
 
             if (esExpensa && conceptoExpensa) {
@@ -800,6 +818,17 @@ function abrirModalCobroExp(esEfvo) {
 
 function cerrarModalCobroExp() {
     document.getElementById('modalCobroExp').classList.remove('visible');
+    var reciboInp = document.getElementById('cobroRecibo');
+    if (reciboInp) reciboInp.value = '';
+}
+
+function mostrarOcultarReciboCobro() {
+    var propVal = document.getElementById('cobroPropiedad').value;
+    var wrap = document.getElementById('cobroReciboWrap');
+    if (wrap) {
+        wrap.style.display = (propVal && propVal.indexOf('consorcio:') === 0) ? 'block' : 'none';
+        if (wrap.style.display === 'none') document.getElementById('cobroRecibo').value = '';
+    }
 }
 
 function abrirModalLiquidarExpensas() {
@@ -1008,10 +1037,10 @@ function ejecutarLiquidarExpensas() {
 }
 
 function guardarCobroExp() {
-    var propId = document.getElementById('cobroPropiedad').value;
+    var propVal = document.getElementById('cobroPropiedad').value;
     var periodo = document.getElementById('cobroPeriodo').value.trim();
     var monto = document.getElementById('cobroMonto').value.replace(',', '.').trim();
-    if (!propId || !periodo || !monto) {
+    if (!propVal || !periodo || !monto) {
         alert('Completá propiedad, período y monto.');
         return;
     }
@@ -1021,7 +1050,13 @@ function guardarCobroExp() {
     }
     var fd = new FormData();
     fd.append('usuario_id', uSel);
-    fd.append('propiedad_id', propId);
+    if (propVal.indexOf('consorcio:') === 0) {
+        fd.append('consorcio', propVal.substring(10));
+        var recibo = (document.getElementById('cobroRecibo') || {}).value;
+        if (recibo && recibo.trim()) fd.append('recibo_numero', recibo.trim());
+    } else {
+        fd.append('propiedad_id', propVal);
+    }
     fd.append('periodo', periodo);
     fd.append('monto', monto);
     fd.append('efvo', cobroExpEsEfvo ? '1' : '0');
