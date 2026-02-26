@@ -353,6 +353,7 @@ if ($nivelAcceso === 3) {
                                 <option value="EFVO">EFVO</option>
                                 <option value="CHEQUE/ECHEQ">CHEQUE/ECHEQ</option>
                                 <option value="SUELDO/EXTRAS">SUELDO/EXTRAS</option>
+                                <option value="MORA">MORA</option>
                             </select>
                         </td>
                         <td><input type="text" id="ins_refer" style="width:95%"></td>
