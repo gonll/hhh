@@ -369,6 +369,10 @@ if ($nivelAcceso === 3) {
         <div id="panelCobroCaja" style="display:none; margin-top:10px; margin-bottom:10px; padding:12px; background:#e8f5e9; border-radius:6px; border:1px solid #a5d6a7;">
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px; font-size:11px;">
                 <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-weight:bold;">Fecha</label>
+                    <input type="text" id="cobroCaja_fecha" placeholder="dd/mm/aaaa" maxlength="10" style="width:95px; padding:6px 8px; border:1px solid #a5d6a7; border-radius:4px;" title="Formato: dd/mm/aaaa">
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
                     <label style="font-weight:bold;">Dinero Ingresado</label>
                     <input type="number" id="cobroCaja_dinero" step="0.01" min="0" placeholder="0" oninput="actualizarCobroCajaVuelto()" style="width:100px; padding:6px 8px; border:1px solid #a5d6a7; border-radius:4px;">
                 </div>
@@ -1062,6 +1066,13 @@ function migrarSaldo() {
 
 var cobroCajaItem1 = null, cobroCajaItem2 = null;
 
+function ponerFechaActualCobroCaja() {
+    var inp = document.getElementById("cobroCaja_fecha");
+    if (!inp) return;
+    var hoy = new Date();
+    inp.value = String(hoy.getDate()).padStart(2, '0') + '/' + String(hoy.getMonth() + 1).padStart(2, '0') + '/' + hoy.getFullYear();
+}
+
 function resetCobroCaja() {
     cobroCajaItem1 = null;
     cobroCajaItem2 = null;
@@ -1081,6 +1092,7 @@ function resetCobroCaja() {
     if (dinero) dinero.value = "";
     if (vuelto) vuelto.value = "";
     if (chk) chk.checked = false;
+    ponerFechaActualCobroCaja();
 }
 
 function asignarCobroCajaItem(concepto, monto) {
@@ -1146,11 +1158,11 @@ function aceptarCobroCaja() {
         if (cobroCajaItem1) items.push({ concepto: cobroCajaItem1.concepto, monto: cobroCajaItem1.monto });
         if (cobroCajaItem2) items.push({ concepto: cobroCajaItem2.concepto, monto: cobroCajaItem2.monto });
     }
-    var fechaEl = document.getElementById("ins_fecha");
+    var fechaEl = document.getElementById("cobroCaja_fecha");
     var fechaVal = fechaEl ? fechaEl.value.trim() : "";
     if (!fechaVal) {
-        ponerFechaActual();
-        fechaVal = document.getElementById("ins_fecha").value.trim();
+        ponerFechaActualCobroCaja();
+        fechaVal = ((document.getElementById("cobroCaja_fecha") || {}).value || "").trim();
     }
     var partes = (fechaVal || "").split(/[\/\-\.]/);
     var fechaISO = "";
