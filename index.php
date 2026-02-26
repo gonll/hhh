@@ -739,7 +739,11 @@ function abrirModalCobroExp(esEfvo) {
     document.getElementById('cobroPropiedad').innerHTML = '<option value="">-- Cargando... --</option>';
 
     var movFila = document.querySelector('#tablaMovimientos tr.fila-mov-seleccionada');
-    var periodoDefault = String(new Date().getMonth() + 1).padStart(2,'0') + '/' + new Date().getFullYear();
+    var hoy = new Date();
+    var mesPrev = hoy.getMonth(); // 0-based: ene=0, feb=1, ...
+    var anioPrev = hoy.getFullYear();
+    if (mesPrev === 0) { mesPrev = 12; anioPrev--; }
+    var periodoDefault = String(mesPrev).padStart(2,'0') + '/' + anioPrev;
     var montoDefault = '';
     var refDefault = '';
     var conceptoExpensa = '';
