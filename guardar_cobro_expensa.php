@@ -74,8 +74,7 @@ $grabar_caja = isset($_POST['efvo']) && ($_POST['efvo'] === '1' || $_POST['efvo'
 $comprobante = $grabar_caja ? 'EXP/EFVO' : 'EXP/TRANSF';
 $refer_periodo = mysqli_real_escape_string($conexion, $periodo);
 
-// Si es pago por consorcio: usar número de recibo (ingresado o auto-generado)
-$nro_recibo = null;
+// Si es pago por consorcio (Recibo N°): UN SOLO registro por cuenta
 if ($consorcio_param !== '') {
     $recibo_ingresado = isset($_POST['recibo_numero']) ? trim($_POST['recibo_numero']) : '';
     if ($recibo_ingresado !== '') {
@@ -85,17 +84,11 @@ if ($consorcio_param !== '') {
         $row_rec = $res_rec ? mysqli_fetch_assoc($res_rec) : null;
         $nro_recibo = $row_rec ? (int)$row_rec['nuevo'] : 1;
     }
-}
 
-// Procesar cada propiedad
-foreach ($propiedades_a_cobrar as $row_prop) {
-    $propiedad_id_act = (int)$row_prop['propiedad_id'];
-    $nombre_prop = mysqli_real_escape_string($conexion, strtoupper($row_prop['propiedad'] ?? ''));
-    $prop_consorcio = trim($row_prop['consorcio'] ?? '');
+    $row_primera = $propiedades_a_cobrar[0];
+    $prop_consorcio = trim($row_primera['consorcio'] ?? '');
     $prop_consorcio_esc = mysqli_real_escape_string($conexion, $prop_consorcio);
-    $propietario_id = (int)($row_prop['propietario_id'] ?? 0);
 
-    // Obtener usuario Consorcio
     $consorcio_id = null;
     if ($prop_consorcio !== '') {
         $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
@@ -116,17 +109,10 @@ foreach ($propiedades_a_cobrar as $row_prop) {
         $consorcio_id = (int)$row_con['id'];
     }
 
-    if ($nro_recibo !== null) {
-        $concepto_consorcio = "COBRO EXPENSA Recibo N° $nro_recibo - PAGÓ $nombre_usu";
-        $concepto_usu = "Pago expensas Recibo N° $nro_recibo";
-    } else {
-        $concepto_consorcio = "COBRO EXPENSA $nombre_prop $periodo - PAGÓ $nombre_usu";
-        $concepto_usu = "EXPENSAS $nombre_prop";
-    }
-    $concepto_consorcio = mysqli_real_escape_string($conexion, $concepto_consorcio);
-    $concepto_usu = mysqli_real_escape_string($conexion, $concepto_usu);
+    $consorcio_nom = mysqli_real_escape_string($conexion, strtoupper($consorcio_param));
+    $concepto_consorcio = mysqli_real_escape_string($conexion, "COBRO EXPENSA VARIAS PROPIEDADES Recibo N° $nro_recibo - PAGÓ $nombre_usu");
+    $concepto_usu = mysqli_real_escape_string($conexion, "Pago expensas Recibo N° $nro_recibo - Consorcio $consorcio_nom");
 
-    // 1. Asiento en cuenta del Consorcio (INGRESO)
     $sql1 = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
              VALUES ($consorcio_id, '$fecha', '$concepto_consorcio', '$comprobante', '$refer_periodo', $monto)";
     if (!mysqli_query($conexion, $sql1)) {
@@ -134,7 +120,6 @@ foreach ($propiedades_a_cobrar as $row_prop) {
         exit;
     }
 
-    // 2. Asiento en cuenta del usuario / pagador (INGRESO)
     $sql2 = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
              VALUES ($usuario_id, '$fecha', '$concepto_usu', '$comprobante', '$refer_periodo', $monto)";
     if (!mysqli_query($conexion, $sql2)) {
@@ -142,7 +127,61 @@ foreach ($propiedades_a_cobrar as $row_prop) {
         exit;
     }
 
-    // 3. Si el usuario es INQUILINO: grabar también en la cuenta del PROPIETARIO
+    if ($grabar_caja) {
+        $concepto_caja = mysqli_real_escape_string($conexion, "$nombre_usu - Pago expensas Recibo N° $nro_recibo");
+        $sql_caja = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+                     VALUES (" . ID_CAJA . ", '$fecha', '$concepto_caja', '$comprobante', '$refer_periodo', $monto)";
+        if (!mysqli_query($conexion, $sql_caja)) {
+            echo "Error al grabar en Caja: " . mysqli_error($conexion);
+            exit;
+        }
+    }
+} else {
+    // Una sola propiedad: lógica original
+    $row_prop = $propiedades_a_cobrar[0];
+    $propiedad_id_act = (int)$row_prop['propiedad_id'];
+    $nombre_prop = mysqli_real_escape_string($conexion, strtoupper($row_prop['propiedad'] ?? ''));
+    $prop_consorcio = trim($row_prop['consorcio'] ?? '');
+    $prop_consorcio_esc = mysqli_real_escape_string($conexion, $prop_consorcio);
+    $propietario_id = (int)($row_prop['propietario_id'] ?? 0);
+
+    $consorcio_id = null;
+    if ($prop_consorcio !== '') {
+        $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
+            WHERE UPPER(apellido) LIKE 'CONSORCIO%' 
+            AND UPPER(TRIM(COALESCE(consorcio,''))) = UPPER('$prop_consorcio_esc')
+            LIMIT 1");
+        if ($res_con && $row = mysqli_fetch_assoc($res_con)) {
+            $consorcio_id = (int)$row['id'];
+        }
+    }
+    if ($consorcio_id === null) {
+        $res_con = mysqli_query($conexion, "SELECT id FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
+        $row_con = mysqli_fetch_assoc($res_con);
+        if (!$row_con) {
+            echo "Error: No se encontró usuario Consorcio en el sistema.";
+            exit;
+        }
+        $consorcio_id = (int)$row_con['id'];
+    }
+
+    $concepto_consorcio = mysqli_real_escape_string($conexion, "COBRO EXPENSA $nombre_prop $periodo - PAGÓ $nombre_usu");
+    $concepto_usu = mysqli_real_escape_string($conexion, "EXPENSAS $nombre_prop");
+
+    $sql1 = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+             VALUES ($consorcio_id, '$fecha', '$concepto_consorcio', '$comprobante', '$refer_periodo', $monto)";
+    if (!mysqli_query($conexion, $sql1)) {
+        echo "Error al grabar en Consorcio: " . mysqli_error($conexion);
+        exit;
+    }
+
+    $sql2 = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+             VALUES ($usuario_id, '$fecha', '$concepto_usu', '$comprobante', '$refer_periodo', $monto)";
+    if (!mysqli_query($conexion, $sql2)) {
+        echo "Error al grabar en usuario: " . mysqli_error($conexion);
+        exit;
+    }
+
     $es_inquilino = false;
     $res_inq = mysqli_query($conexion, "SELECT 1 FROM alquileres 
         WHERE propiedad_id = $propiedad_id_act AND estado = 'VIGENTE' AND inquilino1_id = $usuario_id LIMIT 1");
@@ -150,10 +189,7 @@ foreach ($propiedades_a_cobrar as $row_prop) {
         $es_inquilino = true;
     }
     if ($es_inquilino && $propietario_id > 0 && $propietario_id != $usuario_id) {
-        $concepto_prop = ($nro_recibo !== null)
-            ? "COBRO EXPENSA Recibo N° $nro_recibo $nombre_prop $periodo - PAGÓ $nombre_usu"
-            : "COBRO EXPENSA $nombre_prop $periodo - PAGÓ $nombre_usu";
-        $concepto_prop = mysqli_real_escape_string($conexion, $concepto_prop);
+        $concepto_prop = mysqli_real_escape_string($conexion, "COBRO EXPENSA $nombre_prop $periodo - PAGÓ $nombre_usu");
         $sql3 = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
                  VALUES ($propietario_id, '$fecha', '$concepto_prop', '$comprobante', '$refer_periodo', $monto)";
         if (!mysqli_query($conexion, $sql3)) {
@@ -162,12 +198,8 @@ foreach ($propiedades_a_cobrar as $row_prop) {
         }
     }
 
-    // 4. Si es cobro en efectivo: grabar también en Caja
     if ($grabar_caja) {
-        $concepto_caja = ($nro_recibo !== null)
-            ? "$nombre_usu - Pago expensas Recibo N° $nro_recibo"
-            : "$nombre_usu - COBRO EXPENSA $nombre_prop $periodo";
-        $concepto_caja = mysqli_real_escape_string($conexion, $concepto_caja);
+        $concepto_caja = mysqli_real_escape_string($conexion, "$nombre_usu - COBRO EXPENSA $nombre_prop $periodo");
         $sql_caja = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
                      VALUES (" . ID_CAJA . ", '$fecha', '$concepto_caja', '$comprobante', '$refer_periodo', $monto)";
         if (!mysqli_query($conexion, $sql_caja)) {
