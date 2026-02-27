@@ -580,6 +580,7 @@ let uSel = null;
 let tipo = ''; 
 let movSel = null;
 let esConsorcioUsuario = false;
+let movScrollData = null;
 
 // RELOJ ACTUALIZADO
 function actualizarReloj() {
@@ -696,10 +697,17 @@ function cargarMovimientos(fila, id) {
         }
     }
 
+    movScrollData = { first_fecha: '', first_id: 0, last_fecha: '', last_id: 0, has_more_older: false, has_more_newer: false, loading: false };
     fetch('obtener_movimientos.php?id=' + id)
-        .then(r => r.text())
-        .then(data => {
-            document.getElementById("tablaMovimientos").innerHTML = data;
+        .then(r => r.json())
+        .then(function(data) {
+            document.getElementById("tablaMovimientos").innerHTML = data.html;
+            movScrollData.first_fecha = data.first_fecha || '';
+            movScrollData.first_id = data.first_id || 0;
+            movScrollData.last_fecha = data.last_fecha || '';
+            movScrollData.last_id = data.last_id || 0;
+            movScrollData.has_more_older = !!data.has_more_older;
+            movScrollData.has_more_newer = !!data.has_more_newer;
             document.getElementById("divScroll").scrollTop = document.getElementById("divScroll").scrollHeight;
             if (esConsorcioUsuario) {
                 fetch('obtener_resumen_consorcio.php?id=' + id)
@@ -718,7 +726,52 @@ function cargarMovimientos(fila, id) {
                         document.getElementById("resumenGastadoMes").textContent = '0,00';
                     });
             }
+        })
+        .catch(function() {
+            document.getElementById("tablaMovimientos").innerHTML = "<tr><td colspan='7' style='text-align:center; padding:30px; color:red;'>Error al cargar movimientos</td></tr>";
+            movScrollData = null;
         });
+}
+
+function onScrollMovimientos() {
+    if (!movScrollData || movScrollData.loading || !uSel) return;
+    var div = document.getElementById("divScroll");
+    if (!div) return;
+    var margin = 80;
+    if (movScrollData.has_more_older && div.scrollTop <= margin) {
+        movScrollData.loading = true;
+        var url = 'obtener_movimientos.php?id=' + uSel + '&before_fecha=' + encodeURIComponent(movScrollData.first_fecha) + '&before_id=' + movScrollData.first_id;
+        fetch(url).then(r => r.json()).then(function(data) {
+            if (data.html && data.html.indexOf('NO HAY MOVIMIENTOS') < 0 && data.html.indexOf('fila-mov') >= 0) {
+                var tbody = document.getElementById("tablaMovimientos");
+                var oldHeight = div.scrollHeight;
+                tbody.innerHTML = data.html + tbody.innerHTML;
+                movScrollData.first_fecha = data.first_fecha || movScrollData.first_fecha;
+                movScrollData.first_id = data.first_id || movScrollData.first_id;
+                movScrollData.has_more_older = !!data.has_more_older;
+                div.scrollTop = div.scrollHeight - oldHeight;
+            } else {
+                movScrollData.has_more_older = false;
+            }
+            movScrollData.loading = false;
+        }).catch(function() { movScrollData.loading = false; });
+    } else if (movScrollData.has_more_newer && div.scrollTop + div.clientHeight >= div.scrollHeight - margin) {
+        movScrollData.loading = true;
+        var url = 'obtener_movimientos.php?id=' + uSel + '&after_fecha=' + encodeURIComponent(movScrollData.last_fecha) + '&after_id=' + movScrollData.last_id;
+        fetch(url).then(r => r.json()).then(function(data) {
+            if (data.html && data.html.indexOf('NO HAY MOVIMIENTOS') < 0 && data.html.indexOf('fila-mov') >= 0) {
+                var tbody = document.getElementById("tablaMovimientos");
+                tbody.innerHTML = tbody.innerHTML + data.html;
+                movScrollData.last_fecha = data.last_fecha || movScrollData.last_fecha;
+                movScrollData.last_id = data.last_id || movScrollData.last_id;
+                movScrollData.has_more_newer = !!data.has_more_newer;
+                div.scrollTop = div.scrollHeight;
+            } else {
+                movScrollData.has_more_newer = false;
+            }
+            movScrollData.loading = false;
+        }).catch(function() { movScrollData.loading = false; });
+    }
 }
 
 function abrirEditor(id) {
@@ -1679,6 +1732,12 @@ function guardar() {
     }
     function cerrarModalMovimientosOperacion() {
         document.getElementById('modalMovimientosOperacion').classList.remove('visible');
+    }
+    var divScroll = document.getElementById('divScroll');
+    if (divScroll) {
+        divScroll.addEventListener('scroll', function() {
+            onScrollMovimientos();
+        });
     }
     document.getElementById('tablaMovimientos').addEventListener('click', function(e) {
         var td = e.target.closest('.col-operacion-link');
