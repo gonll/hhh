@@ -405,7 +405,7 @@ if ($nivelAcceso === 3) {
         <div style="display:flex; align-items:stretch; gap:10px; margin-top:15px; flex-wrap:wrap;">
             <button id="btnIngreso" class="btn-caja" style="background:#28a745;" onclick="preparar('INGRESO')">INGRESO</button>
             <button id="btnRetiro" class="btn-caja" style="background:#dc3545;" onclick="preparar('RETIRO')">RETIRO</button>
-            <button type="button" id="btnResumenCtas" class="btn-caja btn-activo" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; display:none;" onclick="abrirResumenCtas()">Resumen de Ctas.</button>
+            <button type="button" id="btnResumenCtas" class="btn-caja btn-activo" style="background:#17a2b8; color:white; border:1px solid #138496; display:none;" onclick="abrirResumenCtas()">Resumen de Ctas.</button>
             <div id="resumenConsorcioLinea" style="display:none; align-self:stretch; flex:0 1 38%; max-width:420px; min-width:280px; font-size:10px; line-height:1.35; padding:8px 10px; background:#fff3cd; border-radius:4px; border:1px solid #ffeeba; color:#856404; box-sizing:border-box; flex-direction:column; justify-content:space-between;">
                 <div style="flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right;">LIQUIDACIÓN DE EXPENSAS anteriores Ordinarias: $<span id="resumenLiqOrdinarias">0,00</span></div>
                 <div style="flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right;">LIQUIDACIÓN DE EXPENSAS anteriores Extraordinarias: $<span id="resumenLiqExtraordinarias">0,00</span></div>
