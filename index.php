@@ -453,8 +453,8 @@ if ($nivelAcceso === 3) {
                 <option value="">-- Cargando... --</option>
             </select>
             <div id="cobroReciboWrap" style="display:none;">
-                <label>Recibo N°</label>
-                <input type="text" id="cobroRecibo" placeholder="Ej: 123" maxlength="20">
+                <label>Recibo N° <span style="color:#dc3545;">*</span></label>
+                <input type="text" id="cobroRecibo" placeholder="Ej: 123" maxlength="20" required>
             </div>
             <label>Período (MM/AAAA)</label>
             <input type="text" id="cobroPeriodo" placeholder="Ej: 01/2025" maxlength="7">
@@ -1051,9 +1051,13 @@ function guardarCobroExp() {
     var fd = new FormData();
     fd.append('usuario_id', uSel);
     if (propVal.indexOf('consorcio:') === 0) {
-        fd.append('consorcio', propVal.substring(10));
         var recibo = (document.getElementById('cobroRecibo') || {}).value;
-        if (recibo && recibo.trim()) fd.append('recibo_numero', recibo.trim());
+        if (!recibo || !recibo.trim()) {
+            alert('Completá el número de recibo.');
+            return;
+        }
+        fd.append('consorcio', propVal.substring(10));
+        fd.append('recibo_numero', recibo.trim());
     } else {
         fd.append('propiedad_id', propVal);
     }

@@ -77,13 +77,11 @@ $refer_periodo = mysqli_real_escape_string($conexion, $periodo);
 // Si es pago por consorcio (Recibo N°): UN SOLO registro por cuenta
 if ($consorcio_param !== '') {
     $recibo_ingresado = isset($_POST['recibo_numero']) ? trim($_POST['recibo_numero']) : '';
-    if ($recibo_ingresado !== '') {
-        $nro_recibo = $recibo_ingresado;
-    } else {
-        $res_rec = mysqli_query($conexion, "SELECT COALESCE(MAX(movimiento_id), 0) + 1 AS nuevo FROM cuentas");
-        $row_rec = $res_rec ? mysqli_fetch_assoc($res_rec) : null;
-        $nro_recibo = $row_rec ? (int)$row_rec['nuevo'] : 1;
+    if ($recibo_ingresado === '') {
+        echo "Error: El número de recibo es obligatorio.";
+        exit;
     }
+    $nro_recibo = $recibo_ingresado;
 
     $row_primera = $propiedades_a_cobrar[0];
     $prop_consorcio = trim($row_primera['consorcio'] ?? '');
