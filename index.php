@@ -301,7 +301,7 @@ if ($nivelAcceso === 3) {
                 <span id="migrar-saldo-control" style="display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <span style="font-size:11px;">Saldo actual: <strong id="migrar-saldo-actual" data-valor="0">--</strong></span>
                     <label style="font-size:11px;">Saldo objetivo:</label>
-                    <input type="number" id="monto-migrar" step="0.01" placeholder="Ej: 0" style="width:100px; padding:6px 8px; font-size:11px; border:1px solid #ced4da; border-radius:4px;" oninput="actualizarDiferenciaMigrar()">
+                    <input type="text" id="monto-migrar" class="input-monto" inputmode="decimal" placeholder="Ej: 0" style="width:100px; padding:6px 8px; font-size:11px; border:1px solid #ced4da; border-radius:4px;" oninput="actualizarDiferenciaMigrar()">
                     <span id="migrar-diferencia-wrap" style="font-size:11px; display:none;">INICIAL a crear: <strong id="migrar-diferencia"></strong></span>
                     <button type="button" onclick="migrarSaldo()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer;">Migrar</button>
                 </span>
@@ -583,6 +583,22 @@ let tipo = '';
 let movSel = null;
 let esConsorcioUsuario = false;
 let movScrollData = null;
+
+// Parsear monto: acepta 24.44 o 24,44 (teclado numérico). Evita que 24.44 se interprete como 2.444.
+function parseMonto(str) {
+    str = String(str || '').trim().replace(/\s/g, '');
+    if (!str) return NaN;
+    var lastComma = str.lastIndexOf(',');
+    var lastPeriod = str.lastIndexOf('.');
+    if (lastComma > lastPeriod) {
+        str = str.replace(/\./g, '').replace(',', '.');
+    } else if (lastPeriod > lastComma) {
+        str = str.replace(/,/g, '');
+    } else if (lastComma >= 0) {
+        str = str.replace(',', '.');
+    }
+    return parseFloat(str);
+}
 
 // RELOJ ACTUALIZADO
 function actualizarReloj() {
@@ -1124,7 +1140,7 @@ function guardarCobroExp() {
         fd.append('propiedad_id', propVal);
     }
     fd.append('periodo', periodo);
-    fd.append('monto', monto);
+    fd.append('monto', parseFloat(monto));
     fd.append('efvo', cobroExpEsEfvo ? '1' : '0');
     fetch('guardar_cobro_expensa.php', { method: 'POST', body: fd })
         .then(r => r.text())
@@ -1147,7 +1163,7 @@ function actualizarDiferenciaMigrar() {
     var diffEl = document.getElementById('migrar-diferencia');
     if (!saldoEl || !inp || !diffWrap || !diffEl) return;
     var saldoActual = parseFloat(saldoEl.getAttribute('data-valor') || '0');
-    var objetivo = parseFloat(String(inp.value).replace(',', '.').trim());
+    var objetivo = parseMonto(inp.value);
     if (isNaN(objetivo) || inp.value === '') {
         diffWrap.style.display = 'none';
         return;
@@ -1165,7 +1181,7 @@ function migrarSaldo() {
     }
     var inp = document.getElementById('monto-migrar');
     if (!inp) return;
-    var montoObjetivo = parseFloat(String(inp.value).replace(',', '.').trim());
+    var montoObjetivo = parseMonto(inp.value);
     if (isNaN(montoObjetivo)) {
         alert('Ingresá un saldo objetivo válido.');
         return;
@@ -1656,8 +1672,8 @@ function fechaTextoAISO() {
 }
 
 function guardar() {
-    let m = document.getElementById("ins_monto").value;
-    if(!m || !uSel) return;
+    let m = parseFloat(document.getElementById("ins_monto").value);
+    if(isNaN(m) || !uSel) return;
     var compro = (document.getElementById("ins_compro").value || "").toUpperCase();
     var grabaEnCaja = (compro === "BOLETA" || compro === "EFVO" || compro === "ALQUILER EFVO" || compro === "VARIOS");
     var grabarCaja = (uSel !== 1 && grabaEnCaja) ? 1 : 0;

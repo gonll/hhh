@@ -22,7 +22,8 @@ if (!isset($_POST['usuario_id']) || !isset($_POST['monto'])) {
 
 $usuario_id = (int)$_POST['usuario_id'];
 $monto_str = trim($_POST['monto'] ?? '');
-$monto_objetivo = (float)str_replace(',', '.', preg_replace('/[^\d,\-]/', '', $monto_str));
+$monto_str_limpio = preg_replace('/[^\d,\-.]/', '', $monto_str);
+$monto_objetivo = (float)str_replace(',', '.', $monto_str_limpio);
 
 if ($usuario_id <= 0) {
     echo 'Error: Usuario no válido.';
