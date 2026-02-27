@@ -1,7 +1,10 @@
 <?php
 /**
- * Migrar saldo: ajusta el saldo del usuario seleccionado al monto indicado.
- * Crea un movimiento INICIAL con la diferencia necesaria.
+ * Migrar saldo: toma el saldo actual de la cuenta, considera el saldo objetivo,
+ * y graba un movimiento INICIAL tal que: saldo_despues = saldo_objetivo
+ *
+ * Fórmula: monto_a_grabar = saldo_objetivo - saldo_actual
+ * Resultado: saldo_despues = saldo_actual + monto_a_grabar = saldo_objetivo
  */
 include 'db.php';
 include 'verificar_sesion.php';
@@ -18,14 +21,15 @@ if (!isset($_POST['usuario_id']) || !isset($_POST['monto'])) {
 }
 
 $usuario_id = (int)$_POST['usuario_id'];
-$monto_objetivo = (float)$_POST['monto'];
+$monto_str = trim($_POST['monto'] ?? '');
+$monto_objetivo = (float)str_replace(',', '.', preg_replace('/[^\d,\-]/', '', $monto_str));
 
 if ($usuario_id <= 0) {
     echo 'Error: Usuario no válido.';
     exit;
 }
 
-// Calcular saldo actual sumando todos los movimientos
+// 1. Tomar el saldo actual de esa cuenta (suma de todos los movimientos)
 $sql_saldo = "SELECT COALESCE(SUM(monto), 0) AS saldo FROM cuentas WHERE usuario_id = $usuario_id";
 $res_saldo = mysqli_query($conexion, $sql_saldo);
 if (!$res_saldo) {
@@ -35,9 +39,10 @@ if (!$res_saldo) {
 $row = mysqli_fetch_assoc($res_saldo);
 $saldo_actual = (float)($row['saldo'] ?? 0);
 
-$diferencia = $monto_objetivo - $saldo_actual;
+// 2. Calcular el monto a grabar para que saldo_despues = saldo_objetivo
+$monto_a_grabar = $monto_objetivo - $saldo_actual;
 
-if (abs($diferencia) < 0.01) {
+if (abs($monto_a_grabar) < 0.01) {
     echo 'OK'; // Ya está en el monto correcto
     exit;
 }
@@ -48,7 +53,7 @@ $comprobante = 'INICIAL';
 $referencia = 'INICIAL';
 
 $sql = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-        VALUES ($usuario_id, '$fecha', '$concepto', '$comprobante', '$referencia', $diferencia)";
+        VALUES ($usuario_id, '$fecha', '$concepto', '$comprobante', '$referencia', $monto_a_grabar)";
 
 if (!mysqli_query($conexion, $sql)) {
     echo 'Error: ' . mysqli_error($conexion);

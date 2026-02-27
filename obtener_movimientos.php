@@ -71,15 +71,19 @@ if (count($filas) > 0) {
     $has_more_newer = ($r_newer && mysqli_num_rows($r_newer) > 0);
 }
 
-// Calcular saldo inicial según el tipo de carga (saldo antes de la primera fila a mostrar)
+// Calcular saldo inicial: saldo ANTES de la primera fila (para que al sumar cada monto quede el acumulado correcto)
+// Fórmula: saldo_fila_i = saldo_antes_primera + sum(monto de filas 1..i)
+// saldo_antes_primera = total_cuenta - suma_despues - monto_primera
+// (porque total = saldo_antes_primera + monto_primera + suma_despues)
 $suma_antes = 0;
 if (count($filas) > 0) {
     $primera = $filas[0];
     $pf_esc = mysqli_real_escape_string($conexion, $primera['fecha']);
     $pid = (int)$primera['movimiento_id'];
+    $monto_primera = (float)($primera['monto'] ?? 0);
     $r_sum = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS s FROM cuentas WHERE usuario_id = $id AND (fecha > '$pf_esc' OR (fecha = '$pf_esc' AND movimiento_id > $pid))");
     $suma_despues = ($r_sum && $row = mysqli_fetch_assoc($r_sum)) ? (float)$row['s'] : 0;
-    $suma_antes = $total_cuenta - $suma_despues;
+    $suma_antes = $total_cuenta - $suma_despues - $monto_primera;
 }
 
 $saldo = $suma_antes;
@@ -143,6 +147,7 @@ echo json_encode([
     'first_fecha' => $first_fecha,
     'first_id' => $first_id,
     'last_fecha' => $last_fecha,
-    'last_id' => $last_id
+    'last_id' => $last_id,
+    'saldo_actual' => $total_cuenta
 ]);
 ?>

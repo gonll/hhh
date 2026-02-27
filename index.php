@@ -298,9 +298,11 @@ if ($nivelAcceso === 3) {
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <div id="reloj-sistema"></div>
                 <?php if ($nivelAcceso >= 3): ?>
-                <span id="migrar-saldo-control" style="display:inline-flex; align-items:center; gap:6px;">
-                    <label style="font-size:11px;">Monto:</label>
-                    <input type="number" id="monto-migrar" step="0.01" placeholder="Saldo objetivo" style="width:100px; padding:6px 8px; font-size:11px; border:1px solid #ced4da; border-radius:4px;">
+                <span id="migrar-saldo-control" style="display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span style="font-size:11px;">Saldo actual: <strong id="migrar-saldo-actual" data-valor="0">--</strong></span>
+                    <label style="font-size:11px;">Saldo objetivo:</label>
+                    <input type="number" id="monto-migrar" step="0.01" placeholder="Ej: 0" style="width:100px; padding:6px 8px; font-size:11px; border:1px solid #ced4da; border-radius:4px;" oninput="actualizarDiferenciaMigrar()">
+                    <span id="migrar-diferencia-wrap" style="font-size:11px; display:none;">INICIAL a crear: <strong id="migrar-diferencia"></strong></span>
                     <button type="button" onclick="migrarSaldo()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer;">Migrar</button>
                 </span>
                 <?php endif; ?>
@@ -708,6 +710,13 @@ function cargarMovimientos(fila, id) {
             movScrollData.last_id = data.last_id || 0;
             movScrollData.has_more_older = !!data.has_more_older;
             movScrollData.has_more_newer = !!data.has_more_newer;
+            var saldoEl = document.getElementById("migrar-saldo-actual");
+            if (saldoEl) {
+                var saldo = parseFloat(data.saldo_actual);
+                saldoEl.setAttribute('data-valor', isNaN(saldo) ? '0' : saldo);
+                saldoEl.textContent = (isNaN(saldo) ? '--' : '$ ' + saldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            }
+            actualizarDiferenciaMigrar();
             document.getElementById("divScroll").scrollTop = document.getElementById("divScroll").scrollHeight;
             if (esConsorcioUsuario) {
                 fetch('obtener_resumen_consorcio.php?id=' + id)
@@ -1131,6 +1140,24 @@ function guardarCobroExp() {
         });
 }
 
+function actualizarDiferenciaMigrar() {
+    var saldoEl = document.getElementById("migrar-saldo-actual");
+    var inp = document.getElementById('monto-migrar');
+    var diffWrap = document.getElementById('migrar-diferencia-wrap');
+    var diffEl = document.getElementById('migrar-diferencia');
+    if (!saldoEl || !inp || !diffWrap || !diffEl) return;
+    var saldoActual = parseFloat(saldoEl.getAttribute('data-valor') || '0');
+    var objetivo = parseFloat(String(inp.value).replace(',', '.').trim());
+    if (isNaN(objetivo) || inp.value === '') {
+        diffWrap.style.display = 'none';
+        return;
+    }
+    var diferencia = objetivo - saldoActual;
+    diffWrap.style.display = 'inline';
+    diffEl.textContent = '$ ' + diferencia.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    diffEl.style.color = diferencia >= 0 ? '#28a745' : '#dc3545';
+}
+
 function migrarSaldo() {
     if (!uSel) {
         alert('Seleccioná un usuario primero.');
@@ -1138,27 +1165,43 @@ function migrarSaldo() {
     }
     var inp = document.getElementById('monto-migrar');
     if (!inp) return;
-    var monto = parseFloat(String(inp.value).replace(',', '.').trim());
-    if (isNaN(monto)) {
-        alert('Ingresá un monto válido.');
+    var montoObjetivo = parseFloat(String(inp.value).replace(',', '.').trim());
+    if (isNaN(montoObjetivo)) {
+        alert('Ingresá un saldo objetivo válido.');
         return;
     }
-    if (!confirm('¿Migrar saldo del usuario seleccionado a $ ' + monto.toFixed(2) + '? Se creará un movimiento INICIAL con la diferencia.')) return;
-    var fd = new FormData();
-    fd.append('usuario_id', uSel);
-    fd.append('monto', monto);
-    fetch('migrar_saldo.php', { method: 'POST', body: fd })
-        .then(function(r) { return r.text(); })
+    fetch('obtener_saldo_usuario.php?id=' + uSel)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var saldoActual = parseFloat(data.saldo) || 0;
+            var montoAGrabar = montoObjetivo - saldoActual;
+            if (Math.abs(montoAGrabar) < 0.01) {
+                alert('El saldo ya es $ ' + montoObjetivo.toLocaleString('es-AR', { minimumFractionDigits: 2 }) + '. No se requiere migración.');
+                return Promise.resolve('SKIP');
+            }
+            if (!confirm('Saldo actual: $ ' + saldoActual.toLocaleString('es-AR', { minimumFractionDigits: 2 }) + '\nSaldo objetivo: $ ' + montoObjetivo.toLocaleString('es-AR', { minimumFractionDigits: 2 }) + '\n\nSe creará movimiento INICIAL de $ ' + montoAGrabar.toLocaleString('es-AR', { minimumFractionDigits: 2 }) + '\n(para que el saldo quede en $ ' + montoObjetivo.toLocaleString('es-AR', { minimumFractionDigits: 2 }) + ')')) return Promise.resolve('SKIP');
+            var fd = new FormData();
+            fd.append('usuario_id', uSel);
+            fd.append('monto', montoObjetivo);
+            return fetch('migrar_saldo.php', { method: 'POST', body: fd });
+        })
+        .then(function(res) {
+            if (res === 'SKIP') return 'SKIP';
+            return res && res.text ? res.text() : '';
+        })
         .then(function(txt) {
+            if (txt === 'SKIP' || typeof txt !== 'string') return;
             if (txt.trim() === 'OK') {
                 var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
                 if (fila) cargarMovimientos(fila, uSel);
                 inp.value = '';
+                actualizarDiferenciaMigrar();
                 alert('Migración realizada correctamente.');
             } else {
                 alert(txt.trim() || 'Error al migrar.');
             }
-        });
+        })
+        .catch(function() { alert('Error al obtener saldo o migrar.'); });
 }
 
 var cobroCajaItem1 = null, cobroCajaItem2 = null;
