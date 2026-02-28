@@ -193,12 +193,7 @@ if ($nivelAcceso === 3) {
             height: 100%;
         }
         input[type="date"]::-webkit-inner-spin-button { display: none; }
-        #ins_monto::-webkit-inner-spin-button,
-        #ins_monto::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        #ins_monto { -moz-appearance: textfield; }
+        input[type="text"].input-monto { -moz-appearance: textfield; }
         .modal-overlay { display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-overlay.visible { display: flex; }
         .modal-cobro { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); width: 320px; }
@@ -359,7 +354,7 @@ if ($nivelAcceso === 3) {
                             </select>
                         </td>
                         <td><input type="text" id="ins_refer" style="width:95%"></td>
-                        <td><input type="number" id="ins_monto" style="width:95%; text-align:right;"></td>
+                        <td><input type="text" id="ins_monto" class="input-monto" inputmode="decimal" placeholder="0" style="width:95%; text-align:right;"></td>
                         <td colspan="2"><button onclick="guardar()" style="background:#28a745; color:white; width:100%; border:none; padding:5px; font-weight:bold; cursor:pointer;">OK</button></td>
                     </tr>
                 </tfoot>
@@ -594,8 +589,19 @@ function parseMonto(str) {
         str = str.replace(/\./g, '').replace(',', '.');
     } else if (lastPeriod > lastComma) {
         str = str.replace(/,/g, '');
+        if (lastComma < 0 && (str.match(/\./g) || []).length > 1) {
+            str = str.replace(/\./g, '');
+        } else if (lastComma < 0 && lastPeriod >= 0) {
+            var after = str.substring(lastPeriod + 1);
+            if (after.length === 3 && /^\d+$/.test(after)) str = str.replace(/\./g, '');
+        }
     } else if (lastComma >= 0) {
-        str = str.replace(',', '.');
+        var numCommas = (str.match(/,/g) || []).length;
+        if (numCommas > 1 || (str.substring(lastComma + 1).length !== 2)) {
+            str = str.replace(/,/g, '');
+        } else {
+            str = str.replace(',', '.');
+        }
     }
     return parseFloat(str);
 }
@@ -1672,7 +1678,7 @@ function fechaTextoAISO() {
 }
 
 function guardar() {
-    let m = parseFloat(document.getElementById("ins_monto").value);
+    let m = parseMonto(document.getElementById("ins_monto").value);
     if(isNaN(m) || !uSel) return;
     var compro = (document.getElementById("ins_compro").value || "").toUpperCase();
     var grabaEnCaja = (compro === "BOLETA" || compro === "EFVO" || compro === "ALQUILER EFVO" || compro === "VARIOS");
