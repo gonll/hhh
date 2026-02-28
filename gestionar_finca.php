@@ -757,7 +757,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <div class="form-row">
                 <div class="form-group" id="tractorGroup">
                     <label>Horas Comunes / Tractor *</label>
-                    <select name="tractor" id="tractor" tabindex="1" required>
+                    <select name="tractor" id="tractor" tabindex="-1" required>
                         <optgroup label="Horas Comunes">
                             <option value="Horas Comunes" <?= (($pdt_edit && ($pdt_edit['tipo_horas'] ?? '') === 'Horas Comunes') || (!$pdt_edit && $tractor_default === 'Horas Comunes')) ? 'selected' : '' ?>>Horas Comunes</option>
                         </optgroup>
@@ -792,34 +792,34 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 
                 <div class="form-group form-group-compact">
                     <label>Fecha *</label>
-                    <input type="date" name="fecha" id="fecha" tabindex="2" value="<?= $pdt_edit ? $pdt_edit['fecha'] : date('Y-m-d') ?>" required>
+                    <input type="date" name="fecha" id="fecha" tabindex="1" value="<?= $pdt_edit ? $pdt_edit['fecha'] : date('Y-m-d') ?>" required>
                 </div>
                 
                 <div class="form-group form-group-compact" id="cantidadHorasGroup">
                     <label id="labelCantidad">Cantidad *</label>
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="horas" id="horas" tabindex="3" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '' ?>" placeholder="0" required autocomplete="off">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="horas" id="horas" tabindex="2" value="<?= $pdt_edit ? (int)$pdt_edit['horas'] : '' ?>" placeholder="0" required autocomplete="off">
                 </div>
                 
                 <div class="form-group form-group-observaciones">
                     <label>Observaciones</label>
-                    <textarea name="observaciones" id="observaciones" rows="1" tabindex="4" style="resize: vertical; min-height: 28px;" onkeydown="if((event||window.event).key==='Enter'&&!(event||window.event).shiftKey){(event||window.event).preventDefault();var g=document.getElementById('btnGuardar');if(g)g.focus();}"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
-                </div>
-                
-                <div class="form-group" style="flex: 0 0 auto; flex-shrink: 0; align-self: flex-end; margin-left: auto; padding-left: 2cm;">
-                    <label>&nbsp;</label>
-                    <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary" tabindex="5" style="min-width: 140px; padding: 6px 24px;">Guardar</button>
+                    <textarea name="observaciones" id="observaciones" rows="1" tabindex="3" style="resize: vertical; min-height: 28px;" onkeydown="if((event||window.event).key==='Enter'&&!(event||window.event).shiftKey){(event||window.event).preventDefault();var g=document.getElementById('btnGuardar');if(g)g.focus();}"><?= htmlspecialchars($pdt_edit['observaciones'] ?? '') ?></textarea>
                 </div>
                 
                 <div class="form-group" id="gasoilGroup" style="display: none;">
                     <label>Cant Gasoil *</label>
-                    <input type="number" name="cant_gasoil" id="cant_gasoil" tabindex="-1" step="0.01" min="0" value="<?= $pdt_edit ? ($pdt_edit['cant_gasoil'] ?? '0') : '0' ?>">
+                    <input type="number" name="cant_gasoil" id="cant_gasoil" tabindex="4" step="0.01" min="0" value="<?= $pdt_edit ? ($pdt_edit['cant_gasoil'] ?? '0') : '0' ?>">
                 </div>
                 
                 <div class="form-group checkbox-group" id="cambioAceiteGroup" style="display: none;">
                     <label class="checkbox-label">
-                        <input type="checkbox" name="cambio_aceite" id="cambio_aceite" tabindex="-1" value="1" <?= ($pdt_edit && isset($pdt_edit['cambio_aceite']) && $pdt_edit['cambio_aceite'] == 1) ? 'checked' : '' ?>>
+                        <input type="checkbox" name="cambio_aceite" id="cambio_aceite" tabindex="5" value="1" <?= ($pdt_edit && isset($pdt_edit['cambio_aceite']) && $pdt_edit['cambio_aceite'] == 1) ? 'checked' : '' ?>>
                         Cambio de aceite
                     </label>
+                </div>
+                
+                <div class="form-group" style="flex: 0 0 auto; flex-shrink: 0; align-self: flex-end;">
+                    <label>&nbsp;</label>
+                    <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary" tabindex="6" style="min-width: 140px; padding: 6px 24px;">Guardar</button>
                 </div>
             </div>
             
@@ -1321,9 +1321,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     });
                 }
                 
-                // Navegación con Enter entre campos hasta el botón Guardar
+                // Navegación con Enter entre campos hasta el botón Guardar (secuencia: fecha, cantidad, observaciones, cant gasoil, cambio aceite, guardar)
                 if (btnGuardar && buscador && tractorSelect) {
-                    const camposOrden = [buscador, tractorSelect, fechaInput, horasInput, cantGasoilInput, cambioAceiteInput, observacionesTextarea, btnGuardar].filter(c => c !== null);
+                    const camposOrden = [buscador, tractorSelect, fechaInput, horasInput, observacionesTextarea, cantGasoilInput, cambioAceiteInput, btnGuardar].filter(c => c !== null);
                     
                     camposOrden.forEach((campo, index) => {
                         if (!campo) return;
@@ -1472,11 +1472,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
     <script>
     (function(){
         function setupTabPDT(){
-            var f=document.getElementById('formPDT'),tr=document.getElementById('tractor'),fe=document.getElementById('fecha'),h=document.getElementById('horas'),cg=document.getElementById('cant_gasoil'),ca=document.getElementById('cambio_aceite'),o=document.getElementById('observaciones'),g=document.getElementById('btnGuardar');
-            if(!f||!tr||!fe||!h||!o||!g)return false;
+            var f=document.getElementById('formPDT'),fe=document.getElementById('fecha'),h=document.getElementById('horas'),o=document.getElementById('observaciones'),cg=document.getElementById('cant_gasoil'),ca=document.getElementById('cambio_aceite'),g=document.getElementById('btnGuardar');
+            if(!f||!fe||!h||!o||!g)return false;
             if(f.dataset.tabInit)return true;
             f.dataset.tabInit='1';
-            var campos=[tr,fe,h,cg,ca,o,g].filter(function(x){return x;});
+            var campos=[fe,h,o,cg,ca,g].filter(function(x){return x;});
             function siguiente(i,dir){var j=i+dir;while(j>=0&&j<campos.length){var c=campos[j];if(c&&c.offsetParent!==null&&c.style.display!=='none')return c;j+=dir;}return null;}
             f.addEventListener('keydown',function(e){
                 var k=(e.key==='Tab')?9:(e.keyCode||e.which||0);
