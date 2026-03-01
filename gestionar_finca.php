@@ -2,6 +2,12 @@
 include 'db.php';
 include 'verificar_sesion.php';
 
+// Debug: activar en servidor con ?debug=1 para ver errores PHP (desactivar en producción)
+if (!empty($_GET['debug']) && $_GET['debug'] === '1') {
+    ini_set('display_errors', 1);
+    error_reporting(E_ALL);
+}
+
 if (!defined('DESDE_CEL')) define('DESDE_CEL', false);
 $desde_cel = DESDE_CEL;
 if (!$desde_cel && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
@@ -451,10 +457,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         th { background: #007bff; color: white; padding: 6px 4px; text-align: left; font-size: 10px; }
         td { padding: 5px 4px; border-bottom: 1px solid #eee; font-size: 10px; }
         tr:hover { background: #f8f9fa; }
-        .tabla-listado-pdt { table-layout: auto; width: 100%; min-width: 900px; }
+        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 900px; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
-        /* Columnas de datos: mostrar contenido; ellipsis solo si es muy largo */
-        .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; overflow: visible; }
+        /* Columnas de datos: ellipsis en personal/tractor para evitar que nombres largos rompan el layout */
+        .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; position: sticky; right: 0; z-index: 3; background: #fff !important; box-shadow: -4px 0 6px rgba(0,0,0,0.08); }
         .tabla-listado-pdt th.col-acciones { background: #007bff !important; box-shadow: -4px 0 6px rgba(0,0,0,0.15); }
         .tabla-listado-pdt td.col-acciones { background: #fff !important; }
@@ -852,6 +858,18 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             </div>
             <div id="grid1" class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
+            <colgroup>
+                <col style="width:40px">
+                <col style="width:140px">
+                <col style="width:100px">
+                <col style="width:110px">
+                <col style="width:85px">
+                <col style="width:55px">
+                <col style="width:55px">
+                <col style="width:50px">
+                <col style="width:40px">
+                <col style="width:220px">
+            </colgroup>
             <thead>
                 <tr>
                     <th class="col-id">ID</th>
@@ -870,33 +888,49 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <?php $tiene_datos = count($lista_pdt) > 0; ?>
                 <?php if ($tiene_datos): ?>
                     <?php foreach ($lista_pdt as $pdt): ?>
-                        <?php $tiene_obs = !empty(trim($pdt['observaciones'] ?? '')); ?>
-                        <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= (int)$pdt['usuario_id'] ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
-                            <td class="col-id" title="<?= (int)$pdt['id'] ?>"><?php $id = (string)$pdt['id']; echo strlen($id) > 6 ? substr($id, 0, 6) . '…' : $id; ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim($pdt['observaciones'])) ?></span><?php endif; ?></td>
-                            <td class="col-personal" title="<?= htmlspecialchars($pdt['usuario_nombre']) ?>"><?= htmlspecialchars($pdt['usuario_nombre']) ?></td>
-                            <td class="col-tipo" title="<?= htmlspecialchars($pdt['tipo_horas']) ?>"><?php $t = htmlspecialchars($pdt['tipo_horas']); echo mb_strlen($t) > 20 ? mb_substr($t, 0, 20) . '…' : $t; ?></td>
-                            <td class="col-tractor"><?= htmlspecialchars($pdt['tractor'] ?? '-') ?></td>
-                            <td class="col-fecha" title="<?= date('d/m/Y', strtotime($pdt['fecha'])) ?>"><?php $f = date('d/m/Y', strtotime($pdt['fecha'])); echo mb_strlen($f) > 20 ? mb_substr($f, 0, 20) . '…' : $f; ?></td>
-                            <td class="col-cantidad"><?= number_format($pdt['horas'], 2, ',', '.') ?></td>
-                            <td class="col-gasoil"><?= isset($pdt['cant_gasoil']) && $pdt['cant_gasoil'] !== null ? number_format($pdt['cant_gasoil'], 2, ',', '.') : '-' ?></td>
-                            <td class="col-cambio"><?= (isset($pdt['cambio_aceite']) && $pdt['cambio_aceite'] == 1) ? '✓' : '-' ?></td>
-                            <td class="col-cc" style="font-weight: bold; <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'color: #28a745;' : 'color: #dc3545;' ?>">
-                                <?= (isset($pdt['en_cc']) && $pdt['en_cc'] == 1) ? 'SI' : 'NO' ?>
-                            </td>
+                        <?php
+                        $p = function($k, $def = '') use ($pdt) {
+                            $v = $pdt[$k] ?? $pdt[strtoupper($k)] ?? $pdt[ucfirst($k)] ?? $def;
+                            return $v !== null && $v !== '' ? $v : $def;
+                        };
+                        $tiene_obs = !empty(trim((string)$p('observaciones', '')));
+                        $pid = (int)$p('id', 0);
+                        $uid = (int)$p('usuario_id', 0);
+                        $nom = htmlspecialchars((string)$p('usuario_nombre', '-'));
+                        $tipo = htmlspecialchars((string)$p('tipo_horas', '-'));
+                        $tractor = htmlspecialchars((string)($p('tractor') ?: '-'));
+                        $fechaRaw = $p('fecha', '');
+                        $fechaFmt = $fechaRaw ? @date('d/m/Y', strtotime($fechaRaw)) : '-';
+                        $horas = (float)$p('horas', 0);
+                        $gasoil = $p('cant_gasoil');
+                        $gasoilFmt = ($gasoil !== null && $gasoil !== '' && $gasoil !== '-') ? number_format((float)$gasoil, 2, ',', '.') : '-';
+                        $cambio = (isset($pdt['cambio_aceite']) ? (int)$pdt['cambio_aceite'] : (int)($pdt['cambio_aceite'] ?? 0));
+                        $encc = (isset($pdt['en_cc']) ? (int)$pdt['en_cc'] : (int)($pdt['en_cc'] ?? 0));
+                        ?>
+                        <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= $uid ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
+                            <td class="col-id" title="<?= $pid ?>"><?= $pid ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim((string)$p('observaciones'))) ?></span><?php endif; ?></td>
+                            <td class="col-personal" title="<?= $nom ?>"><?= $nom ?></td>
+                            <td class="col-tipo" title="<?= $tipo ?>"><?= mb_strlen($tipo) > 20 ? mb_substr($tipo, 0, 20) . '…' : $tipo ?></td>
+                            <td class="col-tractor"><?= $tractor ?></td>
+                            <td class="col-fecha" title="<?= $fechaFmt ?>"><?= $fechaFmt ?></td>
+                            <td class="col-cantidad"><?= number_format($horas, 2, ',', '.') ?></td>
+                            <td class="col-gasoil"><?= $gasoilFmt ?></td>
+                            <td class="col-cambio"><?= $cambio == 1 ? '✓' : '-' ?></td>
+                            <td class="col-cc" style="font-weight: bold; <?= $encc == 1 ? 'color: #28a745;' : 'color: #dc3545;' ?>"><?= $encc == 1 ? 'SI' : 'NO' ?></td>
                             <td class="col-acciones">
                                 <div style="display: flex; justify-content: flex-end; width: 100%;">
                                 <div class="acciones-botones">
                                     <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
+                                        <input type="hidden" name="pdt_id" value="<?= $pid ?>">
                                         <button type="submit" name="editar" class="btn btn-secondary">Modificar</button>
                                     </form>
                                     <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
+                                        <input type="hidden" name="pdt_id" value="<?= $pid ?>">
                                         <button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm('¿Eliminar este PDT?')">Eliminar</button>
                                     </form>
-                                    <?php if ((!isset($pdt['en_cc']) || $pdt['en_cc'] == 0)): ?>
+                                    <?php if ($encc == 0): ?>
                                     <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
-                                        <input type="hidden" name="pdt_id" value="<?= $pdt['id'] ?>">
+                                        <input type="hidden" name="pdt_id" value="<?= $pid ?>">
                                         <button type="submit" name="cargar_cc" class="btn btn-success">Cargar en CC</button>
                                     </form>
                                     <?php endif; ?>
