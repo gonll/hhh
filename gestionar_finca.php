@@ -451,21 +451,21 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         th { background: #007bff; color: white; padding: 6px 4px; text-align: left; font-size: 10px; }
         td { padding: 5px 4px; border-bottom: 1px solid #eee; font-size: 10px; }
         tr:hover { background: #f8f9fa; }
-        .tabla-listado-pdt { table-layout: auto; width: 100%; }
+        .tabla-listado-pdt { table-layout: auto; width: 100%; min-width: 900px; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
         /* Columnas de datos: mostrar contenido; ellipsis solo si es muy largo */
         .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; overflow: visible; }
-        .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; position: relative; z-index: 2; background: #fff !important; }
-        .tabla-listado-pdt th.col-acciones { background: #007bff !important; }
+        .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; position: sticky; right: 0; z-index: 3; background: #fff !important; box-shadow: -4px 0 6px rgba(0,0,0,0.08); }
+        .tabla-listado-pdt th.col-acciones { background: #007bff !important; box-shadow: -4px 0 6px rgba(0,0,0,0.15); }
         .tabla-listado-pdt td.col-acciones { background: #fff !important; }
         .tabla-listado-pdt tr:hover td.col-acciones { background: #f8f9fa !important; }
         .tabla-listado-pdt tr.fila-con-observaciones td { background: #ffebee; color: #b71c1c; }
         .tabla-listado-pdt tr.fila-con-observaciones:hover td { background: #ffcdd2; }
         .tabla-listado-pdt tr.fila-con-observaciones td.col-acciones { background: #ffebee !important; }
         .tabla-listado-pdt tr.fila-con-observaciones:hover td.col-acciones { background: #ffcdd2 !important; }
-        .wrap-tabla-pdt { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: visible; }
+        .wrap-tabla-pdt { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: visible; position: relative; z-index: 2; -webkit-overflow-scrolling: touch; }
         /* grid1: tamaño reducido por defecto; .tamano-original restaura el tamaño completo */
-        #grid1 { min-height: 200px; max-height: 35vh; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; display: block; }
+        #grid1 { min-height: 200px; max-height: 35vh; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; display: block; position: relative; }
         #grid1.tamano-original { min-height: 400px; max-height: 70vh; }
         .tabla-listado-pdt tr.fila-con-observaciones { cursor: pointer; }
         #modalObservaciones { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; }
@@ -482,7 +482,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt th.col-gasoil, .tabla-listado-pdt td.col-gasoil { min-width: 55px; }
         .tabla-listado-pdt th.col-cambio, .tabla-listado-pdt td.col-cambio { min-width: 50px; text-align: center; }
         .tabla-listado-pdt th.col-cc, .tabla-listado-pdt td.col-cc { min-width: 40px; text-align: center; }
-        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 220px; white-space: nowrap; overflow: visible; text-align: right !important; }
+        .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 220px !important; white-space: nowrap; overflow: visible; text-align: right !important; }
         .tabla-listado-pdt td.col-acciones .acciones-botones { margin-left: auto; display: block; width: fit-content; }
         .icono-tractor { width: 15px; height: 15px; display: inline-block; margin-right: 3px; vertical-align: middle; }
         #tractorGroup { min-width: 150px; flex: 0 0 auto; }
@@ -496,7 +496,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         #tractor.tractor-mf { color: #c41e3a; font-weight: bold; }
         .checkbox-label { display: flex; align-items: center; margin-top: 0; padding-top: 15px; font-size: 11px; }
         input[type="checkbox"] { width: 15px; height: 15px; margin-right: 4px; }
-        .buscador-usuario-container { width: 25%; overflow: visible; }
+        .buscador-usuario-container { width: 25%; max-width: 320px; min-width: 0; overflow: visible; flex-shrink: 0; }
         .acciones-botones { display: inline-flex; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
         .acciones-botones form { display: inline-block; margin: 0; }
         .acciones-botones .btn { padding: 4px 8px; font-size: 10px; flex-shrink: 0; }
@@ -634,8 +634,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <input type="hidden" name="pdt_id" value="<?= $pdt_edit['id'] ?>">
             <?php endif; ?>
             
-            <div style="display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 4px;">
-                <div class="form-group buscador-usuario-container" style="flex: 1 1 auto; min-width: 200px;">
+            <div style="display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; position: relative; z-index: 1;">
+                <div class="form-group buscador-usuario-container" style="flex: 0 0 auto; min-width: 200px;">
                     <label>Personal *</label>
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                         <div class="buscador-usuario" style="flex: 0 0 180px; min-width: 140px;">
@@ -840,7 +840,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         </form>
         
         
-        <div style="margin-top: 12px;">
+        <div style="margin-top: 24px; padding-top: 8px; position: relative; z-index: 2; clear: both; width: 100%; border-top: 1px solid #eee;">
             <h3 style="margin: 0 0 8px 0;">Listado de PDTs</h3>
             <div id="grid1" class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
