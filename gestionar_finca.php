@@ -841,7 +841,15 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         
         
         <div style="margin-top: 24px; padding-top: 8px; position: relative; z-index: 2; clear: both; width: 100%; border-top: 1px solid #eee;">
-            <h3 style="margin: 0 0 8px 0;">Listado de PDTs</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                <h3 style="margin: 0;">Listado de PDTs</h3>
+                <?php if ($mostrar_vista_completa && count($lista_pdt) > 0): ?>
+                <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;" onsubmit="return confirm('¿Eliminar TODOS los partes diarios de trabajo? Esta acción no se puede deshacer.');">
+                    <input type="hidden" name="eliminar_todos" value="1">
+                    <button type="submit" class="btn btn-danger" style="font-size: 10px; padding: 4px 10px;">Eliminar todos los partes</button>
+                </form>
+                <?php endif; ?>
+            </div>
             <div id="grid1" class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
             <thead>
