@@ -602,7 +602,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <div id="mensajeCC" class="mensaje <?= (strpos($mensaje, 'Error') !== false || strpos($mensaje, 'Falta dato') !== false) ? 'error' : 'ok' ?>">
                 <?= htmlspecialchars($mensaje) ?>
             </div>
-            <?php if ((isset($_GET['cc']) && $_GET['cc'] === 'ok') || $mensaje === 'Parte diario de trabajo eliminado correctamente.'): ?>
+            <?php if ((isset($_GET['cc']) && $_GET['cc'] === 'ok') || $mensaje === 'Parte diario de trabajo eliminado correctamente.' || $mensaje === 'Todos los registros PDT han sido eliminados.'): ?>
             <script>
             (function(){ var m=document.getElementById('mensajeCC'); if(m) setTimeout(function(){ m.style.display='none'; }, 2000); })();
             </script>
