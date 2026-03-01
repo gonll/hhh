@@ -255,7 +255,7 @@ if ($nivelAcceso === 3) {
                         if (!empty($f['fecha_fin_contrato'])) {
                             $fechaFinAttr = " data-fecha-fin='".htmlspecialchars($f['fecha_fin_contrato'])."'";
                         }
-                        echo "<tr onclick='cargarMovimientos(this, {$f['id']})'$fechaFinAttr>
+                        echo "<tr data-id=\"{$f['id']}\" onclick='cargarMovimientos(this, {$f['id']})'$fechaFinAttr>
                                 <td>
                                     <span class='nombre-txt'>".strtoupper($f['apellido'])."</span>
                                     $btnEdit
@@ -1721,7 +1721,7 @@ function guardar() {
 })();
 <?php endif; ?>
 
-// Detectar parámetros de nuevo cobro desde gestión de azúcares
+// Detectar parámetros desde gestión de azúcares (nuevo cobro o ir a estado de cuenta del comprador)
 (function() {
     var urlParams = new URLSearchParams(window.location.search);
     var nuevoCobro = urlParams.get('nuevo_cobro');
@@ -1730,19 +1730,16 @@ function guardar() {
     var referencia = urlParams.get('referencia');
     
     if (nuevoCobro === '1' && usuarioId && operacion && referencia) {
-        // Esperar a que la página cargue completamente
+        // Nuevo cobro: seleccionar usuario y preparar formulario de ingreso
         setTimeout(function() {
-            // Buscar y seleccionar el usuario
             var filasUsuarios = document.querySelectorAll('#cuerpo tr[data-id]');
             for (var i = 0; i < filasUsuarios.length; i++) {
                 var fila = filasUsuarios[i];
                 var idFila = fila.getAttribute('data-id');
                 if (idFila === usuarioId) {
                     cargarMovimientos(fila, parseInt(usuarioId));
-                    // Preparar formulario de ingreso con los datos
                     setTimeout(function() {
                         preparar('INGRESO');
-                        // Prellenar campos específicos para cobro de venta de azúcar
                         document.getElementById("ins_concepto").value = "COBRO VTA AZUCAR";
                         document.getElementById("ins_refer").value = decodeURIComponent(referencia);
                         document.getElementById("ins_compro").value = "CHEQUE/ECHEQ";
@@ -1751,6 +1748,20 @@ function guardar() {
                             document.getElementById("ins_concepto").focus();
                         }, 100);
                     }, 300);
+                    break;
+                }
+            }
+        }, 500);
+    } else if (usuarioId) {
+        // Solo usuario_id: ir a estado de cuenta del comprador (ej. desde link en gestión azúcar)
+        setTimeout(function() {
+            var filasUsuarios = document.querySelectorAll('#cuerpo tr[data-id]');
+            for (var i = 0; i < filasUsuarios.length; i++) {
+                var fila = filasUsuarios[i];
+                var idFila = fila.getAttribute('data-id');
+                if (idFila === usuarioId) {
+                    cargarMovimientos(fila, parseInt(usuarioId));
+                    history.replaceState({}, '', 'index.php');
                     break;
                 }
             }

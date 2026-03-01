@@ -342,7 +342,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 . '<td class="col-operacion">' . ((int)($r_nuevo['operacion'] ?? 0) ?: '') . '</td>'
                                 . '<td class="col-fechavta">' . htmlspecialchars(fmtFecha($r_nuevo['fecha_vta'])) . '</td>'
                                 . '<td class="col-cantvta">' . (int)$r_nuevo['cant_vta'] . '</td>'
-                                . '<td class="col-vendida ' . (empty($r_nuevo['vendida_a_apellido']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['vendida_a_apellido'] ?? '') . '</td>'
+                                . '<td class="col-vendida ' . (empty($r_nuevo['vendida_a_apellido']) ? 'sin-dato' : '') . '">'
+                                . ((int)($r_nuevo['vendida_a_id'] ?? 0) > 0 && !empty($r_nuevo['vendida_a_apellido'])
+                                    ? '<a href="index.php?usuario_id=' . (int)$r_nuevo['vendida_a_id'] . '" class="link-comprador" onclick="event.stopPropagation();">' . htmlspecialchars($r_nuevo['vendida_a_apellido']) . '</a>'
+                                    : htmlspecialchars($r_nuevo['vendida_a_apellido'] ?? ''))
+                                . '</td>'
                                 . '<td class="col-operador ' . (empty($r_nuevo['operador_apellido']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['operador_apellido'] ?? '') . '</td>'
                                 . '<td class="col-preciovta">' . fmtNum($r_nuevo['precio_vta']) . '</td>'
                                 . '<td class="col-fechafact">' . htmlspecialchars(fmtFecha($r_nuevo['fecha_fact'])) . '</td>'
@@ -496,6 +500,10 @@ function fmtNum($n) {
         .tabla-azucar .col-operacion:hover { text-decoration: underline; color: #007bff; }
         .tabla-azucar tbody tr .col-operacion:hover { background-color: #e7f3ff; }
         .tabla-azucar .col-vendida, .tabla-azucar .col-facturada, .tabla-azucar .col-operador { width: 140px; }
+        .tabla-azucar .col-vendida .link-comprador { color: #007bff; text-decoration: underline; cursor: pointer; }
+        .tabla-azucar .col-vendida .link-comprador:hover { color: #0056b3; }
+        .tabla-azucar tbody tr.fila-seleccionada .col-vendida .link-comprador { color: white; }
+        .tabla-azucar tbody tr.fila-seleccionada .col-vendida .link-comprador:hover { color: #e7f3ff; }
         .tabla-azucar .col-preciovta, .tabla-azucar .col-preciofac { width: 75px; }
         .tabla-azucar .col-nfact, .tabla-azucar .col-nremt { width: 70px; }
         .tabla-azucar .sin-dato { color: #999; }
@@ -706,7 +714,15 @@ function fmtNum($n) {
                             <td class="col-operacion"><?= (int)($r['operacion'] ?? 0) ?: '' ?></td>
                             <td class="col-fechavta"><?= htmlspecialchars(fmtFecha($r['fecha_vta'])) ?></td>
                             <td class="col-cantvta"><?= (int)$r['cant_vta'] ?></td>
-                            <td class="col-vendida <?= empty($r['vendida_a_apellido']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['vendida_a_apellido'] ?? '') ?></td>
+                            <td class="col-vendida <?= empty($r['vendida_a_apellido']) ? 'sin-dato' : '' ?>"><?php
+                                $vid = (int)($r['vendida_a_id'] ?? 0);
+                                $vnom = htmlspecialchars($r['vendida_a_apellido'] ?? '');
+                                if ($vid > 0 && $vnom !== '') {
+                                    echo '<a href="index.php?usuario_id=' . $vid . '" class="link-comprador" onclick="event.stopPropagation();">' . $vnom . '</a>';
+                                } else {
+                                    echo $vnom;
+                                }
+                            ?></td>
                             <td class="col-operador <?= empty($r['operador_apellido']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['operador_apellido'] ?? '') ?></td>
                             <td class="col-preciovta"><?= fmtNum($r['precio_vta']) ?></td>
                             <td class="col-fechafact"><?= htmlspecialchars(fmtFecha($r['fecha_fact'])) ?></td>
