@@ -89,6 +89,7 @@ if ($nivelAcceso === 3) {
             font-size: 9px; text-transform: uppercase; display: block;
         }
         .btn-contrato { background: #007bff; } 
+        .btn-recibos-porteros { background: #6f42c1; }
         .btn-indice { background: #f39c12; }
         .btn-finca { background: #28a745; }
         .btn-arriendos { background: #0047AB; }
@@ -272,10 +273,14 @@ if ($nivelAcceso === 3) {
                 <a href="gestionar_azucares.php" class="btn-abm-prop" style="flex: 1;">Azucar</a>
                 <a href="arriendos.php" class="btn-abm-prop btn-arriendos" style="flex: 1;">Arriendos</a>
             </div>
-            <a href="propiedades.php" class="btn-abm-prop btn-admin-prop">⚙️ Admin. Propiedades</a>
-            <a href="contrato_alquiler.php" class="btn-abm-prop btn-contrato">📜 Contrato de Alquiler</a>
-            <a href="gestion_trabajos.php" class="btn-abm-prop">🔧 Trabajos</a>
-            <a href="abm_indices.php" class="btn-abm-prop btn-indice">📈 ABM INDICE IPC</a>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <a href="propiedades.php" class="btn-abm-prop btn-admin-prop" style="flex: 1;">⚙️ Admin. Propiedades</a>
+                <a href="contrato_alquiler.php" class="btn-abm-prop btn-contrato" style="flex: 1;">📜 Contrato de Alquiler</a>
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <a href="recibos_porteros.php" class="btn-abm-prop btn-recibos-porteros" style="flex: 1;">🪪 Recibos Porteros</a>
+                <a href="abm_indices.php" class="btn-abm-prop btn-indice" style="flex: 1;">📈 ABM INDICE IPC</a>
+            </div>
         <?php endif; ?>
 
     </div>
