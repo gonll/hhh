@@ -22,23 +22,46 @@ if (!$row_u || stripos($row_u['apellido'], 'CONSORCIO') !== 0) {
 $nombre_consorcio = trim($row_u['consorcio'] ?? '');
 $consorcio_esc = mysqli_real_escape_string($conexion, $nombre_consorcio);
 
-// Obtener última liquidación
+// Obtener las dos últimas liquidaciones (LIQ EXPENSAS con monto 0)
 $ultimo_liq_id = null;
+$penultimo_liq_id = null;
 $ultimo_mes_liq = null;
+$liq_ordinarias = null;
+$liq_extraordinarias = null;
 $res_liq = mysqli_query($conexion, "SELECT movimiento_id, referencia, concepto FROM cuentas 
     WHERE usuario_id = $consorcio_id AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
-    ORDER BY movimiento_id DESC LIMIT 1");
-if ($res_liq && $row_liq = mysqli_fetch_assoc($res_liq)) {
-    $ultimo_liq_id = (int)$row_liq['movimiento_id'];
-    $ultimo_mes_liq = trim($row_liq['referencia'] ?? '');
+    ORDER BY movimiento_id DESC LIMIT 2");
+$liq_rows = [];
+while ($res_liq && $row = mysqli_fetch_assoc($res_liq)) {
+    $liq_rows[] = $row;
+}
+if (count($liq_rows) >= 1) {
+    $ultimo_liq_id = (int)$liq_rows[0]['movimiento_id'];
+    $ultimo_mes_liq = trim($liq_rows[0]['referencia'] ?? '');
+    $concepto = trim($liq_rows[0]['concepto'] ?? '');
+    if (preg_match('/Ordinarias\s+([\d.,]+)\s*-\s*Extraordinarias\s+([\d.,]+)/i', $concepto, $m)) {
+        $toFloat = function ($s) {
+            $s = str_replace('.', '', $s);
+            $s = str_replace(',', '.', $s);
+            return (float)$s;
+        };
+        $liq_ordinarias = $toFloat($m[1]);
+        $liq_extraordinarias = $toFloat($m[2]);
+    }
+}
+if (count($liq_rows) >= 2) {
+    $penultimo_liq_id = (int)$liq_rows[1]['movimiento_id'];
 }
 
-// Obtener movimientos desde la última liquidación
+// Obtener movimientos ENTRE las dos últimas liquidaciones (incluye la última LIQ EXPENSAS)
 $movimientos = [];
 if ($ultimo_liq_id !== null) {
+    $cond_rango = ($penultimo_liq_id !== null)
+        ? "movimiento_id > $penultimo_liq_id AND movimiento_id <= $ultimo_liq_id"
+        : "movimiento_id <= $ultimo_liq_id";
     $sql_mov = "SELECT fecha, concepto, comprobante, referencia, monto 
                 FROM cuentas 
-                WHERE usuario_id = $consorcio_id AND movimiento_id > $ultimo_liq_id
+                WHERE usuario_id = $consorcio_id AND $cond_rango
                 ORDER BY fecha ASC, movimiento_id ASC";
 } else {
     $sql_mov = "SELECT fecha, concepto, comprobante, referencia, monto 
@@ -57,23 +80,33 @@ while ($mov = mysqli_fetch_assoc($res_mov)) {
     ];
 }
 
-// Calcular totales
-$total_ingresos = 0;
-$total_egresos = 0;
-$total_egresos_extraordinarias = 0;
-foreach ($movimientos as $mov) {
-    if ($mov['monto'] > 0) {
-        $total_ingresos += $mov['monto'];
-    } else {
-        $monto_abs = abs($mov['monto']);
-        $total_egresos += $monto_abs;
-        if ($mov['comprobante'] === 'EXP EXTRAORDINARIA') {
-            $total_egresos_extraordinarias += $monto_abs;
+// Calcular totales: usar valores de la última LIQ EXPENSAS si están disponibles
+if ($liq_ordinarias !== null && $liq_extraordinarias !== null) {
+    $total_egresos_ordinarias = $liq_ordinarias;
+    $total_egresos_extraordinarias = $liq_extraordinarias;
+    $total_expensas = $liq_ordinarias + $liq_extraordinarias;
+    $total_ingresos = 0;
+    foreach ($movimientos as $mov) {
+        if ($mov['monto'] > 0) $total_ingresos += $mov['monto'];
+    }
+} else {
+    $total_ingresos = 0;
+    $total_egresos = 0;
+    $total_egresos_extraordinarias = 0;
+    foreach ($movimientos as $mov) {
+        if ($mov['monto'] > 0) {
+            $total_ingresos += $mov['monto'];
+        } else {
+            $monto_abs = abs($mov['monto']);
+            $total_egresos += $monto_abs;
+            if ($mov['comprobante'] === 'EXP EXTRAORDINARIA') {
+                $total_egresos_extraordinarias += $monto_abs;
+            }
         }
     }
+    $total_egresos_ordinarias = $total_egresos - $total_egresos_extraordinarias;
+    $total_expensas = $total_egresos;
 }
-$total_egresos_ordinarias = $total_egresos - $total_egresos_extraordinarias;
-$total_expensas = $total_egresos;
 
 // Obtener propiedades del consorcio con porcentaje
 $cond_consorcio = $nombre_consorcio === ''
