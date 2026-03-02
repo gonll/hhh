@@ -30,11 +30,18 @@ if ($nivelAcceso === 0) {
 }
 // Usuarios para modal Ant/cel (nivel 3): todos excepto CAJA (id 1)
 $usuarios_anticipo = [];
+$consorcios_lista = [];
 if ($nivelAcceso === 3) {
     $r_ant = mysqli_query($conexion, "SELECT id, apellido FROM usuarios WHERE id != 1 ORDER BY apellido ASC");
     if ($r_ant) {
         while ($u = mysqli_fetch_assoc($r_ant)) {
             $usuarios_anticipo[] = $u;
+        }
+    }
+    $r_con = mysqli_query($conexion, "SELECT id, apellido, consorcio FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' ORDER BY apellido ASC");
+    if ($r_con) {
+        while ($c = mysqli_fetch_assoc($r_con)) {
+            $consorcios_lista[] = ['id' => (int)$c['id'], 'apellido' => $c['apellido'], 'consorcio' => trim($c['consorcio'] ?? '')];
         }
     }
 }
@@ -295,6 +302,9 @@ if ($nivelAcceso === 3) {
                 <button type="button" class="btn-ant-cel" onclick="abrirModalAntCel()">Ant/cel</button>
                 <?php endif; ?>
                 <button type="button" onclick="imprimirMovimientos()" style="background:#6c757d; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Imprimir</button>
+                <?php if ($nivelAcceso === 3): ?>
+                <button id="btnBorrarLiqExp" type="button" onclick="abrirModalBorrarLiqExp()" style="display:none; background:#dc3545; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Borrar LIQ EXP</button>
+                <?php endif; ?>
             </div>
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <div id="reloj-sistema"></div>
@@ -494,6 +504,28 @@ if ($nivelAcceso === 3) {
             </div>
         </div>
     </div>
+
+    <?php if ($nivelAcceso === 3): ?>
+    <div id="modalBorrarLiqExp" class="modal-overlay" onclick="if(event.target===this) cerrarModalBorrarLiqExp()">
+        <div class="modal-cobro" onclick="event.stopPropagation()">
+            <h3>Borrar liquidación de expensas</h3>
+            <p style="font-size:11px; color:#666; margin:0 0 12px;">Elimina movimientos LIQ EXPENSAS, LIQ EXP y LIQ EXP EXT del consorcio y período indicados.</p>
+            <label>Consorcio</label>
+            <select id="borrarLiqExpConsorcio" style="width:100%; padding:8px; margin-bottom:12px;">
+                <option value="">-- Seleccionar consorcio --</option>
+                <?php foreach ($consorcios_lista as $c): ?>
+                <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['apellido'] . ($c['consorcio'] ? ' (' . $c['consorcio'] . ')' : '')) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <label>Período (referencia MM/AAAA)</label>
+            <input type="text" id="borrarLiqExpPeriodo" placeholder="Ej: 02/2026" maxlength="7" style="width:100%; padding:8px; margin-bottom:12px;">
+            <div class="btns">
+                <button type="button" class="btn-guardar" onclick="ejecutarBorrarLiqExp()" style="background:#dc3545;">Borrar</button>
+                <button type="button" class="btn-cerrar" onclick="cerrarModalBorrarLiqExp()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div id="modalPrecioAzucar" class="modal-overlay" onclick="if(event.target===this) cerrarModalPrecioAzucar()">
         <div class="modal-cobro" onclick="event.stopPropagation()">
@@ -702,6 +734,8 @@ function cargarMovimientos(fila, id) {
     if (esConsorcioUsuario) {
         document.getElementById("btnWord").style.display = "block";
     }
+    var btnBorrarLiq = document.getElementById("btnBorrarLiqExp");
+    if (btnBorrarLiq) btnBorrarLiq.style.display = esConsorcioUsuario ? "inline-block" : "none";
     
     // Cobro Exp/transferencia y Cobro expensas efvo: solo si es propietario o inquilino. Sueldo/Extras: solo si NO es propietario ni inquilino (y no Caja).
     if (esCajaUsuario) {
@@ -998,6 +1032,49 @@ function guardarPrecioAzucar() {
                 alert(txt || 'Error al actualizar.');
             }
         });
+}
+
+function abrirModalBorrarLiqExp() {
+    var el = document.getElementById('modalBorrarLiqExp');
+    if (el) {
+        el.classList.add('visible');
+        var selCons = document.getElementById('borrarLiqExpConsorcio');
+        selCons.value = esConsorcioUsuario && uSel ? String(uSel) : '';
+        document.getElementById('borrarLiqExpPeriodo').value = '';
+    }
+}
+function cerrarModalBorrarLiqExp() {
+    var el = document.getElementById('modalBorrarLiqExp');
+    if (el) el.classList.remove('visible');
+}
+function ejecutarBorrarLiqExp() {
+    var consorcioId = document.getElementById('borrarLiqExpConsorcio').value;
+    var periodo = document.getElementById('borrarLiqExpPeriodo').value.trim();
+    if (!consorcioId) {
+        alert('Seleccioná un consorcio.');
+        return;
+    }
+    if (!periodo) {
+        alert('Ingresá el período (MM/AAAA).');
+        return;
+    }
+    if (!confirm('¿Eliminar movimientos LIQ EXPENSAS, LIQ EXP y LIQ EXP EXT del consorcio seleccionado, período ' + periodo + '?')) return;
+    var fd = new FormData();
+    fd.append('consorcio_id', consorcioId);
+    fd.append('periodo', periodo);
+    fetch('eliminar_liq_expensas_periodo.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data && data.ok) {
+                alert(data.msg);
+                cerrarModalBorrarLiqExp();
+                var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
+                if (fila) cargarMovimientos(fila, uSel);
+            } else {
+                alert(data && data.msg ? data.msg : 'No se pudo eliminar.');
+            }
+        })
+        .catch(function() { alert('Error al borrar.'); });
 }
 
 function imprimirMovimientos() {
@@ -1476,6 +1553,11 @@ const CAMPOS_MOV = ['ins_fecha', 'ins_concepto', 'ins_compro', 'ins_refer', 'ins
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        var modalBorrarLiq = document.getElementById('modalBorrarLiqExp');
+        if (modalBorrarLiq && modalBorrarLiq.classList.contains('visible')) {
+            cerrarModalBorrarLiqExp();
+            return;
+        }
         var modalPrecioAz = document.getElementById('modalPrecioAzucar');
         if (modalPrecioAz && modalPrecioAz.classList.contains('visible')) {
             cerrarModalPrecioAzucar();
