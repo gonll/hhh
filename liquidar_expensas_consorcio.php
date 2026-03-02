@@ -159,6 +159,31 @@ while ($prop = mysqli_fetch_assoc($res_prop)) {
     }
 }
 
+// Honorarios administrativos para expensas próximas (según consorcio)
+$nombre_consorcio_upper = strtoupper($nombre_consorcio);
+$apellido_upper = strtoupper(trim($row_u['apellido'] ?? ''));
+$es_laprida_430 = ($nombre_consorcio_upper === 'LAPRIDA 430' || $nombre_consorcio_upper === 'LAPRIDA430' || strpos($apellido_upper, 'LAPRIDA 430') !== false);
+$es_ee_uu_101 = ($nombre_consorcio_upper === 'EE UU 101' || $nombre_consorcio_upper === 'EEUU 101' || strpos($apellido_upper, 'EE UU 101') !== false || strpos($apellido_upper, 'EEUU 101') !== false);
+
+$porc_honorarios = null;
+if ($es_laprida_430) $porc_honorarios = 10;
+elseif ($es_ee_uu_101) $porc_honorarios = 13.5;
+
+if ($porc_honorarios !== null && $total_expensa > 0) {
+    $monto_honorarios = round($total_expensa * ($porc_honorarios / 100), 2);
+    if ($monto_honorarios > 0) {
+        $mes_sig = ($mes_num >= 12) ? 1 : $mes_num + 1;
+        $anio_sig = ($mes_num >= 12) ? $anio + 1 : $anio;
+        $ref_siguiente = str_pad((string)$mes_sig, 2, '0', STR_PAD_LEFT) . '/' . $anio_sig;
+        $ref_sig_esc = mysqli_real_escape_string($conexion, $ref_siguiente);
+        $porc_fmt = ($porc_honorarios == (int)$porc_honorarios) ? (int)$porc_honorarios : number_format($porc_honorarios, 1, ',', '');
+        $concepto_hon = mysqli_real_escape_string($conexion, "Honorarios administrativos $porc_fmt %");
+        $sql_hon = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+                    VALUES ($consorcio_id, '$fecha_hoy', '$concepto_hon', 'Honorarios', '$ref_sig_esc', -$monto_honorarios)";
+        mysqli_query($conexion, $sql_hon);
+    }
+}
+
 header('Content-Type: application/json; charset=utf-8');
 echo json_encode([
     'ok' => true,
