@@ -39,19 +39,19 @@ if ($res_liq && $row_liq = mysqli_fetch_assoc($res_liq)) {
     }
 }
 
+// Cobrado y Gastos: solo desde la última LIQ EXPENSAS de este consorcio (nada anterior)
 if ($ultimo_liq_id !== null) {
     $res_cob = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas 
         WHERE usuario_id = $id AND monto > 0 AND movimiento_id > $ultimo_liq_id");
     $res_gast = mysqli_query($conexion, "SELECT COALESCE(SUM(ABS(monto)), 0) AS total FROM cuentas 
         WHERE usuario_id = $id AND monto < 0 AND movimiento_id > $ultimo_liq_id");
 } else {
-    $res_cob = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas 
-        WHERE usuario_id = $id AND monto > 0");
-    $res_gast = mysqli_query($conexion, "SELECT COALESCE(SUM(ABS(monto)), 0) AS total FROM cuentas 
-        WHERE usuario_id = $id AND monto < 0");
+    // Sin liquidación previa: no hay período definido, mostrar 0
+    $res_cob = null;
+    $res_gast = null;
 }
-$cobrado_mes = (float)(mysqli_fetch_assoc($res_cob)['total'] ?? 0);
-$gastado_mes = (float)(mysqli_fetch_assoc($res_gast)['total'] ?? 0);
+$cobrado_mes = ($res_cob !== null) ? (float)(mysqli_fetch_assoc($res_cob)['total'] ?? 0) : 0;
+$gastado_mes = ($res_gast !== null) ? (float)(mysqli_fetch_assoc($res_gast)['total'] ?? 0) : 0;
 
 header('Content-Type: application/json');
 echo json_encode([
