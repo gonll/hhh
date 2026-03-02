@@ -932,9 +932,21 @@ function abrirModalLiquidarExpensas() {
     var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
     var nom = fila ? fila.querySelector('.nombre-txt').innerText : '';
     document.getElementById('liqExpConsorcioNombre').textContent = 'Consorcio: ' + nom;
-    document.getElementById('liqExpMes').value = String(new Date().getMonth() + 1).padStart(2, '0') + '/' + new Date().getFullYear();
-    document.getElementById('modalLiqExp').classList.add('visible');
-    setTimeout(function() { document.getElementById('liqExpMes').focus(); }, 100);
+    var mesActual = String(new Date().getMonth() + 1).padStart(2, '0') + '/' + new Date().getFullYear();
+    document.getElementById('liqExpMes').value = mesActual;
+    fetch('obtener_siguiente_mes_liq_exp.php?usuario_id=' + uSel)
+        .then(function(r) { return r.text(); })
+        .then(function(txt) {
+            if (txt && txt.trim()) {
+                document.getElementById('liqExpMes').value = txt.trim();
+            }
+            document.getElementById('modalLiqExp').classList.add('visible');
+            setTimeout(function() { document.getElementById('liqExpMes').focus(); }, 100);
+        })
+        .catch(function() {
+            document.getElementById('modalLiqExp').classList.add('visible');
+            setTimeout(function() { document.getElementById('liqExpMes').focus(); }, 100);
+        });
 }
 
 function cerrarModalLiqExp() {
