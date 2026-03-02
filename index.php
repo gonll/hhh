@@ -1247,17 +1247,10 @@ function ejecutarLiquidarExpensas() {
                 return;
             }
             if (data && data.ok) {
-                var fmt = function(n) { return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-                document.getElementById('liqExpTotal').textContent = fmt(data.total);
-                document.getElementById('liqExpOrdinarias').textContent = fmt(data.ordinarias);
-                document.getElementById('liqExpExtraordinarias').textContent = fmt(data.extraordinarias);
-                var tbody = document.getElementById('liqExpTablaMov');
-                tbody.innerHTML = (data.movimientos || []).map(function(m) {
-                    return '<tr><td style="padding:4px; border-top:1px solid #eee;">' + (m.fecha || '') + '</td><td style="padding:4px; border-top:1px solid #eee;">' + (m.concepto || '').substring(0, 40) + '</td><td style="padding:4px; border-top:1px solid #eee;">' + (m.comprobante || '') + '</td><td style="padding:4px; border-top:1px solid #eee; text-align:right;">' + fmt(m.monto_abs || Math.abs(m.monto)) + '</td></tr>';
-                }).join('');
-                document.getElementById('liqExpDetalle').style.display = 'block';
                 var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
                 if (fila) cargarMovimientos(fila, uSel);
+                alert('Liquidación de expensas guardada correctamente.');
+                cerrarModalLiqExp();
             } else {
                 alert('Falta dato o corregir.');
             }
