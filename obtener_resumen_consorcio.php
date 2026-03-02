@@ -3,7 +3,7 @@ include 'db.php';
 include 'verificar_sesion.php';
 
 if (!isset($_GET['id'])) {
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['error' => 'Falta id']);
     exit;
 }
@@ -12,7 +12,7 @@ $id = (int)$_GET['id'];
 $res_u = mysqli_query($conexion, "SELECT id, apellido, consorcio FROM usuarios WHERE id = $id LIMIT 1");
 $row_u = mysqli_fetch_assoc($res_u);
 if (!$row_u || stripos($row_u['apellido'], 'CONSORCIO') !== 0) {
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['liq_ordinarias' => null, 'liq_extraordinarias' => null, 'cobrado_mes' => 0, 'gastado_mes' => 0]);
     exit;
 }
@@ -51,14 +51,14 @@ if ($ultimo_liq_id !== null) {
     $res_gast = mysqli_query($conexion, "SELECT COALESCE(SUM(ABS(monto)), 0) AS total FROM cuentas 
         WHERE usuario_id = $id AND monto < 0 AND movimiento_id > $ultimo_liq_id" . $cond_fecha_gastos);
 } else {
-    // Sin liquidación previa: no hay período definido, mostrar 0
-    $res_cob = null;
-    $res_gast = null;
+    // Sin liquidación previa: sumar todo (comportamiento original)
+    $res_cob = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id = $id AND monto > 0");
+    $res_gast = mysqli_query($conexion, "SELECT COALESCE(SUM(ABS(monto)), 0) AS total FROM cuentas WHERE usuario_id = $id AND monto < 0" . $cond_fecha_gastos);
 }
-$cobrado_mes = ($res_cob !== null) ? (float)(mysqli_fetch_assoc($res_cob)['total'] ?? 0) : 0;
-$gastado_mes = ($res_gast !== null) ? (float)(mysqli_fetch_assoc($res_gast)['total'] ?? 0) : 0;
+$cobrado_mes = (float)(mysqli_fetch_assoc($res_cob)['total'] ?? 0);
+$gastado_mes = (float)(mysqli_fetch_assoc($res_gast)['total'] ?? 0);
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 echo json_encode([
     'liq_ordinarias'      => $liq_ordinarias,
     'liq_extraordinarias' => $liq_extraordinarias,

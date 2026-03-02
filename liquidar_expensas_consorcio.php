@@ -41,6 +41,12 @@ if (!$row_u || stripos($row_u['apellido'], 'CONSORCIO') !== 0) {
 $nombre_consorcio = trim($row_u['consorcio'] ?? '');
 $consorcio_esc    = mysqli_real_escape_string($conexion, $nombre_consorcio);
 
+// LAPRIDA 430: no tomar gastos anteriores al 10/02/2026
+$nombre_consorcio_upper = strtoupper($nombre_consorcio);
+$apellido_upper = strtoupper(trim($row_u['apellido'] ?? ''));
+$es_laprida_430 = ($nombre_consorcio_upper === 'LAPRIDA 430' || $nombre_consorcio_upper === 'LAPRIDA430' || strpos($apellido_upper, 'LAPRIDA 430') !== false);
+$cond_fecha_laprida = $es_laprida_430 ? " AND fecha >= '2026-02-10' " : "";
+
 // Última liquidación por comprobante LIQ EXPENSAS (excluir referencia = este mes para no tomar la del mismo período)
 $ref_mes_esc = mysqli_real_escape_string($conexion, $referencia_mes);
 $ultimo_liq_id = null;
@@ -57,16 +63,16 @@ $cond_periodo = $ultimo_liq_id !== null
     ? "AND movimiento_id > $ultimo_liq_id"
     : "";
 
-// Total expensas = suma de todos los movimientos negativos en el período
+// Total expensas = suma de todos los movimientos negativos en el período (LAPRIDA 430: desde 10/02/2026)
 $res_sum = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas 
-    WHERE usuario_id = $consorcio_id AND monto < 0 $cond_periodo");
+    WHERE usuario_id = $consorcio_id AND monto < 0 $cond_periodo $cond_fecha_laprida");
 $row_sum = mysqli_fetch_assoc($res_sum);
 $suma_negativos = (float)($row_sum['total'] ?? 0);
 $total_expensa   = abs($suma_negativos);
 
 // Suma solo movimientos con comprobante "Exp Extraordinaria" (extraordinarias)
 $res_extra = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas 
-    WHERE usuario_id = $consorcio_id AND monto < 0 $cond_periodo 
+    WHERE usuario_id = $consorcio_id AND monto < 0 $cond_periodo $cond_fecha_laprida
     AND UPPER(TRIM(comprobante)) = 'EXP EXTRAORDINARIA'");
 $row_extra = mysqli_fetch_assoc($res_extra);
 $suma_extraordinarias = abs((float)($row_extra['total'] ?? 0));
@@ -78,7 +84,7 @@ $total_extraordinarias = $suma_extraordinarias;
 // Detalle de movimientos para mostrar al usuario
 $movimientos_detalle = [];
 $res_det = mysqli_query($conexion, "SELECT fecha, concepto, comprobante, referencia, monto FROM cuentas 
-    WHERE usuario_id = $consorcio_id AND monto < 0 $cond_periodo 
+    WHERE usuario_id = $consorcio_id AND monto < 0 $cond_periodo $cond_fecha_laprida
     ORDER BY movimiento_id ASC");
 if ($res_det) {
     while ($m = mysqli_fetch_assoc($res_det)) {
@@ -159,10 +165,7 @@ while ($prop = mysqli_fetch_assoc($res_prop)) {
     }
 }
 
-// Honorarios administrativos para expensas próximas (según consorcio)
-$nombre_consorcio_upper = strtoupper($nombre_consorcio);
-$apellido_upper = strtoupper(trim($row_u['apellido'] ?? ''));
-$es_laprida_430 = ($nombre_consorcio_upper === 'LAPRIDA 430' || $nombre_consorcio_upper === 'LAPRIDA430' || strpos($apellido_upper, 'LAPRIDA 430') !== false);
+// Honorarios administrativos para expensas próximas (según consorcio) - solo uno por mes siguiente
 $es_ee_uu_101 = ($nombre_consorcio_upper === 'EE UU 101' || $nombre_consorcio_upper === 'EEUU 101' || strpos($apellido_upper, 'EE UU 101') !== false || strpos($apellido_upper, 'EEUU 101') !== false);
 
 $porc_honorarios = null;
@@ -170,17 +173,21 @@ if ($es_laprida_430) $porc_honorarios = 10;
 elseif ($es_ee_uu_101) $porc_honorarios = 13.5;
 
 if ($porc_honorarios !== null && $total_expensa > 0) {
-    $monto_honorarios = round($total_expensa * ($porc_honorarios / 100), 2);
-    if ($monto_honorarios > 0) {
-        $mes_sig = ($mes_num >= 12) ? 1 : $mes_num + 1;
-        $anio_sig = ($mes_num >= 12) ? $anio + 1 : $anio;
-        $ref_siguiente = str_pad((string)$mes_sig, 2, '0', STR_PAD_LEFT) . '/' . $anio_sig;
-        $ref_sig_esc = mysqli_real_escape_string($conexion, $ref_siguiente);
-        $porc_fmt = ($porc_honorarios == (int)$porc_honorarios) ? (int)$porc_honorarios : number_format($porc_honorarios, 1, ',', '');
-        $concepto_hon = mysqli_real_escape_string($conexion, "Honorarios administrativos $porc_fmt %");
-        $sql_hon = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-                    VALUES ($consorcio_id, '$fecha_hoy', '$concepto_hon', 'Honorarios', '$ref_sig_esc', -$monto_honorarios)";
-        mysqli_query($conexion, $sql_hon);
+    $mes_sig = ($mes_num >= 12) ? 1 : $mes_num + 1;
+    $anio_sig = ($mes_num >= 12) ? $anio + 1 : $anio;
+    $ref_siguiente = str_pad((string)$mes_sig, 2, '0', STR_PAD_LEFT) . '/' . $anio_sig;
+    $ref_sig_esc = mysqli_real_escape_string($conexion, $ref_siguiente);
+    // Evitar duplicado: no agregar si ya existe Honorarios para este consorcio y ref
+    $r_existe = mysqli_query($conexion, "SELECT 1 FROM cuentas WHERE usuario_id = $consorcio_id AND UPPER(TRIM(comprobante)) = 'HONORARIOS' AND TRIM(referencia) = '$ref_sig_esc' LIMIT 1");
+    if (!$r_existe || mysqli_num_rows($r_existe) == 0) {
+        $monto_honorarios = round($total_expensa * ($porc_honorarios / 100), 2);
+        if ($monto_honorarios > 0) {
+            $porc_fmt = ($porc_honorarios == (int)$porc_honorarios) ? (int)$porc_honorarios : number_format($porc_honorarios, 1, ',', '');
+            $concepto_hon = mysqli_real_escape_string($conexion, "Honorarios administrativos $porc_fmt %");
+            $sql_hon = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+                        VALUES ($consorcio_id, '$fecha_hoy', '$concepto_hon', 'Honorarios', '$ref_sig_esc', -$monto_honorarios)";
+            mysqli_query($conexion, $sql_hon);
+        }
     }
 }
 
