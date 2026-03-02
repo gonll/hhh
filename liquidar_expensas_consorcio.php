@@ -75,6 +75,24 @@ $suma_extraordinarias = abs((float)($row_extra['total'] ?? 0));
 $total_ordinarias    = $total_expensa - $suma_extraordinarias;
 $total_extraordinarias = $suma_extraordinarias;
 
+// Detalle de movimientos para mostrar al usuario
+$movimientos_detalle = [];
+$res_det = mysqli_query($conexion, "SELECT fecha, concepto, comprobante, referencia, monto FROM cuentas 
+    WHERE usuario_id = $consorcio_id AND monto < 0 $cond_periodo 
+    ORDER BY movimiento_id ASC");
+if ($res_det) {
+    while ($m = mysqli_fetch_assoc($res_det)) {
+        $movimientos_detalle[] = [
+            'fecha' => $m['fecha'],
+            'concepto' => $m['concepto'],
+            'comprobante' => $m['comprobante'],
+            'referencia' => $m['referencia'],
+            'monto' => (float)$m['monto'],
+            'monto_abs' => abs((float)$m['monto'])
+        ];
+    }
+}
+
 $fecha_hoy = date('Y-m-d');
 $ref_esc = mysqli_real_escape_string($conexion, $referencia_mes);
 $monto_ord_fmt = number_format($total_ordinarias, 2, ',', '.');
@@ -98,7 +116,8 @@ $res_prop = mysqli_query($conexion, "SELECT p.propiedad_id, p.propietario_id, p.
     FROM propiedades p 
     WHERE p.porcentaje IS NOT NULL AND p.porcentaje > 0 $cond_consorcio");
 if (!$res_prop) {
-    echo 'OK';
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => true, 'total' => $total_expensa, 'ordinarias' => $total_ordinarias, 'extraordinarias' => $total_extraordinarias, 'referencia' => $referencia_mes, 'movimientos' => $movimientos_detalle]);
     exit;
 }
 
@@ -140,5 +159,13 @@ while ($prop = mysqli_fetch_assoc($res_prop)) {
     }
 }
 
-echo 'OK';
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode([
+    'ok' => true,
+    'total' => $total_expensa,
+    'ordinarias' => $total_ordinarias,
+    'extraordinarias' => $total_extraordinarias,
+    'referencia' => $referencia_mes,
+    'movimientos' => $movimientos_detalle
+]);
 ?>

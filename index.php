@@ -145,7 +145,7 @@ if ($nivelAcceso === 3) {
         #ant_fecha_cal { display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; border: 1px solid #007bff; border-radius: 4px; box-sizing: border-box; font-size: inherit; }
 
         .scroll-usuarios { flex-grow: 1; overflow-y: auto; border: 1px solid #eee; margin-top: 5px; }
-        .scroll-grid { height: 75%; overflow-y: auto; border: 1px solid #ddd; margin-top: 5px; background: #fff; }
+        .scroll-grid { height: 75%; max-height: calc(90vh - 14em); overflow-y: scroll; overflow-x: auto; border: 1px solid #ddd; margin-top: 5px; background: #fff; }
 
         .tabla-datos { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
         .tabla-datos th { background: #007bff; color: white; padding: 8px 5px; position: sticky; top: 0; z-index: 10; font-weight: bold; }
@@ -294,6 +294,7 @@ if ($nivelAcceso === 3) {
                 <?php if ($nivelAcceso === 3): ?>
                 <button type="button" class="btn-ant-cel" onclick="abrirModalAntCel()">Ant/cel</button>
                 <?php endif; ?>
+                <button type="button" onclick="imprimirMovimientos()" style="background:#6c757d; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Imprimir</button>
             </div>
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <div id="reloj-sistema"></div>
@@ -470,13 +471,24 @@ if ($nivelAcceso === 3) {
     </div>
 
     <div id="modalLiqExp" class="modal-overlay" onclick="if(event.target===this) cerrarModalLiqExp()">
-        <div class="modal-cobro" onclick="event.stopPropagation()">
+        <div class="modal-cobro" onclick="event.stopPropagation()" style="max-width: 95%; max-height: 90vh; overflow: auto;">
             <h3>Liquidar expensas</h3>
             <p id="liqExpConsorcioNombre" style="margin:0 0 12px; font-weight:bold; color:#333; font-size:13px;"></p>
             <label>Mes a liquidar (MM/AAAA)</label>
             <input type="text" id="liqExpMes" placeholder="Ej: 01/2025" maxlength="7">
             <p style="font-size:10px; color:#666; margin:8px 0 0;">Suma retiros/gastos desde la última LIQ EXP hasta fin de mes y reparte por % a propietarios.</p>
-            <div class="btns">
+            <div id="liqExpDetalle" style="display:none; margin-top:16px; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid #dee2e6;">
+                <h4 style="margin:0 0 10px; font-size:12px; color:#333;">Valores tomados para el cálculo</h4>
+                <p style="margin:0 0 8px; font-size:11px;"><strong>Total expensas:</strong> <span id="liqExpTotal"></span></p>
+                <p style="margin:0 0 8px; font-size:11px;"><strong>Ordinarias:</strong> <span id="liqExpOrdinarias"></span> — <strong>Extraordinarias:</strong> <span id="liqExpExtraordinarias"></span></p>
+                <div style="max-height:200px; overflow-y:auto; font-size:10px; margin-top:8px;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead><tr style="background:#e9ecef;"><th style="padding:4px; text-align:left;">Fecha</th><th style="padding:4px; text-align:left;">Concepto</th><th style="padding:4px; text-align:left;">Comprobante</th><th style="padding:4px; text-align:right;">Monto</th></tr></thead>
+                        <tbody id="liqExpTablaMov"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="btns" style="margin-top:12px;">
                 <button type="button" class="btn-guardar" onclick="ejecutarLiquidarExpensas()">Liquidar</button>
                 <button type="button" class="btn-cerrar" onclick="cerrarModalLiqExp()">Cerrar</button>
             </div>
@@ -950,6 +962,7 @@ function abrirModalLiquidarExpensas() {
 }
 
 function cerrarModalLiqExp() {
+    document.getElementById('liqExpDetalle').style.display = 'none';
     document.getElementById('modalLiqExp').classList.remove('visible');
 }
 
@@ -985,6 +998,22 @@ function guardarPrecioAzucar() {
                 alert(txt || 'Error al actualizar.');
             }
         });
+}
+
+function imprimirMovimientos() {
+    if (!uSel) {
+        alert('Seleccioná un usuario primero.');
+        return;
+    }
+    var cant = prompt('¿Cuántos últimos movimientos imprimir?', '20');
+    if (cant === null) return;
+    var n = parseInt(cant, 10);
+    if (isNaN(n) || n < 1) {
+        alert('Ingresá un número válido (mínimo 1).');
+        return;
+    }
+    if (n > 500) n = 500;
+    window.open('imprimir_movimientos.php?id=' + uSel + '&limit=' + n, '_blank', 'width=900,height=700');
 }
 
 function abrirModalAntCel() {
@@ -1126,11 +1155,32 @@ function ejecutarLiquidarExpensas() {
     fetch('liquidar_expensas_consorcio.php', { method: 'POST', body: fd })
         .then(function(r) { return r.text(); })
         .then(function(txt) {
-            if (txt.trim() === 'OK') {
-                cerrarModalLiqExp();
+            var data;
+            try {
+                data = JSON.parse(txt);
+            } catch (e) {
+                if (txt.trim() === 'OK') {
+                    var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
+                    if (fila) cargarMovimientos(fila, uSel);
+                    alert('Liquidación de expensas guardada correctamente.');
+                    cerrarModalLiqExp();
+                    return;
+                }
+                alert(txt || 'Falta dato o corregir.');
+                return;
+            }
+            if (data && data.ok) {
+                var fmt = function(n) { return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+                document.getElementById('liqExpTotal').textContent = fmt(data.total);
+                document.getElementById('liqExpOrdinarias').textContent = fmt(data.ordinarias);
+                document.getElementById('liqExpExtraordinarias').textContent = fmt(data.extraordinarias);
+                var tbody = document.getElementById('liqExpTablaMov');
+                tbody.innerHTML = (data.movimientos || []).map(function(m) {
+                    return '<tr><td style="padding:4px; border-top:1px solid #eee;">' + (m.fecha || '') + '</td><td style="padding:4px; border-top:1px solid #eee;">' + (m.concepto || '').substring(0, 40) + '</td><td style="padding:4px; border-top:1px solid #eee;">' + (m.comprobante || '') + '</td><td style="padding:4px; border-top:1px solid #eee; text-align:right;">' + fmt(m.monto_abs || Math.abs(m.monto)) + '</td></tr>';
+                }).join('');
+                document.getElementById('liqExpDetalle').style.display = 'block';
                 var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
                 if (fila) cargarMovimientos(fila, uSel);
-                alert('Liquidación de expensas guardada correctamente.');
             } else {
                 alert('Falta dato o corregir.');
             }
