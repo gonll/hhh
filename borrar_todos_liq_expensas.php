@@ -30,7 +30,15 @@ if (!$row_u || stripos($row_u['apellido'], 'CONSORCIO') !== 0) {
 }
 
 $nombre_consorcio = trim($row_u['consorcio'] ?? '');
+$apellido_consorcio = trim($row_u['apellido'] ?? '');
 $consorcio_esc = mysqli_real_escape_string($conexion, $nombre_consorcio);
+
+// Identificador para filtrar por concepto (ej: "LAPRIDA 430" en "EXPENSAS, DPTO 5° PISO C, LAPRIDA 430")
+$consorcio_en_concepto = trim(preg_replace('/^CONSORCIO\s+/i', '', $apellido_consorcio));
+if ($consorcio_en_concepto === '') {
+    $consorcio_en_concepto = $nombre_consorcio;
+}
+$consorcio_concepto_esc = mysqli_real_escape_string($conexion, strtoupper($consorcio_en_concepto));
 
 $eliminados = 0;
 
@@ -42,44 +50,23 @@ if (mysqli_query($conexion, $sql1)) {
     $eliminados += mysqli_affected_rows($conexion);
 }
 
-// 2. Obtener usuario_ids de propietarios e inquilinos del consorcio
-$cond_consorcio = $nombre_consorcio === ''
-    ? "AND (p.consorcio IS NULL OR TRIM(p.consorcio) = '')"
-    : "AND UPPER(TRIM(p.consorcio)) = UPPER('$consorcio_esc')";
-
-$ids_usuarios = [];
-$res_prop = mysqli_query($conexion, "SELECT p.propiedad_id, p.propietario_id FROM propiedades p 
-    WHERE p.porcentaje IS NOT NULL AND p.porcentaje > 0 $cond_consorcio");
-if ($res_prop) {
-    while ($p = mysqli_fetch_assoc($res_prop)) {
-        $ids_usuarios[(int)$p['propietario_id']] = true;
-        $propiedad_id = (int)$p['propiedad_id'];
-        $res_inq = mysqli_query($conexion, "SELECT inquilino1_id FROM alquileres 
-            WHERE propiedad_id = $propiedad_id AND estado = 'VIGENTE' LIMIT 1");
-        if ($res_inq && $row_inq = mysqli_fetch_assoc($res_inq) && (int)$row_inq['inquilino1_id'] > 0) {
-            $ids_usuarios[(int)$row_inq['inquilino1_id']] = true;
-        }
-    }
-}
-
-// 3. Eliminar TODOS los movimientos de liquidación en cuentas de usuarios (propietarios e inquilinos):
-//    - Por comprobante: LIQ EXP, LIQ EXP EXT
-//    - Por concepto: "EXPENSAS,..." o "EXPENSAS EXTRAORDINARIAS,..." (monto < 0 = cargos, no cobros)
-if (count($ids_usuarios) > 0) {
-    $ids_lista = implode(',', array_map('intval', array_keys($ids_usuarios)));
-    $sql2 = "DELETE FROM cuentas 
-        WHERE usuario_id IN ($ids_lista) 
-        AND (
-            UPPER(TRIM(comprobante)) = 'LIQ EXP' 
-            OR UPPER(TRIM(comprobante)) = 'LIQ EXP EXT'
-            OR (monto < 0 AND (
-                UPPER(TRIM(concepto)) LIKE 'EXPENSAS,%' 
-                OR UPPER(TRIM(concepto)) LIKE 'EXPENSAS EXTRAORDINARIAS,%'
-            ))
-        )";
-    if (mysqli_query($conexion, $sql2)) {
-        $eliminados += mysqli_affected_rows($conexion);
-    }
+// 2. Eliminar TODOS los movimientos de liquidación en cuentas de usuarios.
+//    Buscar por concepto que contenga el identificador del consorcio (ej. "LAPRIDA 430")
+//    para no depender de propiedades.consorcio que puede no coincidir.
+//    Movimientos: LIQ EXP, LIQ EXP EXT, o concepto "EXPENSAS,..." / "EXPENSAS EXTRAORDINARIAS,..." con monto < 0
+$sql2 = "DELETE FROM cuentas 
+    WHERE usuario_id != $consorcio_id 
+    AND UPPER(TRIM(concepto)) LIKE '%$consorcio_concepto_esc%'
+    AND (
+        UPPER(TRIM(comprobante)) = 'LIQ EXP' 
+        OR UPPER(TRIM(comprobante)) = 'LIQ EXP EXT'
+        OR (monto < 0 AND (
+            UPPER(TRIM(concepto)) LIKE 'EXPENSAS,%' 
+            OR UPPER(TRIM(concepto)) LIKE 'EXPENSAS EXTRAORDINARIAS,%'
+        ))
+    )";
+if (mysqli_query($conexion, $sql2)) {
+    $eliminados += mysqli_affected_rows($conexion);
 }
 
 header('Content-Type: application/json; charset=utf-8');
