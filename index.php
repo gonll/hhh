@@ -304,6 +304,7 @@ if ($nivelAcceso === 3) {
                 <button type="button" onclick="imprimirMovimientos()" style="background:#6c757d; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Imprimir</button>
                 <?php if ($nivelAcceso === 3): ?>
                 <button id="btnBorrarLiqExp" type="button" onclick="abrirModalBorrarLiqExp()" style="display:none; background:#dc3545; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Borrar LIQ EXP</button>
+                <button id="btnBorrarTodasLiqExp" type="button" onclick="abrirModalBorrarTodasLiqExp()" style="display:none; background:#721c24; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Borrar TODAS LIQ EXP</button>
                 <?php endif; ?>
             </div>
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -506,9 +507,26 @@ if ($nivelAcceso === 3) {
     </div>
 
     <?php if ($nivelAcceso === 3): ?>
+    <div id="modalBorrarTodasLiqExp" class="modal-overlay" onclick="if(event.target===this) cerrarModalBorrarTodasLiqExp()">
+        <div class="modal-cobro" onclick="event.stopPropagation()">
+            <h3>Borrar TODAS las liquidaciones de expensas</h3>
+            <p style="font-size:11px; color:#666; margin:0 0 12px;">Elimina TODOS los movimientos de liquidación (LIQ EXPENSAS, Honorarios, LIQ EXP, LIQ EXP EXT) del consorcio en cuenta del consorcio y en cuentas de propietarios e inquilinos. Sin filtro de período.</p>
+            <label>Consorcio</label>
+            <select id="borrarTodasLiqExpConsorcio" style="width:100%; padding:8px; margin-bottom:12px;">
+                <option value="">-- Seleccionar consorcio --</option>
+                <?php foreach ($consorcios_lista as $c): ?>
+                <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['apellido'] . ($c['consorcio'] ? ' (' . $c['consorcio'] . ')' : '')) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <div class="btns">
+                <button type="button" class="btn-guardar" onclick="ejecutarBorrarTodasLiqExp()" style="background:#721c24;">Borrar TODAS</button>
+                <button type="button" class="btn-cerrar" onclick="cerrarModalBorrarTodasLiqExp()">Cerrar</button>
+            </div>
+        </div>
+    </div>
     <div id="modalBorrarLiqExp" class="modal-overlay" onclick="if(event.target===this) cerrarModalBorrarLiqExp()">
         <div class="modal-cobro" onclick="event.stopPropagation()">
-            <h3>Borrar liquidación de expensas</h3>
+            <h3>Borrar liquidación de expensas (por período)</h3>
             <p style="font-size:11px; color:#666; margin:0 0 12px;">Elimina movimientos LIQ EXPENSAS, LIQ EXP y LIQ EXP EXT del consorcio y período indicados.</p>
             <label>Consorcio</label>
             <select id="borrarLiqExpConsorcio" style="width:100%; padding:8px; margin-bottom:12px;">
@@ -736,6 +754,8 @@ function cargarMovimientos(fila, id) {
     }
     var btnBorrarLiq = document.getElementById("btnBorrarLiqExp");
     if (btnBorrarLiq) btnBorrarLiq.style.display = esConsorcioUsuario ? "inline-block" : "none";
+    var btnBorrarTodasLiq = document.getElementById("btnBorrarTodasLiqExp");
+    if (btnBorrarTodasLiq) btnBorrarTodasLiq.style.display = esConsorcioUsuario ? "inline-block" : "none";
     
     // Cobro Exp/transferencia y Cobro expensas efvo: solo si es propietario o inquilino. Sueldo/Extras: solo si NO es propietario ni inquilino (y no Caja).
     if (esCajaUsuario) {
@@ -1068,6 +1088,42 @@ function ejecutarBorrarLiqExp() {
             if (data && data.ok) {
                 alert(data.msg);
                 cerrarModalBorrarLiqExp();
+                var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
+                if (fila) cargarMovimientos(fila, uSel);
+            } else {
+                alert(data && data.msg ? data.msg : 'No se pudo eliminar.');
+            }
+        })
+        .catch(function() { alert('Error al borrar.'); });
+}
+
+function abrirModalBorrarTodasLiqExp() {
+    var el = document.getElementById('modalBorrarTodasLiqExp');
+    if (el) {
+        el.classList.add('visible');
+        var selCons = document.getElementById('borrarTodasLiqExpConsorcio');
+        selCons.value = esConsorcioUsuario && uSel ? String(uSel) : '';
+    }
+}
+function cerrarModalBorrarTodasLiqExp() {
+    var el = document.getElementById('modalBorrarTodasLiqExp');
+    if (el) el.classList.remove('visible');
+}
+function ejecutarBorrarTodasLiqExp() {
+    var consorcioId = document.getElementById('borrarTodasLiqExpConsorcio').value;
+    if (!consorcioId) {
+        alert('Seleccioná un consorcio.');
+        return;
+    }
+    if (!confirm('¿Eliminar TODOS los movimientos de liquidación de expensas (LIQ EXPENSAS, Honorarios, LIQ EXP, LIQ EXP EXT) del consorcio seleccionado? Esta acción no se puede deshacer.')) return;
+    var fd = new FormData();
+    fd.append('consorcio_id', consorcioId);
+    fetch('borrar_todos_liq_expensas.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data && data.ok) {
+                alert(data.msg);
+                cerrarModalBorrarTodasLiqExp();
                 var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
                 if (fila) cargarMovimientos(fila, uSel);
             } else {
@@ -1546,6 +1602,11 @@ const CAMPOS_MOV = ['ins_fecha', 'ins_concepto', 'ins_compro', 'ins_refer', 'ins
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        var modalBorrarTodas = document.getElementById('modalBorrarTodasLiqExp');
+        if (modalBorrarTodas && modalBorrarTodas.classList.contains('visible')) {
+            cerrarModalBorrarTodasLiqExp();
+            return;
+        }
         var modalBorrarLiq = document.getElementById('modalBorrarLiqExp');
         if (modalBorrarLiq && modalBorrarLiq.classList.contains('visible')) {
             cerrarModalBorrarLiqExp();
