@@ -114,11 +114,10 @@ if ($usar_php_directo) {
 }
 
 if (file_exists($ruta_completa) && filesize($ruta_completa) > 0) {
-    // Enviar respaldo por mail a hectorhugoherrera@gmail.com y hyllback@gmail.com
+    // Enviar respaldo por mail a hyllback@gmail.com
     require_once __DIR__ . '/smtp_enviar.php';
     $asunto_mail = 'Respaldo BD sistemahhh26 - ' . date('d/m/Y H:i');
     $cuerpo_mail = '<p>Se adjunta el respaldo de la base de datos <strong>sistemahhh26</strong> generado el ' . date('d/m/Y H:i') . '.</p>';
-    @enviar_mail_smtp_con_adjunto('hectorhugoherrera@gmail.com', $asunto_mail, $cuerpo_mail, $ruta_completa, 'application/sql');
     @enviar_mail_smtp_con_adjunto('hyllback@gmail.com', $asunto_mail, $cuerpo_mail, $ruta_completa, 'application/sql');
 
     if ($es_salir) {

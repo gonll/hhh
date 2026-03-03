@@ -1,6 +1,6 @@
 <?php
 /**
- * Genera respaldo de BD y lo envía por correo a hectorhugoherrera@gmail.com y hyllback@gmail.com.
+ * Genera respaldo de BD y lo envía por correo a hyllback@gmail.com.
  * Usado al ingreso (nivel 1-3), al salir, y puede reutilizarse en otros flujos.
  * @param mysqli $conexion Conexión a la base de datos
  * @param string $contexto 'ingreso' o 'salida' (opcional, para el asunto del correo)
@@ -53,7 +53,6 @@ function respaldarYEnviarPorEmail($conexion, $contexto = 'ingreso') {
     $txt_ctx = ($contexto === 'salida') ? 'al salir' : 'al ingresar';
     $asunto_mail = 'Respaldo BD sistemahhh26 (' . $txt_ctx . ') - ' . date('d/m/Y H:i');
     $cuerpo_mail = '<p>Se adjunta el respaldo de la base de datos <strong>sistemahhh26</strong> generado ' . $txt_ctx . ' del sistema el ' . date('d/m/Y H:i') . '.</p>';
-    @enviar_mail_smtp_con_adjunto('hectorhugoherrera@gmail.com', $asunto_mail, $cuerpo_mail, $ruta_completa, 'application/sql');
     @enviar_mail_smtp_con_adjunto('hyllback@gmail.com', $asunto_mail, $cuerpo_mail, $ruta_completa, 'application/sql');
     @unlink($ruta_completa);
     return true;
