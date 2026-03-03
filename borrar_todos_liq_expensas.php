@@ -62,12 +62,21 @@ if ($res_prop) {
     }
 }
 
-// 3. Eliminar TODOS los LIQ EXP y LIQ EXP EXT en cuentas de usuarios (propietarios e inquilinos)
+// 3. Eliminar TODOS los movimientos de liquidación en cuentas de usuarios (propietarios e inquilinos):
+//    - Por comprobante: LIQ EXP, LIQ EXP EXT
+//    - Por concepto: "EXPENSAS,..." o "EXPENSAS EXTRAORDINARIAS,..." (monto < 0 = cargos, no cobros)
 if (count($ids_usuarios) > 0) {
     $ids_lista = implode(',', array_map('intval', array_keys($ids_usuarios)));
     $sql2 = "DELETE FROM cuentas 
         WHERE usuario_id IN ($ids_lista) 
-        AND (UPPER(TRIM(comprobante)) = 'LIQ EXP' OR UPPER(TRIM(comprobante)) = 'LIQ EXP EXT')";
+        AND (
+            UPPER(TRIM(comprobante)) = 'LIQ EXP' 
+            OR UPPER(TRIM(comprobante)) = 'LIQ EXP EXT'
+            OR (monto < 0 AND (
+                UPPER(TRIM(concepto)) LIKE 'EXPENSAS,%' 
+                OR UPPER(TRIM(concepto)) LIKE 'EXPENSAS EXTRAORDINARIAS,%'
+            ))
+        )";
     if (mysqli_query($conexion, $sql2)) {
         $eliminados += mysqli_affected_rows($conexion);
     }
