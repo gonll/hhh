@@ -158,7 +158,7 @@ $anio_actual = date('Y');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Imprimir Expensas - Consorcio</title>
     <style>
-        @page { size: A4; margin: 10mm; }
+        @page { size: A4; margin: 18mm 10mm 10mm 10mm; }
         @media print {
             .no-print { display: none !important; }
             body { margin: 0; padding: 0; background: white; scroll-snap-type: none; }
@@ -167,6 +167,7 @@ $anio_actual = date('Y');
                 page-break-after: always;
             }
             .expensa-page:last-child { page-break-after: auto; }
+            .expensa-logo { display: block !important; margin-bottom: 6px; width: 36px !important; height: 36px !important; }
             .expensa-container {
                 page-break-inside: avoid;
                 margin: 0;
@@ -371,6 +372,7 @@ $anio_actual = date('Y');
         <?php foreach ($expensas as $idx => $expensa): ?>
         <div class="expensa-page" data-expensa-idx="<?= $idx ?>">
         <div class="expensa-container" id="expensa-<?= $idx ?>">
+            <img src="assets/logo.png" alt="Logo" class="expensa-logo" style="width: 36px; height: 36px; margin-bottom: 8px;">
             <div class="expensa-header">
                 <div class="expensa-title">EXPENSA - <?= htmlspecialchars($expensa['propiedad']) ?> - Porcentaje: <?= number_format($expensa['porcentaje'], 2, ',', '.') ?>%</div>
                 <div class="expensa-info">Mes Liquidado: <?= $ultimo_mes_liq ? htmlspecialchars($ultimo_mes_liq) : 'Desde inicio' ?></div>
@@ -497,7 +499,7 @@ $anio_actual = date('Y');
         html += '<meta charset="UTF-8">';
         html += '<title>Expensa - ' + propiedad + '</title>';
         html += '<style>';
-        html += '@media print { body { margin: 0; padding: 10px; } @page { size: A4; margin: 10mm; } .expensa-container { transform-origin: top center; } }';
+        html += '@media print { body { margin: 0; padding: 10px; } @page { size: A4; margin: 18mm 10mm 10mm 10mm; } .expensa-container { transform-origin: top center; } }';
         html += 'body { font-family: Arial, sans-serif; margin: 15px; }';
         html += '.expensa-container { padding: 12px; border: 2px solid #007bff; border-radius: 6px; }';
         html += '.expensa-header { text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #007bff; }';
