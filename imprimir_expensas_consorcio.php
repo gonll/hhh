@@ -158,33 +158,46 @@ $anio_actual = date('Y');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Imprimir Expensas - Consorcio</title>
     <style>
+        @page { size: A4; margin: 12mm; }
         @media print {
             .no-print { display: none !important; }
-            .expensa-container { page-break-after: always; }
+            body { margin: 0; padding: 0; background: white; scroll-snap-type: none; }
+            .container { max-width: none; box-shadow: none; padding: 0; }
+            .expensa-container {
+                page-break-after: always;
+                page-break-inside: avoid;
+                margin: 0;
+                padding: 8mm;
+                border: 1px solid #ccc;
+                min-height: 0;
+            }
             .expensa-container:last-child { page-break-after: auto; }
         }
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
+            padding: 10px;
             background: #f5f5f5;
+            scroll-snap-type: y mandatory;
         }
         .container {
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            max-width: 900px;
+            max-width: 210mm;
             margin: 0 auto;
         }
         h1 {
             text-align: center;
             color: #007bff;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
+            font-size: 1.2rem;
         }
         .controles {
             text-align: center;
-            margin-bottom: 20px;
-            padding: 15px;
+            margin-bottom: 12px;
+            padding: 10px;
             background: #f8f9fa;
             border-radius: 4px;
         }
@@ -192,64 +205,67 @@ $anio_actual = date('Y');
             background: #007bff;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
-            margin: 0 5px;
+            font-size: 13px;
+            margin: 0 4px;
         }
         .controles button:hover {
             background: #0056b3;
         }
         .expensa-container {
-            margin-bottom: 30px;
-            padding: 20px;
+            margin-bottom: 20px;
+            padding: 12px;
             border: 2px solid #007bff;
-            border-radius: 8px;
+            border-radius: 6px;
             background: white;
+            min-height: 100vh;
+            box-sizing: border-box;
+            scroll-snap-align: start;
         }
         .expensa-header {
             text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
             border-bottom: 2px solid #007bff;
         }
         .expensa-title {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: bold;
             color: #007bff;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
         }
         .expensa-info {
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
-            margin: 5px 0;
+            margin: 2px 0;
         }
         .expensa-section {
-            margin: 15px 0;
+            margin: 8px 0;
         }
         .expensa-section h3 {
-            font-size: 14px;
+            font-size: 12px;
             color: #333;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             border-bottom: 1px solid #ddd;
-            padding-bottom: 5px;
+            padding-bottom: 3px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 10px 0;
-            font-size: 11px;
+            margin: 6px 0;
+            font-size: 9px;
         }
         th {
             background: #007bff;
             color: white;
-            padding: 8px;
+            padding: 4px 6px;
             text-align: left;
             font-weight: bold;
         }
         td {
-            padding: 6px 8px;
+            padding: 3px 6px;
             border-bottom: 1px solid #eee;
         }
         .monto-negativo {
@@ -262,14 +278,21 @@ $anio_actual = date('Y');
         }
         .total-box {
             background: #e7f3ff;
-            padding: 15px;
+            padding: 10px;
             border-radius: 4px;
-            margin-top: 15px;
+            margin-top: 8px;
             text-align: right;
         }
         .total-box strong {
-            font-size: 16px;
+            font-size: 14px;
             color: #007bff;
+        }
+        .expensa-tabla-wrap {
+            max-height: 35vh;
+            overflow-y: auto;
+        }
+        @media print {
+            .expensa-tabla-wrap { max-height: none; overflow: visible; }
         }
         .expensa-acciones {
             display: flex;
@@ -352,6 +375,7 @@ $anio_actual = date('Y');
             
             <div class="expensa-section">
                 <h3>DETALLE DE MOVIMIENTOS</h3>
+                <div class="expensa-tabla-wrap">
                 <table>
                     <thead>
                         <tr>
@@ -402,6 +426,7 @@ $anio_actual = date('Y');
                         </tr>
                     </tfoot>
                 </table>
+                </div>
             </div>
             
             <div class="expensa-section">
