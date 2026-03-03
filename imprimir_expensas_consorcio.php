@@ -158,20 +158,33 @@ $anio_actual = date('Y');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Imprimir Expensas - Consorcio</title>
     <style>
-        @page { size: A4; margin: 12mm; }
+        @page { size: A4; margin: 10mm; }
         @media print {
             .no-print { display: none !important; }
             body { margin: 0; padding: 0; background: white; scroll-snap-type: none; }
             .container { max-width: none; box-shadow: none; padding: 0; }
-            .expensa-container {
+            .expensa-page {
                 page-break-after: always;
+            }
+            .expensa-page:last-child { page-break-after: auto; }
+            .expensa-container {
                 page-break-inside: avoid;
                 margin: 0;
                 padding: 8mm;
                 border: 1px solid #ccc;
                 min-height: 0;
+                transform-origin: top center;
             }
-            .expensa-container:last-child { page-break-after: auto; }
+            .expensa-header { margin-bottom: 4px; padding-bottom: 4px; }
+            .expensa-title { font-size: 11px !important; margin-bottom: 2px !important; }
+            .expensa-info { font-size: 8px !important; margin: 1px 0 !important; }
+            .expensa-section { margin: 4px 0 !important; }
+            .expensa-section h3 { font-size: 9px !important; margin-bottom: 2px !important; padding-bottom: 2px !important; }
+            table { font-size: 7px !important; margin: 3px 0 !important; }
+            th, td { padding: 2px 4px !important; font-size: 7px !important; }
+            .total-box { padding: 6px !important; margin-top: 4px !important; }
+            .total-box strong { font-size: 10px !important; }
+            .expensa-tabla-wrap { max-height: none !important; overflow: visible !important; }
         }
         body {
             font-family: Arial, sans-serif;
@@ -356,6 +369,7 @@ $anio_actual = date('Y');
         </div>
         
         <?php foreach ($expensas as $idx => $expensa): ?>
+        <div class="expensa-page" data-expensa-idx="<?= $idx ?>">
         <div class="expensa-container" id="expensa-<?= $idx ?>">
             <div class="expensa-header">
                 <div class="expensa-title">EXPENSA - <?= htmlspecialchars($expensa['propiedad']) ?> - Porcentaje: <?= number_format($expensa['porcentaje'], 2, ',', '.') ?>%</div>
@@ -441,6 +455,7 @@ $anio_actual = date('Y');
                 <button type="button" class="btn-icono-exp seguir" title="Seguir" onclick="seguirExpensa(<?= $idx ?>)">▶</button>
             </div>
         </div>
+        </div>
         <?php endforeach; ?>
     </div>
     
@@ -482,19 +497,20 @@ $anio_actual = date('Y');
         html += '<meta charset="UTF-8">';
         html += '<title>Expensa - ' + propiedad + '</title>';
         html += '<style>';
-        html += '@media print { body { margin: 0; padding: 10px; } @page { margin: 1cm; } }';
-        html += 'body { font-family: Arial, sans-serif; margin: 20px; }';
-        html += '.expensa-container { padding: 20px; border: 2px solid #007bff; border-radius: 8px; }';
-        html += '.expensa-header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #007bff; }';
-        html += '.expensa-title { font-size: 18px; font-weight: bold; color: #007bff; margin-bottom: 10px; }';
-        html += '.expensa-info { font-size: 12px; color: #666; margin: 5px 0; }';
-        html += '.expensa-section { margin: 15px 0; }';
-        html += '.expensa-section h3 { font-size: 14px; color: #333; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }';
-        html += 'table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 11px; }';
-        html += 'th { background: #007bff; color: white; padding: 8px; text-align: left; font-weight: bold; }';
-        html += 'td { padding: 6px 8px; border-bottom: 1px solid #eee; }';
-        html += '.total-box { background: #e7f3ff; padding: 15px; border-radius: 4px; margin-top: 15px; text-align: right; }';
-        html += '.total-box strong { font-size: 16px; color: #007bff; }';
+        html += '@media print { body { margin: 0; padding: 10px; } @page { size: A4; margin: 10mm; } .expensa-container { transform-origin: top center; } }';
+        html += 'body { font-family: Arial, sans-serif; margin: 15px; }';
+        html += '.expensa-container { padding: 12px; border: 2px solid #007bff; border-radius: 6px; }';
+        html += '.expensa-header { text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #007bff; }';
+        html += '.expensa-title { font-size: 14px; font-weight: bold; color: #007bff; margin-bottom: 4px; }';
+        html += '.expensa-info { font-size: 10px; color: #666; margin: 2px 0; }';
+        html += '.expensa-section { margin: 6px 0; }';
+        html += '.expensa-section h3 { font-size: 11px; color: #333; margin-bottom: 4px; border-bottom: 1px solid #ddd; padding-bottom: 2px; }';
+        html += 'table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 9px; }';
+        html += 'th { background: #007bff; color: white; padding: 4px 6px; text-align: left; font-weight: bold; }';
+        html += 'td { padding: 3px 6px; border-bottom: 1px solid #eee; }';
+        html += '.total-box { background: #e7f3ff; padding: 10px; border-radius: 4px; margin-top: 8px; text-align: right; }';
+        html += '.total-box strong { font-size: 12px; color: #007bff; }';
+        html += '@media print { .expensa-header { margin-bottom: 4px; padding-bottom: 4px; } .expensa-title { font-size: 11px !important; } .expensa-info { font-size: 8px !important; } .expensa-section { margin: 4px 0 !important; } .expensa-section h3 { font-size: 9px !important; } table { font-size: 7px !important; } th, td { padding: 2px 4px !important; } .total-box { padding: 6px !important; } .total-box strong { font-size: 10px !important; } }';
         html += '</style>';
         html += '</head><body>';
         html += contenido.innerHTML;
@@ -505,6 +521,17 @@ $anio_actual = date('Y');
         ventana.document.close();
 
         setTimeout(function() {
+            var cont = ventana.document.querySelector('.expensa-container');
+            if (cont) {
+                var altoPx = cont.scrollHeight;
+                var altoMm = altoPx * 0.264583;
+                if (altoMm > 270) {
+                    var escala = 270 / altoMm;
+                    cont.style.zoom = escala;
+                    cont.style.transformOrigin = 'top center';
+                    if (!('zoom' in cont.style)) cont.style.transform = 'scale(' + escala + ')';
+                }
+            }
             ventana.focus();
             ventana.print();
         }, 500);
@@ -530,6 +557,12 @@ $anio_actual = date('Y');
     window.imprimirExpensa = imprimirExpensa;
     window.seguirExpensa = seguirExpensa;
     
+    window.addEventListener('beforeprint', ajustarExpensasParaImpresion);
+    window.addEventListener('afterprint', function() {
+        var conts = document.querySelectorAll('.expensa-container');
+        for (var i = 0; i < conts.length; i++) { conts[i].style.zoom = ''; conts[i].style.transform = ''; }
+    });
+    
     window.addEventListener('load', function() {
         var botones = document.querySelectorAll('.btn-icono-exp.imprimir');
         for (var i = 0; i < botones.length; i++) {
@@ -541,21 +574,41 @@ $anio_actual = date('Y');
         }
     });
     
+    function ajustarExpensasParaImpresion() {
+        var altoMaximoMm = 270;
+        var paginas = document.querySelectorAll('.expensa-page');
+        for (var i = 0; i < paginas.length; i++) {
+            var cont = paginas[i].querySelector('.expensa-container');
+            if (!cont) continue;
+            cont.style.zoom = '';
+            cont.style.transform = '';
+            var altoPx = cont.scrollHeight;
+            var altoMm = altoPx * 0.264583;
+            if (altoMm > altoMaximoMm) {
+                var escala = altoMaximoMm / altoMm;
+                if ('zoom' in cont.style) {
+                    cont.style.zoom = escala;
+                } else {
+                    cont.style.transform = 'scale(' + escala + ')';
+                }
+            }
+        }
+    }
+    
     function imprimirTodas() {
         if (!confirm('¿Imprimir todas las expensas? Se abrirá el diálogo de impresión.')) {
             return false;
         }
         
-        // Ocultar solo los controles
         var controles = document.querySelector('.controles');
         if (controles) controles.style.display = 'none';
         
-        // Imprimir todas las expensas
         window.print();
         
-        // Restaurar controles después de imprimir
         setTimeout(function() {
             if (controles) controles.style.display = '';
+            var conts = document.querySelectorAll('.expensa-container');
+            for (var i = 0; i < conts.length; i++) conts[i].style.transform = '';
         }, 1000);
         
         return false;
