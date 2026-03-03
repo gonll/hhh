@@ -1,27 +1,37 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+header('Content-Type: text/plain; charset=utf-8');
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     echo 'Sin permiso';
     exit;
 }
-$id_prop = (int)$_GET['id'];
+$id_prop = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if ($id_prop <= 0) {
+    echo 'ID inválido';
+    exit;
+}
 
 mysqli_begin_transaction($conexion);
 
-try {
-    // A. Actualizamos el contrato a 'FINALIZADO'
-    $sql1 = "UPDATE alquileres SET estado = 'FINALIZADO' WHERE propiedad_id = $id_prop AND estado = 'VIGENTE'";
-    mysqli_query($conexion, $sql1);
+$ok = true;
+$sql1 = "UPDATE alquileres SET estado = 'FINALIZADO' WHERE propiedad_id = $id_prop AND estado = 'VIGENTE'";
+if (!mysqli_query($conexion, $sql1)) {
+    $ok = false;
+}
 
-    // B. Devolvemos la propiedad a estado LIBRE (alquiler = 0)
+if ($ok) {
     $sql2 = "UPDATE propiedades SET alquiler = 0 WHERE propiedad_id = $id_prop";
-    mysqli_query($conexion, $sql2);
+    if (!mysqli_query($conexion, $sql2)) {
+        $ok = false;
+    }
+}
 
+if ($ok) {
     mysqli_commit($conexion);
     echo "OK";
-} catch (Exception $e) {
+} else {
     mysqli_rollback($conexion);
-    echo "Error";
+    echo "Error: " . mysqli_error($conexion);
 }
 ?>

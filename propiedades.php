@@ -233,11 +233,28 @@ function eliminarPropiedad(id) {
 }
 
 function finalizarContrato(idProp) {
-    if(confirm("¿Finalizar contrato vigente?")) {
-        fetch('finalizar_contrato.php?id='+idProp).then(r=>r.text()).then(res=>{
-            if(res.trim()==="OK") location.reload();
+    if(!confirm("¿Finalizar contrato vigente?")) return;
+    var url = 'finalizar_contrato.php?id=' + encodeURIComponent(idProp);
+    fetch(url, { credentials: 'same-origin' })
+        .then(function(r) {
+            if (!r.ok) throw new Error('Error del servidor: ' + r.status);
+            return r.text();
+        })
+        .then(function(res) {
+            var txt = (res || '').trim();
+            if (txt === 'OK') {
+                location.reload();
+            } else {
+                var msg = txt;
+                if (txt.length > 200 || txt.toLowerCase().indexOf('<!') >= 0) {
+                    msg = 'Sesión expirada o error del servidor. Recargue la página e ingrese nuevamente.';
+                } else if (!msg) msg = 'Respuesta vacía';
+                alert('No se pudo finalizar: ' + msg);
+            }
+        })
+        .catch(function(err) {
+            alert('Error de conexión: ' + (err && err.message ? err.message : err));
         });
-    }
 }
 
 function imprimirContrato(idProp) {
