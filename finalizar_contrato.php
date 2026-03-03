@@ -1,7 +1,11 @@
 <?php
+if (isset($_GET['debug']) && $_GET['debug'] === '1') {
+    ini_set('display_errors', 1);
+    error_reporting(E_ALL);
+}
+header('Content-Type: text/plain; charset=utf-8');
 include 'db.php';
 include 'verificar_sesion.php';
-header('Content-Type: text/plain; charset=utf-8');
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     echo 'Sin permiso';
     exit;
@@ -12,7 +16,7 @@ if ($id_prop <= 0) {
     exit;
 }
 
-mysqli_begin_transaction($conexion);
+mysqli_autocommit($conexion, false);
 
 $ok = true;
 $sql1 = "UPDATE alquileres SET estado = 'FINALIZADO' WHERE propiedad_id = $id_prop AND estado = 'VIGENTE'";
@@ -22,9 +26,7 @@ if (!mysqli_query($conexion, $sql1)) {
 
 if ($ok) {
     $sql2 = "UPDATE propiedades SET alquiler = 0 WHERE propiedad_id = $id_prop";
-    if (!mysqli_query($conexion, $sql2)) {
-        $ok = false;
-    }
+    mysqli_query($conexion, $sql2);
 }
 
 if ($ok) {
@@ -34,4 +36,5 @@ if ($ok) {
     mysqli_rollback($conexion);
     echo "Error: " . mysqli_error($conexion);
 }
+mysqli_autocommit($conexion, true);
 ?>

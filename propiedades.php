@@ -237,7 +237,11 @@ function finalizarContrato(idProp) {
     var url = 'finalizar_contrato.php?id=' + encodeURIComponent(idProp);
     fetch(url, { credentials: 'same-origin' })
         .then(function(r) {
-            if (!r.ok) throw new Error('Error del servidor: ' + r.status);
+            if (!r.ok) {
+                var msg = 'Error del servidor: ' + r.status;
+                if (r.status === 500) msg += '. Pruebe en el navegador: finalizar_contrato.php?id=' + idProp + '&debug=1 para ver el detalle.';
+                throw new Error(msg);
+            }
             return r.text();
         })
         .then(function(res) {
