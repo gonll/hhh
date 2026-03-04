@@ -1540,6 +1540,16 @@ function aceptarCobroCaja() {
                 if (!chkDejar || !chkDejar.checked) {
                     if (vuelto > 0) msgVuelto = "\n\nEntregar vuelto: $ " + vuelto.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
+                var itemsRecibo = items.slice();
+                if (vuelto > 0) {
+                    if (chkDejar && chkDejar.checked) {
+                        itemsRecibo.push({ concepto: "A CUENTA PROXIMO PAGO", monto: vuelto });
+                    } else {
+                        itemsRecibo.push({ concepto: "(A ENTREGAR VUELTO)", monto: vuelto });
+                    }
+                }
+                var urlRecibo = "generar_recibo_cobro_caja.php?usuario_id=" + uSel + "&fecha=" + encodeURIComponent(fechaISO) + "&items=" + encodeURIComponent(JSON.stringify(itemsRecibo)) + "&total=" + encodeURIComponent(dinero.toFixed(2));
+                window.open(urlRecibo, "_blank", "noopener");
                 resetCobroCaja();
                 var fila = document.querySelector("#cuerpo tr.fila-seleccionada");
                 if (fila) cargarMovimientos(fila, uSel);
