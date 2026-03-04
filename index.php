@@ -306,7 +306,7 @@ if ($nivelAcceso === 3) {
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <div id="reloj-sistema"></div>
                 <?php if ($nivelAcceso >= 3): ?>
-                <span id="migrar-saldo-control" style="display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span id="migrar-saldo-control" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
                     <span style="font-size:11px;">Saldo actual: <strong id="migrar-saldo-actual" data-valor="0">--</strong></span>
                     <label style="font-size:11px;">Saldo objetivo:</label>
                     <input type="text" id="monto-migrar" class="input-monto" inputmode="decimal" placeholder="Ej: 0" style="width:100px; padding:6px 8px; font-size:11px; border:1px solid #ced4da; border-radius:4px;" oninput="actualizarDiferenciaMigrar()">

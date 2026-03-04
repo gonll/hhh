@@ -14,6 +14,18 @@ $before_id = isset($_GET['before_id']) ? (int)$_GET['before_id'] : 0;
 $after_fecha = isset($_GET['after_fecha']) ? trim($_GET['after_fecha']) : '';
 $after_id = isset($_GET['after_id']) ? (int)$_GET['after_id'] : 0;
 
+// Si es consorcio: obtener fecha de la última LIQ EXPENSAS (para no mostrar X en movimientos anteriores)
+$ultima_liq_fecha = null;
+$ultima_liq_id = null;
+$r_u = mysqli_query($conexion, "SELECT 1 FROM usuarios WHERE id = $id AND UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
+if ($r_u && mysqli_num_rows($r_u) > 0) {
+    $r_liq = mysqli_query($conexion, "SELECT fecha, movimiento_id FROM cuentas WHERE usuario_id = $id AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' ORDER BY fecha DESC, movimiento_id DESC LIMIT 1");
+    if ($r_liq && $row_liq = mysqli_fetch_assoc($r_liq)) {
+        $ultima_liq_fecha = $row_liq['fecha'];
+        $ultima_liq_id = (int)$row_liq['movimiento_id'];
+    }
+}
+
 $res_total = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id = $id");
 $total_cuenta = ($r = mysqli_fetch_assoc($res_total)) ? (float)$r['total'] : 0;
 
@@ -89,12 +101,20 @@ if (count($filas) > 0) {
 $saldo = $suma_antes;
 $html = '';
 
-function renderFila($m, &$saldo, $conexion) {
+function renderFila($m, &$saldo, $conexion, $ultima_liq_fecha = null, $ultima_liq_id = null) {
     $saldo += $m['monto'];
     $colorMonto = ($m['monto'] >= 0) ? "#28a745" : "#dc3545";
     $colorSaldo = ($saldo >= 0) ? "#28a745" : "#dc3545";
     $fechaFormateada = date('d/m/Y', strtotime($m['fecha']));
-    $celdaEliminar = (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 2)
+    $mostrarX = (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 2);
+    if ($mostrarX && $ultima_liq_fecha !== null && $ultima_liq_id !== null) {
+        $mov_fecha = $m['fecha'];
+        $mov_id = (int)$m['movimiento_id'];
+        if ($mov_fecha < $ultima_liq_fecha || ($mov_fecha === $ultima_liq_fecha && $mov_id < $ultima_liq_id)) {
+            $mostrarX = false;
+        }
+    }
+    $celdaEliminar = $mostrarX
         ? "<button onclick='event.stopPropagation(); eliminarMovSeguro({$m['movimiento_id']})' style='border:none; background:none; cursor:pointer; font-size:14px;'>❌</button>"
         : "";
     $concepto_attr = htmlspecialchars($m['concepto'], ENT_QUOTES, 'UTF-8');
@@ -133,7 +153,7 @@ function renderFila($m, &$saldo, $conexion) {
 
 if (count($filas) > 0) {
     foreach ($filas as $m) {
-        $html .= renderFila($m, $saldo, $conexion);
+        $html .= renderFila($m, $saldo, $conexion, $ultima_liq_fecha, $ultima_liq_id);
     }
 } else {
     $html = "<tr><td colspan='7' style='text-align:center; padding:30px; color:gray;'>NO HAY MOVIMIENTOS REGISTRADOS</td></tr>";
