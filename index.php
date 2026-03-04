@@ -1581,15 +1581,23 @@ function seleccionarFila(el, movimientoId, fecha, concepto, compro, ref, monto) 
 }
 
 function eliminarMovSeguro(movId) {
-    if (prompt("CLAVE DE SEGURIDAD PARA ELIMINAR:") === "4961") {
-        if (confirm("¿Eliminar este movimiento permanentemente?")) {
-            fetch('eliminar_movimiento.php?mid=' + movId)
-                .then(r => r.text())
-                .then(res => {
-                    if (res.trim() === "OK") cargarMovimientos(document.querySelector('.fila-seleccionada'), uSel);
-                });
+    var proceder = false;
+    if (esConsorcioUsuario) {
+        proceder = confirm("¿Eliminar este movimiento permanentemente?");
+    } else {
+        if (prompt("CLAVE DE SEGURIDAD PARA ELIMINAR:") !== "4961") {
+            alert("Clave incorrecta.");
+            return;
         }
-    } else { alert("Clave incorrecta."); }
+        proceder = confirm("¿Eliminar este movimiento permanentemente?");
+    }
+    if (proceder) {
+        fetch('eliminar_movimiento.php?mid=' + movId)
+            .then(r => r.text())
+            .then(res => {
+                if (res.trim() === "OK") cargarMovimientos(document.querySelector('.fila-seleccionada'), uSel);
+            });
+    }
 }
 
 function generarWord() {
