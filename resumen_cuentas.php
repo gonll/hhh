@@ -172,5 +172,10 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
             <span class="simbolo-pantalla">$ </span><?= number_format($saldo_caja_central, 2, ',', '.') ?> — Saldo cuenta Caja Central
         </div>
     </div>
+    <script>
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') window.close();
+        });
+    </script>
 </body>
 </html>
