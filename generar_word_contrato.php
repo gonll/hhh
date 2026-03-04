@@ -120,14 +120,17 @@ ob_start();
 <![endif]-->
 <style>
 @page { size: 21cm 29.7cm; margin: 2cm; }
-body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; text-align: justify; line-height: 1.5; margin: 0; }
+body { font-family: Arial, sans-serif; font-size: 10pt; text-align: justify; line-height: 1.5; margin: 0; }
 p { margin: 0 0 12pt; }
 .clausula { font-weight: bold; text-transform: uppercase; }
+.titulo-contrato { text-align: center; font-weight: bold; font-size: 9pt; margin-bottom: 12pt; }
+.subtitulo-contrato { text-align: center; font-weight: bold; font-size: 9pt; margin-bottom: 24pt; }
 </style>
 </head>
 <body>
 
-<p><strong><?= htmlspecialchars($dom_propiedad) ?> <?= htmlspecialchars($locatario_txt) ?></strong></p>
+<p class="titulo-contrato">CONTRATO DE ALQUILER : <?= htmlspecialchars($dom_propiedad) ?></p>
+<p class="subtitulo-contrato"><?= htmlspecialchars($locatario_txt) ?></p>
 
 <p><strong>PARTES CONTRATANTES:</strong> Entre, por una parte <?= htmlspecialchars($loc_nom) ?>, <?= htmlspecialchars($loc_ident) ?> con domicilio en <?= htmlspecialchars($loc_dom) ?>, denominada en adelante la Locadora. Y por la otra parte <?= htmlspecialchars($locatario_txt) ?> con domicilio en <?= htmlspecialchars($dom_propiedad) ?><?= $inquilino_mail !== '' ? ', y mail para notificaciones ' . htmlspecialchars($inquilino_mail) : '' ?>, denominado en adelante el Locatario, convienen celebrar el presente Contrato de locación para vivienda el cual se sujetará a los términos y condiciones que se detallan a continuación.</p>
 
