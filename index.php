@@ -302,9 +302,6 @@ if ($nivelAcceso === 3) {
                 <?php if ($nivelAcceso === 3): ?>
                 <button type="button" class="btn-ant-cel" onclick="abrirModalAntCel()">Ant/cel</button>
                 <?php endif; ?>
-                <?php if ($nivelAcceso === 3): ?>
-                <button id="btnBorrarLiqExp" type="button" onclick="abrirModalBorrarLiqExp()" style="display:none; background:#dc3545; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Borrar LIQ EXP</button>
-                <?php endif; ?>
             </div>
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <div id="reloj-sistema"></div>
@@ -444,6 +441,9 @@ if ($nivelAcceso === 3) {
                 <button type="button" class="btn-exp" onclick="cargarExpensa(this)" data-concepto="SALUD PUBLICA">6. SALUD PUBLICA</button>
                 <button type="button" class="btn-exp btn-liquidar" onclick="abrirModalLiquidarExpensas()">LIQUIDAR EXPENSAS</button>
                 <button type="button" class="btn-exp btn-imprimir-exp" onclick="abrirImprimirExpensas()" style="background:#D4A5A5; color:#333; border-color:#D4A5A5;">IMPRIMIR EXPENSAS</button>
+                <?php if ($nivelAcceso === 3): ?>
+                <button type="button" id="btnBorrarLiqExp" class="btn-exp" onclick="abrirModalBorrarLiqExp()" style="display:none; background:#dc3545; color:white; border-color:#dc3545;">BORRAR LIQ EXP</button>
+                <?php endif; ?>
                 <button type="button" class="btn-exp" onclick="cargarExpensa(this)" data-concepto="SEGURO CONTRA INCENDIO">7. SEGURO INCENDIO</button>
                 <button type="button" class="btn-exp" onclick="cargarExpensa(this)" data-concepto="SAT (Agua y cloacas común)">8. SAT (Agua)</button>
                 <button type="button" class="btn-exp" onclick="cargarExpensa(this)" data-concepto="MANTENIMIENTO ASCENSOR">9. MANTEN. ASCENSOR</button>
