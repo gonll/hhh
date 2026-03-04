@@ -304,7 +304,6 @@ if ($nivelAcceso === 3) {
                 <?php endif; ?>
                 <?php if ($nivelAcceso === 3): ?>
                 <button id="btnBorrarLiqExp" type="button" onclick="abrirModalBorrarLiqExp()" style="display:none; background:#dc3545; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Borrar LIQ EXP</button>
-                <button id="btnBorrarTodasLiqExp" type="button" onclick="abrirModalBorrarTodasLiqExp()" style="display:none; background:#721c24; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Borrar TODAS LIQ EXP</button>
                 <?php endif; ?>
             </div>
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -754,8 +753,6 @@ function cargarMovimientos(fila, id) {
     }
     var btnBorrarLiq = document.getElementById("btnBorrarLiqExp");
     if (btnBorrarLiq) btnBorrarLiq.style.display = esConsorcioUsuario ? "inline-block" : "none";
-    var btnBorrarTodasLiq = document.getElementById("btnBorrarTodasLiqExp");
-    if (btnBorrarTodasLiq) btnBorrarTodasLiq.style.display = esConsorcioUsuario ? "inline-block" : "none";
     
     // Cobro Exp/transferencia y Cobro expensas efvo: solo si es propietario o inquilino. Sueldo/Extras: solo si NO es propietario ni inquilino (y no Caja).
     if (esCajaUsuario) {
