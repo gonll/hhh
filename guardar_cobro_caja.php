@@ -3,6 +3,7 @@
  * Cobro en caja: graba cada item por separado con ingreso a caja.
  * Recibe: usuario_id, fecha, items[] (cada item: concepto, monto)
  * Cada item se graba en cuenta del usuario y en Caja (EFVO).
+ * Si el item es expensas: también graba en cuenta del consorcio y del propietario (si es inquilino).
  */
 include 'db.php';
 include 'verificar_sesion.php';
@@ -45,11 +46,23 @@ $nom_usuario = $row_usuario ? strtoupper($row_usuario['apellido']) : '';
 $compro = 'EFVO';
 $refer = 'COBRO CAJA';
 
+// Obtener propiedad del inquilino (para items de expensas)
+$propiedad_inquilino = null;
+$res_alq = mysqli_query($conexion, "SELECT a.propiedad_id, p.propiedad, p.consorcio, p.propietario_id 
+    FROM alquileres a 
+    INNER JOIN propiedades p ON p.propiedad_id = a.propiedad_id 
+    WHERE (a.inquilino1_id = $usuario_id OR a.inquilino2_id = $usuario_id) AND a.estado = 'VIGENTE' 
+    LIMIT 1");
+if ($res_alq && $row_alq = mysqli_fetch_assoc($res_alq)) {
+    $propiedad_inquilino = $row_alq;
+}
+
 foreach ($items as $item) {
     $concepto = trim($item['concepto'] ?? '');
     $monto = (float)($item['monto'] ?? 0);
     if ($concepto === '' || $monto <= 0) continue;
 
+    $concepto_orig = $concepto;
     $concepto = strtoupper(mysqli_real_escape_string($conexion, $concepto));
     $monto_pos = abs($monto);
 
@@ -69,6 +82,55 @@ foreach ($items as $item) {
     if (!mysqli_query($conexion, $sql_caja)) {
         echo 'Error al grabar en Caja: ' . mysqli_error($conexion);
         exit;
+    }
+
+    // 3. Si es expensas e inquilino: grabar en consorcio y propietario (excluir PAGO A CUENTA, etc.)
+    $es_pago_cuenta = (stripos($concepto_orig, 'PAGO A CUENTA') !== false || stripos($concepto_orig, 'A CUENTA PROXIMO') !== false || stripos($concepto_orig, 'A ENTREGAR VUELTO') !== false);
+    $es_expensa = !$es_pago_cuenta && (stripos($concepto_orig, 'EXPENSA') !== false || stripos($concepto_orig, 'LIQ EXP') !== false);
+    if ($es_expensa && $propiedad_inquilino !== null) {
+        $prop_consorcio = trim($propiedad_inquilino['consorcio'] ?? '');
+        $nombre_prop = mysqli_real_escape_string($conexion, strtoupper($propiedad_inquilino['propiedad'] ?? ''));
+        $propietario_id = (int)($propiedad_inquilino['propietario_id'] ?? 0);
+
+        $consorcio_id = null;
+        if ($prop_consorcio !== '') {
+            $prop_consorcio_esc = mysqli_real_escape_string($conexion, $prop_consorcio);
+            $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
+                WHERE UPPER(apellido) LIKE 'CONSORCIO%' 
+                AND UPPER(TRIM(COALESCE(consorcio,''))) = UPPER('$prop_consorcio_esc')
+                LIMIT 1");
+            if ($res_con && $row_con = mysqli_fetch_assoc($res_con)) {
+                $consorcio_id = (int)$row_con['id'];
+            }
+        }
+        if ($consorcio_id === null) {
+            $res_con = mysqli_query($conexion, "SELECT id FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
+            if ($res_con && $row_con = mysqli_fetch_assoc($res_con)) {
+                $consorcio_id = (int)$row_con['id'];
+            }
+        }
+
+        if ($consorcio_id !== null) {
+            $concepto_consorcio = "COBRO EXPENSA $nombre_prop - PAGÓ $nom_usuario";
+            $concepto_consorcio = mysqli_real_escape_string($conexion, $concepto_consorcio);
+            $sql_cons = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+                        VALUES ($consorcio_id, '$fecha', '$concepto_consorcio', '$compro', '$refer', $monto_pos)";
+            if (!mysqli_query($conexion, $sql_cons)) {
+                echo 'Error al grabar en Consorcio: ' . mysqli_error($conexion);
+                exit;
+            }
+        }
+
+        if ($propietario_id > 0 && $propietario_id != $usuario_id) {
+            $concepto_prop = "COBRO EXPENSA $nombre_prop - PAGÓ $nom_usuario";
+            $concepto_prop = mysqli_real_escape_string($conexion, $concepto_prop);
+            $sql_prop = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+                         VALUES ($propietario_id, '$fecha', '$concepto_prop', '$compro', '$refer', $monto_pos)";
+            if (!mysqli_query($conexion, $sql_prop)) {
+                echo 'Error al grabar en Propietario: ' . mysqli_error($conexion);
+                exit;
+            }
+        }
     }
 }
 
