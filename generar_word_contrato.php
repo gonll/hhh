@@ -10,7 +10,7 @@ if (!isset($_GET['id'])) {
 
 $id_prop = (int)$_GET['id'];
 
-$sql = "SELECT a.*, p.propiedad, p.consorcio, p.padron, p.detalle as prop_detalle, p.propietario_id,
+$sql = "SELECT a.*, p.propiedad, p.ciudad, p.padron, p.detalle as prop_detalle, p.propietario_id,
                prop.apellido as prop_nom, prop.cuit as prop_cuit, prop.dni as prop_dni, prop.domicilio as prop_dom,
                u1.apellido as inq1_nom, u1.dni as inq1_dni, u1.domicilio as inq1_dom, u1.email as inq1_email,
                u2.apellido as inq2_nom, u2.dni as inq2_dni, u2.email as inq2_email,
@@ -46,8 +46,9 @@ if (!empty($c['prop_cuit']) && trim($c['prop_cuit']) !== '') {
     $loc_ident = "C.U.I.T. N° 30708875593"; // fallback
 }
 
-// Domicilio propiedad (para locatario) = propiedad + consorcio
-$dom_propiedad = trim(strtoupper($c['propiedad'] ?? '') . ', ' . ($c['consorcio'] ?? ''), ', ');
+// Domicilio propiedad (para locatario) = propiedad + ciudad (sin consorcio)
+$ciudad_prop = trim($c['ciudad'] ?? '');
+$dom_propiedad = trim(strtoupper($c['propiedad'] ?? '') . ($ciudad_prop !== '' ? ', ' . strtoupper($ciudad_prop) : ''), ', ');
 
 // Locatario
 $locatario_txt = strtoupper($c['inq1_nom']) . ", D.N.I. N° " . preg_replace('/\D/', '', $c['inq1_dni'] ?? '');
