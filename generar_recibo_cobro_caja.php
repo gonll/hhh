@@ -90,23 +90,25 @@ header("Content-Disposition: attachment; filename=\"Recibo_Cobro_$nro_recibo.doc
 <head>
 <meta charset="UTF-8">
 <style>
-    body { font-family: Arial, sans-serif; font-size: 12pt; margin: 1cm; line-height: 1.5; }
-    .titulo { text-align: center; font-size: 14pt; font-weight: bold; letter-spacing: 2px; margin-bottom: 10px; }
-    .fecha { margin-bottom: 15px; text-align: right; }
-    .texto { margin-bottom: 15px; text-align: justify; }
-    .detalle { margin: 15px 0; border-collapse: collapse; width: 100%; }
-    .detalle th { background: #f0f0f0; padding: 8px 12px; text-align: left; font-weight: bold; border: 1px solid #ccc; }
+    @page { size: 210mm 148.5mm; margin: 6mm; }
+    body { font-family: Arial, sans-serif; font-size: 9pt; margin: 0; padding: 5mm; line-height: 1.2; box-sizing: border-box; }
+    .recibo-wrap { width: 100%; }
+    .titulo { text-align: center; font-size: 11pt; font-weight: bold; letter-spacing: 1px; margin: 0 0 3px 0; }
+    .fecha { margin: 0 0 4px 0; text-align: right; font-size: 8pt; }
+    .texto { margin: 0 0 5px 0; text-align: justify; font-size: 9pt; }
+    .detalle { margin: 4px 0; border-collapse: collapse; width: 100%; font-size: 8pt; }
+    .detalle th { background: #f0f0f0; padding: 3px 6px; text-align: left; font-weight: bold; border: 1px solid #ccc; }
     .detalle th:last-child { text-align: right; }
-    .detalle td { padding: 6px 12px; border: 1px solid #ddd; }
+    .detalle td { padding: 2px 6px; border: 1px solid #ddd; }
     .detalle td:last-child { text-align: right; }
-    .detalle .fila-total { font-weight: bold; background: #e8f4e8; }
-    .son { margin: 20px 0; font-weight: bold; font-size: 13pt; }
-    .firma-container { margin-top: 18px; }
+    .detalle .fila-total { font-weight: bold; background: #e8f4e8; padding: 3px 6px; }
+    .son { margin: 4px 0; font-weight: bold; font-size: 10pt; }
+    .firma-container { margin-top: 6px; font-size: 8pt; }
 </style>
 </head>
 <body>
+<div class="recibo-wrap">
     <div class="titulo">R&nbsp;E&nbsp;C&nbsp;I&nbsp;B&nbsp;O&nbsp;&nbsp;&nbsp;Nº&nbsp;<?= htmlspecialchars($nro_recibo) ?></div>
-    <p>&nbsp;</p>
     <div class="fecha"><?= $fecha_formateada ?></div>
     <div class="texto">Recibí de <strong><?= htmlspecialchars($usuario_nombre) ?></strong> la suma de pesos <strong><?= $monto_letras ?></strong> ($<?= $monto_numero ?>-) en concepto de las siguientes asignaciones:</div>
     <table class="detalle">
@@ -119,8 +121,8 @@ header("Content-Disposition: attachment; filename=\"Recibo_Cobro_$nro_recibo.doc
         <tbody>
             <?= $detalle_html ?>
             <tr class="fila-total">
-                <td style="padding: 8px 12px; font-weight: bold;">TOTAL PAGADO</td>
-                <td style="text-align: right; padding: 8px 12px; font-weight: bold;">$ <?= $monto_numero ?></td>
+                <td>TOTAL PAGADO</td>
+                <td>$ <?= $monto_numero ?></td>
             </tr>
         </tbody>
     </table>
@@ -129,13 +131,14 @@ header("Content-Disposition: attachment; filename=\"Recibo_Cobro_$nro_recibo.doc
         <table style="width: 100%; border: 0;">
             <tr>
                 <td style="width: 70%; border: 0;">&nbsp;</td>
-                <td style="text-align: center; border: 0;">.............................................................................</td>
+                <td style="text-align: center; border: 0;">..............................................</td>
             </tr>
             <tr>
                 <td style="width: 70%; border: 0;">&nbsp;</td>
-                <td style="text-align: center; border: 0; padding-top: 5px;"><?= htmlspecialchars($propietario_nombre) ?></td>
+                <td style="text-align: center; border: 0; padding-top: 2px;"><?= htmlspecialchars($propietario_nombre) ?></td>
             </tr>
         </table>
     </div>
+</div>
 </body>
 </html>
