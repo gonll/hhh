@@ -78,7 +78,8 @@ if ($nivelAcceso === 3) {
         /* Panel Central de Movimientos */
         .contenedor-grid { 
             background: white; padding: 15px; border-radius: 8px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 71vw; height: calc(90vh - 2cm); position: relative; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 71vw; height: calc(90vh - 2cm); position: relative;
+            display: flex; flex-direction: column; min-height: 0;
         }
 
         /* Botón Word - Posicionado a la izquierda del reloj */
@@ -103,7 +104,7 @@ if ($nivelAcceso === 3) {
         .btn-admin-prop { background: #17a2b8; }
         
         /* Cabecera Central y Reloj */
-        .cabecera-detalle { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .cabecera-detalle { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink: 0; }
         #reloj-sistema { font-size: 1rem; color: #aaa; font-weight: 300; min-width: 150px; text-align: right; }
         .btn-ant-cel { display: none; background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
         .btn-ant-cel:hover { background: #138496; }
@@ -152,7 +153,7 @@ if ($nivelAcceso === 3) {
         #ant_fecha_cal { display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; border: 1px solid #007bff; border-radius: 4px; box-sizing: border-box; font-size: inherit; }
 
         .scroll-usuarios { flex-grow: 1; overflow-y: auto; border: 1px solid #eee; margin-top: 5px; }
-        .scroll-grid { height: 75%; max-height: calc(90vh - 14em); overflow-y: scroll; overflow-x: auto; border: 1px solid #ddd; margin-top: 5px; background: #fff; }
+        .scroll-grid { flex: 1; min-height: 0; overflow-y: scroll; overflow-x: auto; border: 1px solid #ddd; margin-top: 5px; background: #fff; }
 
         .tabla-datos { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
         .tabla-datos th { background: #007bff; color: white; padding: 8px 5px; position: sticky; top: 0; z-index: 10; font-weight: bold; }
@@ -301,7 +302,6 @@ if ($nivelAcceso === 3) {
                 <?php if ($nivelAcceso === 3): ?>
                 <button type="button" class="btn-ant-cel" onclick="abrirModalAntCel()">Ant/cel</button>
                 <?php endif; ?>
-                <button type="button" onclick="imprimirMovimientos()" style="background:#6c757d; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Imprimir</button>
                 <?php if ($nivelAcceso === 3): ?>
                 <button id="btnBorrarLiqExp" type="button" onclick="abrirModalBorrarLiqExp()" style="display:none; background:#dc3545; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Borrar LIQ EXP</button>
                 <button id="btnBorrarTodasLiqExp" type="button" onclick="abrirModalBorrarTodasLiqExp()" style="display:none; background:#721c24; color:white; border:none; padding:6px 12px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Borrar TODAS LIQ EXP</button>

@@ -21,6 +21,7 @@ $sql = "SELECT p.propiedad, p.consorcio, p.propietario_id, COALESCE(p.porcentaje
         ORDER BY p.consorcio ASC, p.propiedad ASC";
 $resultado = mysqli_query($conexion, $sql);
 
+// Agrupar por usuario: propiedad de mayor %, saldo = suma total de toda la deuda del usuario
 $por_usuario = [];
 while ($f = mysqli_fetch_assoc($resultado)) {
     $porcentaje = (float)($f['porcentaje'] ?? 0);
@@ -29,20 +30,18 @@ while ($f = mysqli_fetch_assoc($resultado)) {
 
     if (!empty($f['inquilino1_id'])) {
         $inq1_id = (int)$f['inquilino1_id'];
-        $saldo1 = (float)($f['saldo_inq1'] ?? 0);
         $nombre1 = trim($f['nombre_inquilino'] ?? '');
         if (!empty($inq1_id) && $inq1_id != 1) {
             if (!isset($por_usuario[$inq1_id]) || $porcentaje > ($por_usuario[$inq1_id]['porcentaje'] ?? 0)) {
-                $por_usuario[$inq1_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre1 ?: '-', 'saldo' => $saldo1, 'porcentaje' => $porcentaje];
+                $por_usuario[$inq1_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre1 ?: '-', 'saldo' => 0, 'porcentaje' => $porcentaje];
             }
         }
         if (!empty($f['inquilino2_id'])) {
             $inq2_id = (int)$f['inquilino2_id'];
-            $saldo2 = (float)($f['saldo_inq2'] ?? 0);
             $nombre2 = trim($f['nombre_inquilino2'] ?? '');
             if ($inq2_id != 1) {
                 if (!isset($por_usuario[$inq2_id]) || $porcentaje > ($por_usuario[$inq2_id]['porcentaje'] ?? 0)) {
-                    $por_usuario[$inq2_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre2 ?: '-', 'saldo' => $saldo2, 'porcentaje' => $porcentaje];
+                    $por_usuario[$inq2_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre2 ?: '-', 'saldo' => 0, 'porcentaje' => $porcentaje];
                 }
             }
         }
@@ -50,12 +49,17 @@ while ($f = mysqli_fetch_assoc($resultado)) {
         $prop_id = (int)($f['propietario_id'] ?? 0);
         if ($prop_id > 0 && $prop_id != 1) {
             $nombre = trim($f['nombre_propietario'] ?? '');
-            $saldo = (float)($f['saldo_prop'] ?? 0);
             if (!isset($por_usuario[$prop_id]) || $porcentaje > ($por_usuario[$prop_id]['porcentaje'] ?? 0)) {
-                $por_usuario[$prop_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre ?: '-', 'saldo' => $saldo, 'porcentaje' => $porcentaje];
+                $por_usuario[$prop_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre ?: '-', 'saldo' => 0, 'porcentaje' => $porcentaje];
             }
         }
     }
+}
+
+// Obtener el saldo total (toda la deuda) de cada usuario desde la tabla cuentas
+foreach ($por_usuario as $uid => $datos) {
+    $res_saldo = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id = " . (int)$uid);
+    $por_usuario[$uid]['saldo'] = ($res_saldo && $r = mysqli_fetch_assoc($res_saldo)) ? (float)$r['total'] : 0;
 }
 
 $filas = array_values($por_usuario);
