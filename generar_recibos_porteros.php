@@ -93,7 +93,8 @@ if ($res_fichas) {
         .mensaje.ok { background: #d4edda; color: #155724; }
         .mensaje.error { background: #f8d7da; color: #721c24; }
         label { display: block; margin-bottom: 3px; font-weight: bold; font-size: 11px; color: #555; }
-        input, textarea, select { padding: 8px; border: 1px solid #ced4da; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 12px; }
+        input:not([type="checkbox"]):not([type="radio"]), textarea, select { padding: 8px; border: 1px solid #ced4da; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 12px; }
+        input[type="checkbox"], input[type="radio"] { width: auto; }
         .form-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
         .form-row .campo { flex: 1; min-width: 120px; }
         .form-row .campo-ancho { flex: 2; min-width: 200px; }
@@ -113,6 +114,8 @@ if ($res_fichas) {
         .buscador-portero-resultados .item-portero { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #eee; }
         .buscador-portero-resultados .item-portero:hover { background: #e7f3ff; }
         .seccion-generar { margin-top: 30px; padding: 20px; border: 2px dashed #28a745; border-radius: 8px; background: #f8fff8; }
+        .lista-items-tabsalpor label { display: block; margin-bottom: 6px; font-weight: normal; cursor: pointer; }
+        .lista-items-tabsalpor input[type="checkbox"] { width: auto; margin-right: 8px; vertical-align: middle; }
     </style>
 </head>
 <body>
@@ -173,10 +176,10 @@ if ($res_fichas) {
             <div class="form-row">
                 <div class="campo-ancho" style="flex: 1 1 100%;">
                     <label>Ítems de la tabla salarial a liquidar</label>
-                    <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ced4da; border-radius: 4px; padding: 10px; background: #f8f9fa;">
+                    <div class="lista-items-tabsalpor" style="max-height: 200px; overflow-y: auto; border: 1px solid #ced4da; border-radius: 4px; padding: 10px; background: #f8f9fa;">
                         <?php if (count($lista) > 0): ?>
                             <?php foreach ($lista as $it): ?>
-                            <label style="display: block; margin-bottom: 6px; font-weight: normal; cursor: pointer;">
+                            <label>
                                 <input type="checkbox" name="items[]" value="<?= (int)$it['id'] ?>">
                                 <?= htmlspecialchars($it['descripcion'] ?? '-') ?> 
                                 (<?= htmlspecialchars($tipos_opciones[$it['tipo'] ?? ''] ?? $it['tipo'] ?? '-') ?>)
@@ -196,8 +199,23 @@ if ($res_fichas) {
 
         <h3>2. Generar recibos</h3>
         <div class="seccion-generar">
-            <p style="margin: 0; color: #333; font-size: 12px;">Sección para generar recibos (en desarrollo).</p>
-            <p style="margin: 8px 0 0 0; padding: 0; color: #666; font-size: 11px;">Aquí se cargará la funcionalidad para seleccionar portero, período y generar el recibo.</p>
+            <p style="margin: 0 0 15px 0; color: #333; font-size: 12px;">Seleccione el portero. La ficha guardada se usará para el recibo y es la base para el próximo recibo.</p>
+            <div class="form-row">
+                <div class="campo-ancho">
+                    <label>Portero para recibo</label>
+                    <div class="buscador-portero buscador-recibo">
+                        <input type="text" id="buscadorPorteroRecibo" placeholder="Escribir letras para buscar portero..." autocomplete="off">
+                        <span class="ico-lupa" aria-hidden="true">🔍</span>
+                        <div id="resultadosPorteroRecibo" class="buscador-portero-resultados"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="fichaReciboWrap" style="display: none; margin-top: 15px; padding: 12px; background: white; border: 1px solid #28a745; border-radius: 6px;">
+                <strong style="font-size: 12px; color: #28a745;">Ficha que se usará para el recibo:</strong>
+                <p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">(Base para este y el próximo recibo)</p>
+                <ul id="fichaReciboItems" style="margin: 10px 0 0 0; padding-left: 20px; font-size: 12px;"></ul>
+            </div>
+            <p id="fichaReciboVacia" style="display: none; margin-top: 10px; color: #856404; font-size: 11px; background: #fff3cd; padding: 10px; border-radius: 4px;">Este portero no tiene ficha guardada. Primero agregue una ficha en la sección 1.</p>
         </div>
 
         <a href="index.php" class="volver">← Volver al menú principal</a>
@@ -205,6 +223,8 @@ if ($res_fichas) {
 
     <script>
     var porterosLista = <?= json_encode(array_map(function($u) { return ['id' => (int)$u['id'], 'apellido' => $u['apellido']]; }, $usuarios_porteros)) ?>;
+    var fichasPorPortero = <?= json_encode($fichas_por_portero) ?>;
+    var tiposOpciones = <?= json_encode($tipos_opciones) ?>;
     (function() {
         var buscador = document.getElementById('buscadorPortero');
         var resultados = document.getElementById('resultadosPortero');
@@ -231,6 +251,55 @@ if ($res_fichas) {
         });
         document.addEventListener('click', function(e) {
             var wrap = document.querySelector('.buscador-portero');
+            if (wrap && resultados && !wrap.contains(e.target)) resultados.style.display = 'none';
+        });
+    })();
+    (function() {
+        var buscador = document.getElementById('buscadorPorteroRecibo');
+        var resultados = document.getElementById('resultadosPorteroRecibo');
+        var fichaWrap = document.getElementById('fichaReciboWrap');
+        var fichaItems = document.getElementById('fichaReciboItems');
+        var fichaVacia = document.getElementById('fichaReciboVacia');
+        if (!buscador || !resultados) return;
+        function filtrar() {
+            var q = (buscador.value || '').toUpperCase().trim();
+            var lista = porterosLista || [];
+            var filtrados = q ? lista.filter(function(u) { return (u.apellido || '').toUpperCase().indexOf(q) >= 0; }) : lista;
+            resultados.innerHTML = filtrados.slice(0, 50).map(function(u) {
+                return '<div class="item-portero" data-id="' + u.id + '" data-nombre="' + (u.apellido || '').replace(/"/g, '&quot;') + '">' + (u.apellido || '') + '</div>';
+            }).join('');
+            resultados.style.display = filtrados.length > 0 ? 'block' : 'none';
+        }
+        function mostrarFicha(uid) {
+            var fichas = fichasPorPortero || {};
+            var datos = fichas[uid];
+            fichaWrap.style.display = 'none';
+            fichaVacia.style.display = 'none';
+            if (!datos || !datos.items || datos.items.length === 0) {
+                fichaVacia.style.display = 'block';
+                return;
+            }
+            var html = datos.items.map(function(it) {
+                var montoDisp = (it.unidad || '') === '%' ? (parseFloat(it.monto) || 0).toLocaleString('es-AR', {minimumFractionDigits: 2}) + '%' : '$' + (parseFloat(it.monto) || 0).toLocaleString('es-AR', {minimumFractionDigits: 2});
+                var tipoNombre = (tiposOpciones || {})[it.item_tipo || ''] || it.item_tipo || '-';
+                return '<li>' + (it.item_desc || '-') + ' (' + tipoNombre + ') — ' + montoDisp + '</li>';
+            }).join('');
+            fichaItems.innerHTML = html;
+            fichaWrap.style.display = 'block';
+        }
+        buscador.addEventListener('input', filtrar);
+        buscador.addEventListener('focus', filtrar);
+        resultados.addEventListener('click', function(e) {
+            var item = e.target.closest('.item-portero');
+            if (item) {
+                var uid = parseInt(item.getAttribute('data-id'), 10);
+                buscador.value = item.getAttribute('data-nombre') || '';
+                resultados.style.display = 'none';
+                mostrarFicha(uid);
+            }
+        });
+        document.addEventListener('click', function(e) {
+            var wrap = document.querySelector('.buscador-recibo');
             if (wrap && resultados && !wrap.contains(e.target)) resultados.style.display = 'none';
         });
     })();

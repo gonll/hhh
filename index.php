@@ -1447,7 +1447,7 @@ function resetCobroCaja() {
     ponerFechaActualCobroCaja();
 }
 
-function asignarCobroCajaItem(concepto, monto) {
+function asignarCobroCajaItem(concepto, monto, periodo) {
     var montoAbs = Math.abs(parseFloat(monto) || 0);
     if (montoAbs <= 0) return;
     var texto = "Cobro de: " + (concepto || "") + " $ " + montoAbs.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1456,7 +1456,7 @@ function asignarCobroCajaItem(concepto, monto) {
     var wrapV = document.getElementById("cobroCaja_vueltoWrap");
     var el2 = document.getElementById("cobroCaja_item2");
     if (!cobroCajaItem1) {
-        cobroCajaItem1 = { concepto: "COBRO DE: " + (concepto || "").toUpperCase(), monto: montoAbs };
+        cobroCajaItem1 = { concepto: "COBRO DE: " + (concepto || "").toUpperCase(), monto: montoAbs, periodo: (periodo || "").trim() };
         cobroCajaItem2 = null;
         var el1 = document.getElementById("cobroCaja_item1");
         if (el1) el1.textContent = texto;
@@ -1467,13 +1467,13 @@ function asignarCobroCajaItem(concepto, monto) {
     } else if (!cobroCajaItem2) {
         var conceptoNorm = ("COBRO DE: " + (concepto || "").toUpperCase()).trim();
         if (cobroCajaItem1.concepto === conceptoNorm && Math.abs(cobroCajaItem1.monto - montoAbs) < 0.01) return;
-        cobroCajaItem2 = { concepto: conceptoNorm, monto: montoAbs };
+        cobroCajaItem2 = { concepto: conceptoNorm, monto: montoAbs, periodo: (periodo || "").trim() };
         if (el2) el2.textContent = texto;
         if (wrap2) wrap2.style.display = "flex";
     } else {
         var conceptoNorm2 = ("COBRO DE: " + (concepto || "").toUpperCase()).trim();
         if (cobroCajaItem1.concepto === conceptoNorm2 && Math.abs(cobroCajaItem1.monto - montoAbs) < 0.01) return;
-        cobroCajaItem2 = { concepto: conceptoNorm2, monto: montoAbs };
+        cobroCajaItem2 = { concepto: conceptoNorm2, monto: montoAbs, periodo: (periodo || "").trim() };
         if (el2) el2.textContent = texto;
     }
     actualizarCobroCajaVuelto();
@@ -1500,15 +1500,15 @@ function aceptarCobroCaja() {
         } else {
             var m1 = cobroCajaItem1.monto;
             if (dinero >= m1) {
-                items.push({ concepto: cobroCajaItem1.concepto, monto: m1 });
+                items.push({ concepto: cobroCajaItem1.concepto, monto: m1, periodo: cobroCajaItem1.periodo || "" });
                 items.push({ concepto: "PAGO A CUENTA", monto: dinero - m1 });
             } else {
-                items.push({ concepto: cobroCajaItem1.concepto, monto: dinero });
+                items.push({ concepto: cobroCajaItem1.concepto, monto: dinero, periodo: cobroCajaItem1.periodo || "" });
             }
         }
     } else {
-        if (cobroCajaItem1) items.push({ concepto: cobroCajaItem1.concepto, monto: cobroCajaItem1.monto });
-        if (cobroCajaItem2) items.push({ concepto: cobroCajaItem2.concepto, monto: cobroCajaItem2.monto });
+        if (cobroCajaItem1) items.push({ concepto: cobroCajaItem1.concepto, monto: cobroCajaItem1.monto, periodo: cobroCajaItem1.periodo || "" });
+        if (cobroCajaItem2) items.push({ concepto: cobroCajaItem2.concepto, monto: cobroCajaItem2.monto, periodo: cobroCajaItem2.periodo || "" });
     }
     var fechaEl = document.getElementById("cobroCaja_fecha");
     var fechaVal = fechaEl ? fechaEl.value.trim() : "";
@@ -1548,7 +1548,9 @@ function aceptarCobroCaja() {
                         itemsRecibo.push({ concepto: "(A ENTREGAR VUELTO)", monto: vuelto });
                     }
                 }
+                var periodoRecibo = (cobroCajaItem1 && cobroCajaItem1.periodo) ? cobroCajaItem1.periodo : ((cobroCajaItem2 && cobroCajaItem2.periodo) ? cobroCajaItem2.periodo : "");
                 var urlRecibo = "generar_recibo_cobro_caja.php?usuario_id=" + uSel + "&fecha=" + encodeURIComponent(fechaISO) + "&items=" + encodeURIComponent(JSON.stringify(itemsRecibo)) + "&total=" + encodeURIComponent(dinero.toFixed(2));
+                if (periodoRecibo) urlRecibo += "&periodo=" + encodeURIComponent(periodoRecibo);
                 window.open(urlRecibo, "_blank", "noopener");
                 resetCobroCaja();
                 var fila = document.querySelector("#cuerpo tr.fila-seleccionada");
@@ -1571,7 +1573,7 @@ function seleccionarFila(el, movimientoId, fecha, concepto, compro, ref, monto) 
     document.getElementById("btnWord").style.display = "block";
     var panelCobro = document.getElementById("panelCobroCaja");
     if (panelCobro && panelCobro.style.display !== "none" && uSel !== 1) {
-        asignarCobroCajaItem(concepto, monto);
+        asignarCobroCajaItem(concepto, monto, ref);
     }
     if (tipo === 'INGRESO' && concepto) {
         document.getElementById("filaCarga").style.display = "table-footer-group";

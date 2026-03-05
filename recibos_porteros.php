@@ -97,6 +97,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $mensaje = 'Error al eliminar.';
         }
+    } elseif (isset($_POST['actualizar_haberes']) && isset($_POST['porcentaje'])) {
+        $pct_str = str_replace(',', '.', $_POST['porcentaje'] ?? '0');
+        $pct = (float)preg_replace('/[^\d.\-]/', '', $pct_str);
+        if ($pct == 0) {
+            $mensaje = 'Ingrese un porcentaje distinto de cero.';
+        } else {
+            $factor = 1 + ($pct / 100);
+            $res = mysqli_query($conexion, "UPDATE tabsalpor SET monto = ROUND(monto * $factor, 2) WHERE UPPER(TRIM(tipo)) = 'HABER' AND UPPER(TRIM(unidad)) IN ('MENSUAL', 'HORA')");
+            $afectados = $res ? mysqli_affected_rows($conexion) : 0;
+            $msg = $afectados > 0 ? "Se actualizaron $afectados haber(es) aplicando " . ($pct >= 0 ? '+' : '') . number_format($pct, 2, ',', '.') . "%." : "No hay haberes con unidad MENSUAL o HORA para actualizar.";
+            header('Location: recibos_porteros.php?seccion=tabsalpor&actualizar=' . urlencode($msg));
+            exit;
+        }
     }
 }
 
@@ -116,6 +129,9 @@ if (isset($_GET['editar'])) {
 
 if (isset($_GET['ok'])) {
     $mensaje = 'Operación realizada correctamente.';
+}
+if (isset($_GET['actualizar'])) {
+    $mensaje = $_GET['actualizar'];
 }
 
 $lista = [];
@@ -240,6 +256,17 @@ if ($res_lista) {
                 <?php endif; ?>
             </div>
         </form>
+
+        <div style="margin-top: 20px; padding: 12px; background: #e7f3ff; border: 1px solid #007bff; border-radius: 6px;">
+            <strong style="font-size: 12px; color: #004085;">Actualizar solo haberes por %</strong>
+            <p style="margin: 6px 0 10px 0; font-size: 11px; color: #555;">Aplica el porcentaje a los montos de ítems tipo HABER con unidad MENSUAL o HORA. Ej: 10 = +10%, -5 = -5%</p>
+            <form method="POST" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <input type="hidden" name="actualizar_haberes" value="1">
+                <label style="margin: 0; font-weight: normal;">Porcentaje:</label>
+                <input type="text" name="porcentaje" placeholder="Ej: 10 o -5" style="width: 100px; padding: 6px 10px;">
+                <button type="submit" class="btn btn-primary" style="padding: 6px 14px;" onclick="return confirm('¿Actualizar todos los haberes (MENSUAL/HORA) con este porcentaje?');">Actualizar haberes</button>
+            </form>
+        </div>
 
         <h3 style="margin-top: 25px; font-size: 14px; color: #333;">Listado tabla salarial</h3>
         <table>

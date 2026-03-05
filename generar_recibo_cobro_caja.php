@@ -16,6 +16,7 @@ $usuario_id = (int)$_GET['usuario_id'];
 $fecha_raw = trim($_GET['fecha'] ?? '');
 $items_raw = $_GET['items'] ?? '';
 $total = (float)($_GET['total'] ?? 0);
+$periodo_cobrado = trim($_GET['periodo'] ?? '');
 
 if ($usuario_id < 1 || $total <= 0) {
     die("Datos inválidos.");
@@ -76,8 +77,10 @@ $detalle_html = '';
 foreach ($items as $it) {
     $concepto = trim($it['concepto'] ?? '');
     $monto_item = (float)($it['monto'] ?? 0);
+    $periodo_it = trim($it['periodo'] ?? '');
     if ($concepto === '' || $monto_item <= 0) continue;
     $concepto_limpio = htmlspecialchars(conceptoReciboLimpio($concepto));
+    if ($periodo_it !== '') $concepto_limpio .= ' — Período: ' . htmlspecialchars($periodo_it);
     $monto_fmt = number_format($monto_item, 2, ',', '.');
     $detalle_html .= "<tr><td>$concepto_limpio</td><td>\$ $monto_fmt</td></tr>";
 }
@@ -110,7 +113,7 @@ header("Content-Disposition: attachment; filename=\"Recibo_Cobro_$nro_recibo.doc
 <div class="recibo-wrap">
     <div class="titulo">R&nbsp;E&nbsp;C&nbsp;I&nbsp;B&nbsp;O&nbsp;&nbsp;&nbsp;Nº&nbsp;<?= htmlspecialchars($nro_recibo) ?></div>
     <div class="fecha"><?= $fecha_formateada ?></div>
-    <div class="texto">Recibí de <strong><?= htmlspecialchars($usuario_nombre) ?></strong> la suma de pesos <strong><?= $monto_letras ?></strong> ($<?= $monto_numero ?>-) en concepto de las siguientes asignaciones:</div>
+    <div class="texto">Recibí de <strong><?= htmlspecialchars($usuario_nombre) ?></strong> la suma de pesos <strong><?= $monto_letras ?></strong> ($<?= $monto_numero ?>-) en concepto de las siguientes asignaciones<?= $periodo_cobrado !== '' ? ' — Período cobrado: ' . htmlspecialchars($periodo_cobrado) : '' ?>:</div>
     <table class="detalle">
         <thead>
             <tr>

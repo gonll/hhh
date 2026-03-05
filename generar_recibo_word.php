@@ -26,6 +26,7 @@ $usuario_inquilino = strtoupper(trim($mov['usuario_nombre']));
 $usuario_id = (int)$mov['usuario_id'];
 $monto = abs((float)$mov['monto']);
 $concepto = strtoupper(trim($mov['concepto']));
+$referencia = trim($mov['referencia'] ?? '');
 $fecha = $mov['fecha'];
 
 // Obtener propietario: buscar si el usuario es inquilino de alguna propiedad
@@ -129,7 +130,7 @@ header("Content-Disposition: attachment; filename=\"Recibo_$nro_recibo.doc\"");
     <div class="titulo">R&nbsp;E&nbsp;C&nbsp;I&nbsp;B&nbsp;O&nbsp;&nbsp;&nbsp;Nº&nbsp;<?= $nro_recibo ?></div>
     <p>&nbsp;</p>
     <div class="fecha"><?= $fecha_formateada ?></div>
-    <div class="texto">Recibí de <?= $usuario_inquilino ?> la cantidad de pesos <?= $monto_letras ?> . ($<?= $monto_numero ?>-) en concepto de <?= $concepto ?>.</div>
+    <div class="texto">Recibí de <?= $usuario_inquilino ?> la cantidad de pesos <?= $monto_letras ?> . ($<?= $monto_numero ?>-) en concepto de <?= $concepto ?><?= $referencia !== '' ? ' — Período cobrado: ' . htmlspecialchars($referencia) : '' ?>.</div>
     <div class="son"><strong>Son:$<?= $monto_numero ?>-</strong></div>
     <div class="firma-container">
         <table style="width: 100%; border-collapse: collapse; border: 0;">
