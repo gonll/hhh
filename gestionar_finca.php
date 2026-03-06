@@ -227,9 +227,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mensaje = 'Falta dato o corregir.';
         }
     } elseif (isset($_POST['eliminar_todos'])) {
-        mysqli_query($conexion, "DELETE FROM gasoil WHERE pdt_id IS NOT NULL");
-        if (mysqli_query($conexion, "DELETE FROM pdt")) {
-            $mensaje = 'Todos los registros PDT han sido eliminados.';
+        $where = "COALESCE(en_cc, 0) = 0";
+        if ($desde_cel) {
+            $where .= " AND fecha >= DATE_SUB(CURDATE(), INTERVAL 2 DAY)";
+        }
+        mysqli_query($conexion, "DELETE FROM gasoil WHERE pdt_id IN (SELECT id FROM pdt WHERE $where)");
+        $res_del = mysqli_query($conexion, "DELETE FROM pdt WHERE $where");
+        if ($res_del) {
+            $n = mysqli_affected_rows($conexion);
+            $mensaje = $n > 0 ? "Se eliminaron $n parte(s) no cargado(s) en CC." : 'No hay partes elegibles para eliminar (solo se eliminan los no cargados en CC' . ($desde_cel ? ', de los últimos 2 días' : '') . ').';
         } else {
             $mensaje = 'Falta dato o corregir.';
         }
@@ -868,9 +874,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
                 <h3 style="margin: 0;">Listado de PDTs</h3>
                 <?php if ($mostrar_vista_completa && count($lista_pdt) > 0): ?>
-                <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;" onsubmit="return confirm('¿Eliminar TODOS los partes diarios de trabajo? Esta acción no se puede deshacer.');">
+                <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;" onsubmit="return confirm('¿Eliminar los partes NO cargados en CC?<?= $desde_cel ? ' Solo se eliminarán los de los últimos 2 días.' : '' ?> Esta acción no se puede deshacer.');">
                     <input type="hidden" name="eliminar_todos" value="1">
-                    <button type="submit" class="btn btn-danger" style="font-size: 10px; padding: 4px 10px;">Eliminar todos los partes</button>
+                    <button type="submit" class="btn btn-danger" style="font-size: 10px; padding: 4px 10px;">Eliminar partes no cargados en CC<?= $desde_cel ? ' (últ. 2 días)' : '' ?></button>
                 </form>
                 <?php endif; ?>
             </div>
