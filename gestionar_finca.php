@@ -458,10 +458,14 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         th { background: #007bff; color: white; padding: 6px 6px; text-align: left; font-size: 11px; }
         td { padding: 5px 6px; border-bottom: 1px solid #eee; font-size: 11px; }
         tr:hover { background: #f8f9fa; }
-        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 265px; }
+        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 600px; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
         /* Columnas de datos: ellipsis en personal/tractor para evitar que nombres largos rompan el layout */
         .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tabla-listado-pdt td.col-apellido, .tabla-listado-pdt th.col-apellido { width: 120px; max-width: 120px; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tabla-listado-pdt td.col-tipo, .tabla-listado-pdt th.col-tipo { width: 100px; min-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tabla-listado-pdt td.col-tractor, .tabla-listado-pdt th.col-tractor { width: 80px; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tabla-listado-pdt td.col-observaciones, .tabla-listado-pdt th.col-observaciones { width: 180px; min-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; width: 220px; min-width: 220px; background: #fff !important; }
         .tabla-listado-pdt th.col-acciones { background: #007bff !important; }
         .tabla-listado-pdt td.col-acciones { background: #fff !important; }
@@ -528,6 +532,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             .form-group-observaciones { max-width: 100% !important; }
             .form-row .form-group.checkbox-group { flex: 1 1 auto; }
             #grid1 { min-height: 250px; max-height: 50vh; }
+            .tabla-listado-pdt th.col-apellido, .tabla-listado-pdt td.col-apellido { width: 110px; max-width: 110px; min-width: 110px; }
+            .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 90px; min-width: 90px; }
+            .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { width: 75px; min-width: 75px; }
+            .tabla-listado-pdt th.col-observaciones, .tabla-listado-pdt td.col-observaciones { width: 150px; min-width: 150px; }
             .acciones-botones { flex-wrap: wrap !important; }
             .acciones-botones .btn { font-size: 11px; padding: 6px 10px; }
             .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 180px; }
@@ -540,6 +548,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             h2 { font-size: 14px; }
             .btn { padding: 8px 10px; font-size: 12px; }
             .acciones-botones .btn { padding: 5px 8px; font-size: 10px; }
+            .tabla-listado-pdt th.col-apellido, .tabla-listado-pdt td.col-apellido { width: 100px; max-width: 100px; min-width: 100px; }
+            .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 80px; min-width: 80px; }
+            .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { width: 70px; min-width: 70px; }
+            .tabla-listado-pdt th.col-observaciones, .tabla-listado-pdt td.col-observaciones { width: 120px; min-width: 120px; }
             .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 150px; }
             #formCargaGasoilSisterna form { flex-direction: column; align-items: stretch; }
         }
@@ -862,12 +874,18 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <div id="grid1" class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
             <colgroup>
-                <col style="width:45px">
+                <col style="width:120px">
+                <col style="width:100px">
+                <col style="width:80px">
+                <col style="width:180px">
                 <col style="width:220px">
             </colgroup>
             <thead>
                 <tr>
-                    <th class="col-id">ID</th>
+                    <th class="col-apellido">Apellido</th>
+                    <th class="col-tipo">Tipo</th>
+                    <th class="col-tractor">Tractor</th>
+                    <th class="col-observaciones">Observaciones</th>
                     <th class="col-acciones">Acciones</th>
                 </tr>
             </thead>
@@ -893,9 +911,17 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         $gasoilFmt = ($gasoil !== null && $gasoil !== '' && $gasoil !== '-') ? number_format((float)$gasoil, 2, ',', '.') : '-';
                         $cambio = (isset($pdt['cambio_aceite']) ? (int)$pdt['cambio_aceite'] : (int)($pdt['cambio_aceite'] ?? 0));
                         $encc = (isset($pdt['en_cc']) ? (int)$pdt['en_cc'] : (int)($pdt['en_cc'] ?? 0));
+                        $obs_raw = trim((string)$p('observaciones', ''));
+                        $nom_show = (string)$nom; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($nom_show) > 20) { $nom_show = mb_substr($nom_show, 0, 20) . '…'; } elseif (strlen($nom_show) > 20) { $nom_show = substr($nom_show, 0, 20) . '…'; }
+                        $tipo_show = (string)$tipo; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($tipo_show) > 15) { $tipo_show = mb_substr($tipo_show, 0, 15) . '…'; } elseif (strlen($tipo_show) > 15) { $tipo_show = substr($tipo_show, 0, 15) . '…'; }
+                        $tractor_show = (string)$tractor; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($tractor_show) > 10) { $tractor_show = mb_substr($tractor_show, 0, 10) . '…'; } elseif (strlen($tractor_show) > 10) { $tractor_show = substr($tractor_show, 0, 10) . '…'; }
+                        $obs_show = (string)$obs_raw; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($obs_show) > 30) { $obs_show = mb_substr($obs_show, 0, 30) . '…'; } elseif (strlen($obs_show) > 30) { $obs_show = substr($obs_show, 0, 30) . '…'; }
                         ?>
                         <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= $uid ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
-                            <td class="col-id" title="<?= $pid ?>"><?= $pid ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim((string)$p('observaciones'))) ?></span><?php endif; ?></td>
+                            <td class="col-apellido" title="<?= $nom ?>"><?= $nom_show ?></td>
+                            <td class="col-tipo" title="<?= $tipo ?>"><?= $tipo_show ?></td>
+                            <td class="col-tractor" title="<?= $tractor ?>"><?= $tractor_show ?></td>
+                            <td class="col-observaciones" title="<?= htmlspecialchars($obs_raw) ?>"><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars($obs_raw) ?></span><?php endif; ?><?= htmlspecialchars($obs_show) ?></td>
                             <td class="col-acciones">
                                 <div style="display: flex; justify-content: flex-end; width: 100%;">
                                 <div class="acciones-botones">
@@ -920,7 +946,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="2" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="5" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
@@ -1164,8 +1190,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     if (!tr || e.target.closest('form') || e.target.closest('button') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
                     var uid = tr.getAttribute('data-usuario-id');
                     if (!uid || !usuarioIdInput) return;
+                    var tdApellido = tr.querySelector('.col-apellido');
                     var u = usuarios.find(function(x) { return String(x.id) === uid; });
-                    var nombre = (u && u.apellido) ? u.apellido : '';
+                    var nombre = tdApellido ? (tdApellido.getAttribute('title') || tdApellido.textContent || '').trim() : ((u && u.apellido) ? u.apellido : '');
                     usuarioIdInput.value = uid;
                     if (buscador) buscador.value = nombre;
                     if (nombreUsuarioSel) nombreUsuarioSel.textContent = nombre;
