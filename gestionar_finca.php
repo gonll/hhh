@@ -104,6 +104,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['cc'])) {
     elseif ($_GET['cc'] === 'error') $mensaje = 'Error: ' . ($_GET['msg'] ?? '');
     if (!empty($_GET['usuario'])) $preseleccionar_usuario_id = (int)$_GET['usuario'];
 }
+// Mensaje tras carga gasoil (redirect GET)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['gasoil_ok']) && $_GET['gasoil_ok'] === '1') {
+    $mensaje = 'Carga de gasoil en cisterna registrada.';
+}
 
 // Procesar acciones
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -114,7 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($fecha_c !== '' && $cant_c > 0) {
             $sql_ins = "INSERT INTO gasoil (fecha, cantidad, concepto) VALUES ('$fecha_c', $cant_c, 'Carga sisterna')";
             if (mysqli_query($conexion, $sql_ins)) {
-                $mensaje = 'Carga de gasoil en cisterna registrada.';
+                header('Location: ' . $form_action_url . '?gasoil_ok=1');
+                exit;
             } else {
                 $mensaje = 'Falta dato o corregir.';
             }
@@ -512,6 +517,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .badge-horas-ccno.badge-comunes { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
         .badge-horas-ccno.badge-tractor { background: #d1ecf1; color: #0c5460; border: 1px solid #17a2b8; }
         
+        /* Sección carga gasoil: siempre visible (incl. partes desde cel) */
+        .seccion-carga-gasoil { display: flex !important; flex-direction: column; }
         /* Responsive */
         @media (max-width: 768px) {
             body { margin: 8px; font-size: 12px; }
@@ -559,15 +566,16 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <a href="gestionar_finca.php?modo=completo" style="font-size: 12px; color: #28a745; font-weight: bold; margin-left: 8px;">Ver gestión completa (modo PC)</a>
             <?php endif; ?>
             <div style="text-align: right; flex-shrink: 0; display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
-                <?php if ($mostrar_vista_completa): ?>
+                <?php if ($mostrar_vista_completa && !$desde_cel): ?>
                 <a href="gestionar_tabla_salarial.php" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">ABM Tabla salarial</a>
                 <span id="valoresSalarialesFinca" style="font-size: 11px; color: #333; padding: 4px 8px; background: #e8f4e8; border-radius: 4px; border: 1px solid #c8e6c9;">
                     Hora común: $ <?= number_format($ultima_tabla_salarial['valor_hora_comun'], 2, ',', '.') ?> | Hora tractor: $ <?= number_format($ultima_tabla_salarial['valor_hora_tractor'], 2, ',', '.') ?>
                 </span>
                 <?php endif; ?>
-                <div style="display: flex; flex-direction: column; gap: 6px;">
+                <?php /* Sección carga gasoil: habilitada también en partes desde cel */ ?>
+                <div class="seccion-carga-gasoil" style="display: flex; flex-direction: column; gap: 6px;">
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <button type="button" id="btnCargaGasoilSisterna" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;" onclick="var f=document.getElementById('formCargaGasoilSisterna');if(f){f.style.display=(f.style.display==='block')?'none':'block';}" ontouchend="var f=document.getElementById('formCargaGasoilSisterna');if(f){f.style.display=(f.style.display==='block')?'none':'block';}event.preventDefault();">Carga gasoil en cisterna</button>
+                        <button type="button" id="btnCargaGasoilSisterna" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">Carga gasoil en cisterna</button>
                     </div>
                 <div style="font-size: 13px;">
                     <strong>Gestión de gasoil</strong><br>
@@ -582,13 +590,13 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php endif; ?>
                 </div>
                 <div id="formCargaGasoilSisterna" style="display: none; margin-top: 8px; padding: 10px; background: #f5f5f5; border-radius: 6px; text-align: left;">
-                    <form method="post" action="<?= htmlspecialchars($form_action_url) ?>" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <form id="formGasoilCisterna" method="post" action="<?= htmlspecialchars($form_action_url) ?>" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                         <input type="hidden" name="carga_gasoil_sisterna" value="1">
                         <label style="margin: 0;">Fecha</label>
-                        <input type="date" name="fecha_carga" value="<?= date('Y-m-d') ?>" required>
+                        <input type="date" name="fecha_carga" id="fecha_carga_gasoil" value="<?= date('Y-m-d') ?>" required>
                         <label style="margin: 0;">Cantidad (L)</label>
-                        <input type="number" name="cantidad_carga" step="0.01" min="0.01" required placeholder="Ej. 500">
-                        <button type="submit" class="btn btn-primary" style="font-size: 12px;">Registrar carga (+)</button>
+                        <input type="number" name="cantidad_carga" id="cantidad_carga_gasoil" step="0.01" min="0.01" required placeholder="Ej. 500">
+                        <button type="button" id="btnRegistrarCargaGasoil" class="btn btn-primary" style="font-size: 12px;">Registrar carga (+)</button>
                     </form>
                 </div>
             </div>
@@ -608,7 +616,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <div id="mensajeCC" class="mensaje <?= (strpos($mensaje, 'Error') !== false || strpos($mensaje, 'Falta dato') !== false) ? 'error' : 'ok' ?>">
                 <?= htmlspecialchars($mensaje) ?>
             </div>
-            <?php if ((isset($_GET['cc']) && $_GET['cc'] === 'ok') || $mensaje === 'Parte diario de trabajo eliminado correctamente.' || $mensaje === 'Todos los registros PDT han sido eliminados.'): ?>
+            <?php if ((isset($_GET['cc']) && $_GET['cc'] === 'ok') || isset($_GET['gasoil_ok']) || $mensaje === 'Parte diario de trabajo eliminado correctamente.' || $mensaje === 'Todos los registros PDT han sido eliminados.'): ?>
             <script>
             (function(){ var m=document.getElementById('mensajeCC'); if(m) setTimeout(function(){ m.style.display='none'; }, 2000); })();
             </script>
@@ -1488,12 +1496,37 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 btnCargaGasoilSisterna.parentNode.replaceChild(nuevoBtn, btnCargaGasoilSisterna);
                 btnCargaGasoilSisterna = nuevoBtn;
                 
-                // Listener para click
+                // Listener para click y touchend (móviles)
                 btnCargaGasoilSisterna.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     window.toggleCargaGasoilForm();
                 });
+                btnCargaGasoilSisterna.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    window.toggleCargaGasoilForm();
+                });
+                
+                // Envío explícito del form gasoil (evita problemas con form dentro de display:none en móviles)
+                var formGasoil = document.getElementById('formGasoilCisterna');
+                var btnRegistrar = document.getElementById('btnRegistrarCargaGasoil');
+                var gasoilEnviando = false;
+                function enviarFormGasoil() {
+                    if (!formGasoil || gasoilEnviando) return;
+                    var fecha = document.getElementById('fecha_carga_gasoil');
+                    var cant = document.getElementById('cantidad_carga_gasoil');
+                    if (fecha && !fecha.value) { alert('Ingrese la fecha.'); fecha.focus(); return; }
+                    if (cant && (!cant.value || parseFloat(cant.value) <= 0)) { alert('Ingrese la cantidad (L).'); if (cant) cant.focus(); return; }
+                    gasoilEnviando = true;
+                    formGasoil.submit();
+                }
+                if (formGasoil && btnRegistrar) {
+                    btnRegistrar.addEventListener('click', function(e) { e.preventDefault(); enviarFormGasoil(); });
+                    btnRegistrar.addEventListener('touchend', function(e) { e.preventDefault(); enviarFormGasoil(); });
+                    formGasoil.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); enviarFormGasoil(); }
+                    });
+                }
                 
                 console.log('Botón carga gasoil inicializado correctamente');
             } catch (err) {
