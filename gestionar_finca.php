@@ -458,13 +458,14 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         th { background: #007bff; color: white; padding: 6px 6px; text-align: left; font-size: 11px; }
         td { padding: 5px 6px; border-bottom: 1px solid #eee; font-size: 11px; }
         tr:hover { background: #f8f9fa; }
-        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 600px; }
+        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 655px; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
         /* Columnas de datos: ellipsis en personal/tractor para evitar que nombres largos rompan el layout */
         .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-apellido, .tabla-listado-pdt th.col-apellido { width: 120px; max-width: 120px; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-tipo, .tabla-listado-pdt th.col-tipo { width: 100px; min-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-tractor, .tabla-listado-pdt th.col-tractor { width: 80px; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tabla-listado-pdt td.col-horas, .tabla-listado-pdt th.col-horas { width: 55px; min-width: 55px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-observaciones, .tabla-listado-pdt th.col-observaciones { width: 180px; min-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; width: 220px; min-width: 220px; background: #fff !important; }
         .tabla-listado-pdt th.col-acciones { background: #007bff !important; }
@@ -535,6 +536,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             .tabla-listado-pdt th.col-apellido, .tabla-listado-pdt td.col-apellido { width: 110px; max-width: 110px; min-width: 110px; }
             .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 90px; min-width: 90px; }
             .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { width: 75px; min-width: 75px; }
+            .tabla-listado-pdt th.col-horas, .tabla-listado-pdt td.col-horas { width: 50px; min-width: 50px; }
             .tabla-listado-pdt th.col-observaciones, .tabla-listado-pdt td.col-observaciones { width: 150px; min-width: 150px; }
             .acciones-botones { flex-wrap: wrap !important; }
             .acciones-botones .btn { font-size: 11px; padding: 6px 10px; }
@@ -551,6 +553,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             .tabla-listado-pdt th.col-apellido, .tabla-listado-pdt td.col-apellido { width: 100px; max-width: 100px; min-width: 100px; }
             .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 80px; min-width: 80px; }
             .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { width: 70px; min-width: 70px; }
+            .tabla-listado-pdt th.col-horas, .tabla-listado-pdt td.col-horas { width: 45px; min-width: 45px; }
             .tabla-listado-pdt th.col-observaciones, .tabla-listado-pdt td.col-observaciones { width: 120px; min-width: 120px; }
             .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 150px; }
             #formCargaGasoilSisterna form { flex-direction: column; align-items: stretch; }
@@ -877,6 +880,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <col style="width:120px">
                 <col style="width:100px">
                 <col style="width:80px">
+                <col style="width:55px">
                 <col style="width:180px">
                 <col style="width:220px">
             </colgroup>
@@ -885,6 +889,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <th class="col-apellido">Apellido</th>
                     <th class="col-tipo">Tipo</th>
                     <th class="col-tractor">Tractor</th>
+                    <th class="col-horas">Horas</th>
                     <th class="col-observaciones">Observaciones</th>
                     <th class="col-acciones">Acciones</th>
                 </tr>
@@ -918,9 +923,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         $obs_show = (string)$obs_raw; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($obs_show) > 30) { $obs_show = mb_substr($obs_show, 0, 30) . '…'; } elseif (strlen($obs_show) > 30) { $obs_show = substr($obs_show, 0, 30) . '…'; }
                         ?>
                         <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= $uid ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
+                            <?php $horas_show = number_format($horas, 2, ',', '.'); if (strlen($horas_show) > 6) { $horas_show = substr($horas_show, 0, 6) . '…'; } ?>
                             <td class="col-apellido" title="<?= $nom ?>"><?= $nom_show ?></td>
                             <td class="col-tipo" title="<?= $tipo ?>"><?= $tipo_show ?></td>
                             <td class="col-tractor" title="<?= $tractor ?>"><?= $tractor_show ?></td>
+                            <td class="col-horas" title="<?= number_format($horas, 2, ',', '.') ?>"><?= $horas_show ?></td>
                             <td class="col-observaciones" title="<?= htmlspecialchars($obs_raw) ?>"><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars($obs_raw) ?></span><?php endif; ?><?= htmlspecialchars($obs_show) ?></td>
                             <td class="col-acciones">
                                 <div style="display: flex; justify-content: flex-end; width: 100%;">
@@ -946,7 +953,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="5" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="6" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
