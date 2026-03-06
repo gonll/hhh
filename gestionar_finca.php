@@ -864,11 +864,13 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         <table class="tabla-listado-pdt">
             <colgroup>
                 <col style="width:40px">
+                <col style="width:200px">
                 <col style="width:220px">
             </colgroup>
             <thead>
                 <tr>
                     <th class="col-id">ID</th>
+                    <th class="col-apellido">Apellido</th>
                     <th class="col-acciones">Acciones</th>
                 </tr>
             </thead>
@@ -897,6 +899,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         ?>
                         <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= $uid ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
                             <td class="col-id" title="<?= $pid ?>"><?= $pid ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim((string)$p('observaciones'))) ?></span><?php endif; ?></td>
+                            <td class="col-apellido" title="<?= $nom ?>"><?= mb_strlen($nom) > 30 ? mb_substr($nom, 0, 30) . '…' : $nom ?></td>
                             <td class="col-acciones">
                                 <div style="display: flex; justify-content: flex-end; width: 100%;">
                                 <div class="acciones-botones">
@@ -921,7 +924,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="2" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="3" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
