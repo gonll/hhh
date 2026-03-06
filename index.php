@@ -1617,6 +1617,33 @@ function generarWord() {
 // Orden de campos al cargar movimiento (Enter pasa al siguiente)
 const CAMPOS_MOV = ['ins_fecha', 'ins_concepto', 'ins_compro', 'ins_refer', 'ins_monto'];
 
+(function() {
+    var filaCarga = document.getElementById("filaCarga");
+    if (filaCarga) {
+        filaCarga.addEventListener("keydown", function(e) {
+            if (e.key === "Escape") {
+                filaCarga.style.display = "none";
+                var inpCal = document.getElementById("ins_fecha_cal");
+                if (inpCal && inpCal.style.display === "block") {
+                    inpCal.style.display = "none";
+                    var inpTexto = document.getElementById("ins_fecha");
+                    if (inpTexto) inpTexto.style.visibility = "";
+                }
+                var insFecha = document.getElementById("ins_fecha");
+                var insConcepto = document.getElementById("ins_concepto");
+                var insRefer = document.getElementById("ins_refer");
+                var insMonto = document.getElementById("ins_monto");
+                if (insFecha) insFecha.value = "";
+                if (insConcepto) insConcepto.value = "";
+                if (insRefer) insRefer.value = "";
+                if (insMonto) insMonto.value = "";
+                e.stopPropagation();
+                e.preventDefault();
+            }
+        });
+    }
+})();
+
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         var modalBorrarTodas = document.getElementById('modalBorrarTodasLiqExp');

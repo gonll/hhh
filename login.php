@@ -5,6 +5,11 @@ if (!empty($_SESSION['acceso_id'])) {
     exit;
 }
 include 'db.php';
+require_once __DIR__ . '/login_security.php';
+
+$bloqueado = login_esta_bloqueado();
+$minutos_restantes = $bloqueado ? login_minutos_restantes() : 0;
+$token_csrf = $bloqueado ? '' : login_generar_csrf();
 
 $hay_accesos = false;
 $tabla_existe = false;
@@ -60,19 +65,24 @@ $primera_vez = !$tabla_existe || !$hay_accesos;
         </form>
     <?php else: ?>
         <h2>Ingreso al sistema</h2>
-        <?php if (isset($_GET['error'])): ?>
-            <div class="error">Usuario o clave incorrectos.</div>
+        <?php if ($bloqueado): ?>
+            <div class="error">Demasiados intentos fallidos. Esperá <?= $minutos_restantes ?> minuto(s) antes de intentar de nuevo.</div>
+        <?php else: ?>
+            <?php if (isset($_GET['error'])): ?>
+                <div class="error">Usuario o clave incorrectos.</div>
+            <?php endif; ?>
+            <?php if (isset($_GET['salir'])): ?>
+                <div class="aviso">Sesión cerrada correctamente.</div>
+            <?php endif; ?>
+            <form action="procesar_login.php" method="POST">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($token_csrf) ?>">
+                <label>Usuario</label>
+                <input type="text" name="usuario" required autofocus placeholder="Nombre de usuario" maxlength="80" autocomplete="username">
+                <label>Clave</label>
+                <input type="password" name="clave" required placeholder="Contraseña" maxlength="255" autocomplete="current-password">
+                <button type="submit">ENTRAR</button>
+            </form>
         <?php endif; ?>
-        <?php if (isset($_GET['salir'])): ?>
-            <div class="aviso">Sesión cerrada correctamente.</div>
-        <?php endif; ?>
-        <form action="procesar_login.php" method="POST">
-            <label>Usuario</label>
-            <input type="text" name="usuario" required autofocus placeholder="Nombre de usuario">
-            <label>Clave</label>
-            <input type="password" name="clave" required placeholder="Contraseña">
-            <button type="submit">ENTRAR</button>
-        </form>
     <?php endif; ?>
 </div>
 </body>
