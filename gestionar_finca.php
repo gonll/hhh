@@ -470,10 +470,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt tr.fila-con-observaciones:hover td { background: #ffcdd2; }
         .tabla-listado-pdt tr.fila-con-observaciones td.col-acciones { background: #ffebee !important; }
         .tabla-listado-pdt tr.fila-con-observaciones:hover td.col-acciones { background: #ffcdd2 !important; }
-        .wrap-tabla-pdt { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: visible; position: relative; z-index: 2; -webkit-overflow-scrolling: touch; }
-        /* grid1: tamaño reducido por defecto; .tamano-original restaura el tamaño completo */
-        #grid1 { min-height: 200px; max-height: 35vh; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; display: block; position: relative; }
-        #grid1.tamano-original { min-height: 400px; max-height: 70vh; }
+        .wrap-tabla-pdt { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: visible; position: relative; z-index: 2; -webkit-overflow-scrolling: touch; display: block !important; min-height: 100px; }
+        /* grid1: altura fija en px para evitar problemas con vh en servidor/móvil */
+        #grid1 { min-height: 150px; max-height: 400px; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; display: block !important; position: relative; visibility: visible !important; }
+        #grid1.tamano-original { min-height: 300px; max-height: 600px; }
         .tabla-listado-pdt tr.fila-con-observaciones { cursor: pointer; }
         #modalObservaciones { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; }
         #modalObservaciones.activo { display: flex; }
@@ -528,7 +528,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             .form-row .form-group.form-group-compact { max-width: 100%; min-width: 100%; }
             .form-group-observaciones { max-width: 100% !important; }
             .form-row .form-group.checkbox-group { flex: 1 1 auto; }
-            #grid1 { min-height: 250px; max-height: 50vh; }
+            #grid1 { min-height: 200px; max-height: 450px; }
             .acciones-botones { flex-wrap: wrap !important; }
             .acciones-botones .btn { font-size: 11px; padding: 6px 10px; }
             .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 180px; }
@@ -860,8 +860,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 </form>
                 <?php endif; ?>
             </div>
-            <div id="grid1" class="wrap-tabla-pdt">
-        <table class="tabla-listado-pdt">
+            <div id="grid1" class="wrap-tabla-pdt" style="display:block !important; visibility:visible !important; min-height:150px;">
+        <table class="tabla-listado-pdt" style="display:table; width:100%; min-width:265px;">
             <colgroup>
                 <col style="width:45px">
                 <col style="width:220px">
