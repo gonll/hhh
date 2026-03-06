@@ -458,10 +458,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         th { background: #007bff; color: white; padding: 6px 4px; text-align: left; font-size: 10px; }
         td { padding: 5px 4px; border-bottom: 1px solid #eee; font-size: 10px; }
         tr:hover { background: #f8f9fa; }
-        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 900px; }
+        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 460px; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
         /* Columnas de datos: ellipsis en personal/tractor para evitar que nombres largos rompan el layout */
-        .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tabla-listado-pdt td.col-apellido { min-width: 80px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; position: sticky; right: 0; z-index: 3; background: #fff !important; box-shadow: -4px 0 6px rgba(0,0,0,0.08); }
         .tabla-listado-pdt th.col-acciones { background: #007bff !important; box-shadow: -4px 0 6px rgba(0,0,0,0.15); }
         .tabla-listado-pdt td.col-acciones { background: #fff !important; }
@@ -482,7 +482,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         #modalObservaciones .modal-caja .obs-contenido { white-space: pre-wrap; color: #333; margin-bottom: 16px; }
         #modalObservaciones .modal-caja .btn { cursor: pointer; }
         .tabla-listado-pdt th.col-id, .tabla-listado-pdt td.col-id { min-width: 40px; }
-        .tabla-listado-pdt th.col-personal, .tabla-listado-pdt td.col-personal { min-width: 80px; }
+        .tabla-listado-pdt th.col-apellido, .tabla-listado-pdt td.col-apellido { min-width: 80px; }
         .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { min-width: 90px; }
         .tabla-listado-pdt th.col-fecha, .tabla-listado-pdt td.col-fecha { min-width: 85px; }
         .tabla-listado-pdt th.col-cantidad, .tabla-listado-pdt td.col-cantidad { min-width: 55px; }
@@ -1156,9 +1156,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
 
                 // Botón Cargar en cuenta corriente: manejado en el script inline del buscador Personal
 
-                // Al cargar: si hay usuario preseleccionado (ej. tras guardar), filtrar y mostrar resumen
+                // Al cargar: mostrar siempre todos los registros (no filtrar). Resumen de horas si hay usuario.
                 if (usuarioIdInput && usuarioIdInput.value) {
-                    filtrarGridPorUsuario(usuarioIdInput.value);
                     actualizarResumenHorasUsuario();
                 }
 
@@ -1169,8 +1168,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     if (!tr || e.target.closest('form') || e.target.closest('button') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
                     var uid = tr.getAttribute('data-usuario-id');
                     if (!uid || !usuarioIdInput) return;
-                    var tdPersonal = tr.querySelector('.col-personal');
-                    var nombre = tdPersonal ? (tdPersonal.textContent || tdPersonal.getAttribute('title') || '').trim() : '';
+                    var tdApellido = tr.querySelector('.col-apellido');
+                    var nombre = tdApellido ? (tdApellido.textContent || tdApellido.getAttribute('title') || '').trim() : '';
                     usuarioIdInput.value = uid;
                     if (buscador) buscador.value = nombre;
                     if (nombreUsuarioSel) nombreUsuarioSel.textContent = nombre;
