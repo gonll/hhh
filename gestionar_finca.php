@@ -458,7 +458,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         th { background: #007bff; color: white; padding: 6px 6px; text-align: left; font-size: 11px; }
         td { padding: 5px 6px; border-bottom: 1px solid #eee; font-size: 11px; }
         tr:hover { background: #f8f9fa; }
-        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 527px; }
+        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 772px; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
         /* Columnas de datos: ellipsis en personal/tractor para evitar que nombres largos rompan el layout */
         .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -467,6 +467,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt td.col-tipo, .tabla-listado-pdt th.col-tipo { width: 95px; min-width: 95px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-tractor, .tabla-listado-pdt th.col-tractor { width: 100px; min-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-horas, .tabla-listado-pdt th.col-horas { width: 65px; min-width: 65px; overflow: visible; white-space: nowrap; text-align: right; }
+        .tabla-listado-pdt td.col-gasoil, .tabla-listado-pdt th.col-gasoil { width: 50px; min-width: 50px; text-align: right; }
+        .tabla-listado-pdt td.col-cambio, .tabla-listado-pdt th.col-cambio { width: 45px; min-width: 45px; text-align: center; }
+        .tabla-listado-pdt td.col-cc, .tabla-listado-pdt th.col-cc { width: 35px; min-width: 35px; text-align: center; }
+        .tabla-listado-pdt td.col-obs, .tabla-listado-pdt th.col-obs { width: 35px; min-width: 35px; text-align: center; }
         .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; width: 200px; min-width: 200px; background: #fff !important; }
         .tabla-listado-pdt th.col-acciones { background: #007bff !important; }
         .tabla-listado-pdt td.col-acciones { background: #fff !important; }
@@ -878,20 +882,30 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <div id="grid1" class="wrap-tabla-pdt">
         <table class="tabla-listado-pdt">
             <colgroup>
+                <col style="width:40px">
                 <col style="width:72px">
                 <col style="width:95px">
                 <col style="width:95px">
                 <col style="width:100px">
                 <col style="width:65px">
+                <col style="width:50px">
+                <col style="width:45px">
+                <col style="width:35px">
+                <col style="width:35px">
                 <col style="width:200px">
             </colgroup>
             <thead>
                 <tr>
+                    <th class="col-id">ID</th>
                     <th class="col-fecha">Fecha</th>
                     <th class="col-apellido">Apellido</th>
                     <th class="col-tipo">Tipo</th>
                     <th class="col-tractor">Tractor</th>
                     <th class="col-horas">Horas</th>
+                    <th class="col-gasoil">Gasoil</th>
+                    <th class="col-cambio">C.aceite</th>
+                    <th class="col-cc">CC</th>
+                    <th class="col-obs">Obs.</th>
                     <th class="col-acciones">Acciones</th>
                 </tr>
             </thead>
@@ -920,11 +934,16 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         ?>
                         <?php $nom_show = (string)$nom; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($nom_show) > 30) { $nom_show = mb_substr($nom_show, 0, 30) . '…'; } elseif (strlen($nom_show) > 30) { $nom_show = substr($nom_show, 0, 30) . '…'; } ?>
                         <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= $uid ?>" data-pdt-id="<?= $pid ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
+                            <td class="col-id"><?= $pid ?></td>
                             <td class="col-fecha"><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim((string)$p('observaciones'))) ?></span><?php endif; ?><?= $fechaFmt ?></td>
                             <td class="col-apellido" title="<?= $nom ?>"><?= $nom_show ?></td>
                             <td class="col-tipo"><?= $tipo ?></td>
                             <td class="col-tractor"><?= $tractor ?></td>
                             <td class="col-horas"><?= number_format($horas, 2, ',', '.') ?></td>
+                            <td class="col-gasoil"><?= $gasoilFmt ?></td>
+                            <td class="col-cambio"><?= $cambio == 1 ? '✓' : '-' ?></td>
+                            <td class="col-cc" style="font-weight:bold;<?= $encc == 1 ? 'color:#28a745;' : 'color:#dc3545;' ?>"><?= $encc == 1 ? 'SI' : 'NO' ?></td>
+                            <td class="col-obs" title="<?= htmlspecialchars(trim((string)$p('observaciones', ''))) ?>"><?= $tiene_obs ? '✓' : '-' ?></td>
                             <td class="col-acciones">
                                 <div style="display: flex; justify-content: flex-end; width: 100%;">
                                 <div class="acciones-botones">
@@ -949,7 +968,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="6" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="11" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
