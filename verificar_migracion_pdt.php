@@ -105,11 +105,18 @@ if ($res_g && mysqli_num_rows($res_g) > 0) {
 }
 
 // Mostrar resultado
-echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Verificar migración PDT</title></head><body>";
-echo "<h2>Verificación tabla PDT</h2>";
 $env = parse_ini_file(__DIR__ . '/.env');
-echo "<p><strong>Entorno:</strong> " . ($env['ENVIRONMENT'] ?? '?') . "</p>";
-echo "<p><strong>Base de datos:</strong> " . ($env['DB_NAME'] ?? '?') . "</p>";
+$host = $env['DB_HOST'] ?? '?';
+$db_host = strtolower($host);
+$es_local = in_array($db_host, ['localhost', '127.0.0.1', '::1']) || strpos($db_host, 'localhost') !== false;
+
+echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Verificar migración PDT</title>";
+echo "<style>table.estructura { border-collapse:collapse; margin:10px 0; } table.estructura th, table.estructura td { border:1px solid #ccc; padding:6px 10px; text-align:left; } table.estructura th { background:#007bff; color:white; } .badge-local { background:#28a745; color:white; padding:4px 8px; border-radius:4px; } .badge-servidor { background:#dc3545; color:white; padding:4px 8px; border-radius:4px; }</style></head><body>";
+echo "<h2>Verificación tabla PDT</h2>";
+echo "<p><strong>Origen:</strong> <span class='" . ($es_local ? "badge-local" : "badge-servidor") . "'>" . ($es_local ? "LOCAL" : "SERVIDOR") . "</span></p>";
+echo "<p><strong>Host BD:</strong> " . htmlspecialchars($host) . "</p>";
+echo "<p><strong>Base de datos:</strong> " . htmlspecialchars($env['DB_NAME'] ?? '?') . "</p>";
+echo "<p><strong>Nombre de la tabla:</strong> <code>pdt</code></p>";
 
 if (!empty($errores)) {
     echo "<h3 style='color:red'>Errores:</h3><ul>";
@@ -125,15 +132,33 @@ if (empty($errores) && empty($cambios)) {
     echo "<p style='color:green'>La tabla pdt ya tiene la estructura correcta.</p>";
 }
 
-// Mostrar estructura actual
-echo "<h3>Estructura actual de la tabla pdt:</h3>";
+// Mostrar estructura actual (columnas en tabla)
+echo "<h3>Estructura de la tabla <code>pdt</code> (" . ($es_local ? "LOCAL" : "SERVIDOR") . "):</h3>";
+$res_cols = mysqli_query($conexion, "SHOW COLUMNS FROM pdt");
+if ($res_cols) {
+    echo "<table class='estructura'><thead><tr><th>Campo</th><th>Tipo</th><th>Null</th><th>Key</th><th>Default</th><th>Extra</th></tr></thead><tbody>";
+    while ($row = mysqli_fetch_assoc($res_cols)) {
+        echo "<tr><td><strong>" . htmlspecialchars($row['Field']) . "</strong></td>";
+        echo "<td>" . htmlspecialchars($row['Type']) . "</td>";
+        echo "<td>" . htmlspecialchars($row['Null']) . "</td>";
+        echo "<td>" . htmlspecialchars($row['Key']) . "</td>";
+        echo "<td>" . htmlspecialchars($row['Default'] ?? 'NULL') . "</td>";
+        echo "<td>" . htmlspecialchars($row['Extra']) . "</td></tr>";
+    }
+    echo "</tbody></table>";
+} else {
+    echo "<p>No se pudo obtener la estructura.</p>";
+}
+
+// CREATE TABLE completo
+echo "<h4>CREATE TABLE completo:</h4>";
 $res = mysqli_query($conexion, "SHOW CREATE TABLE pdt");
 if ($res && $row = mysqli_fetch_assoc($res)) {
     echo "<pre style='background:#f5f5f5;padding:10px;overflow:auto;font-size:11px'>";
     echo htmlspecialchars($row['Create Table']);
     echo "</pre>";
 } else {
-    echo "<p>No se pudo obtener la estructura.</p>";
+    echo "<p>No se pudo obtener el CREATE TABLE.</p>";
 }
 
 // Contar registros

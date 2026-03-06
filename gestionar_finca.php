@@ -864,27 +864,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         <table class="tabla-listado-pdt">
             <colgroup>
                 <col style="width:40px">
-                <col style="width:140px">
-                <col style="width:100px">
-                <col style="width:110px">
-                <col style="width:85px">
-                <col style="width:55px">
-                <col style="width:55px">
-                <col style="width:50px">
-                <col style="width:40px">
                 <col style="width:220px">
             </colgroup>
             <thead>
                 <tr>
                     <th class="col-id">ID</th>
-                    <th class="col-personal">Personal</th>
-                    <th class="col-tipo">Tipo</th>
-                    <th class="col-tractor">Tractor</th>
-                    <th class="col-fecha">Fecha</th>
-                    <th class="col-cantidad">Cant.</th>
-                    <th class="col-gasoil">Gasoil</th>
-                    <th class="col-cambio">C.aceite</th>
-                    <th class="col-cc">CC</th>
                     <th class="col-acciones">Acciones</th>
                 </tr>
             </thead>
@@ -913,14 +897,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         ?>
                         <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= $uid ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
                             <td class="col-id" title="<?= $pid ?>"><?= $pid ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim((string)$p('observaciones'))) ?></span><?php endif; ?></td>
-                            <td class="col-personal" title="<?= $nom ?>"><?= $nom ?></td>
-                            <td class="col-tipo" title="<?= $tipo ?>"><?= mb_strlen($tipo) > 20 ? mb_substr($tipo, 0, 20) . '…' : $tipo ?></td>
-                            <td class="col-tractor"><?= $tractor ?></td>
-                            <td class="col-fecha" title="<?= $fechaFmt ?>"><?= $fechaFmt ?></td>
-                            <td class="col-cantidad"><?= number_format($horas, 2, ',', '.') ?></td>
-                            <td class="col-gasoil"><?= $gasoilFmt ?></td>
-                            <td class="col-cambio"><?= $cambio == 1 ? '✓' : '-' ?></td>
-                            <td class="col-cc" style="font-weight: bold; <?= $encc == 1 ? 'color: #28a745;' : 'color: #dc3545;' ?>"><?= $encc == 1 ? 'SI' : 'NO' ?></td>
                             <td class="col-acciones">
                                 <div style="display: flex; justify-content: flex-end; width: 100%;">
                                 <div class="acciones-botones">
@@ -945,7 +921,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="10" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="2" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
