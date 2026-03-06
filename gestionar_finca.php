@@ -25,17 +25,19 @@ $es_nivel_0 = (isset($_SESSION['acceso_nivel']) && (int)$_SESSION['acceso_nivel'
 // Siempre mostrar vista completa (botones Modificar, Eliminar, Cargar CC) - igual en servidor y PC
 $mostrar_vista_completa = true;
 
-// Verificar si la tabla existe, si no crearla
+// Verificar y migrar tabla pdt (misma estructura en localhost y servidor)
 $res_check = mysqli_query($conexion, "SHOW TABLES LIKE 'pdt'");
 if (!$res_check || mysqli_num_rows($res_check) == 0) {
-    // Crear tabla
     $sql_create = "CREATE TABLE IF NOT EXISTS pdt (
         id INT AUTO_INCREMENT PRIMARY KEY,
         usuario_id INT NOT NULL,
-        tipo_horas ENUM('Horas tractos', 'Horas Comunes') NOT NULL DEFAULT 'Horas Comunes',
+        tipo_horas VARCHAR(50) NOT NULL DEFAULT 'Horas Comunes',
         tractor VARCHAR(100) NULL,
         fecha DATE NOT NULL,
         horas DECIMAL(5,2) DEFAULT 0.00,
+        cant_gasoil DECIMAL(6,2) NULL,
+        cambio_aceite TINYINT(1) DEFAULT 0,
+        en_cc TINYINT(1) DEFAULT 0,
         observaciones TEXT NULL,
         fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         fecha_modificacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -44,28 +46,22 @@ if (!$res_check || mysqli_num_rows($res_check) == 0) {
         INDEX idx_fecha (fecha)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci";
     mysqli_query($conexion, $sql_create);
-}
-
-// Asegurar columnas en pdt (migración: servidor puede tener tabla antigua sin cant_gasoil, cambio_aceite, en_cc, tipo_horas, tractor)
-$res_cols = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'cant_gasoil'");
-if ($res_cols && mysqli_num_rows($res_cols) == 0) {
-    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN cant_gasoil DECIMAL(6,2) NULL AFTER horas");
-}
-$res_cols2 = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'cambio_aceite'");
-if ($res_cols2 && mysqli_num_rows($res_cols2) == 0) {
-    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN cambio_aceite TINYINT(1) DEFAULT 0 AFTER cant_gasoil");
-}
-$res_cols3 = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'en_cc'");
-if ($res_cols3 && mysqli_num_rows($res_cols3) == 0) {
-    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN en_cc TINYINT(1) DEFAULT 0 AFTER cambio_aceite");
-}
-$res_cols4 = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'tipo_horas'");
-if ($res_cols4 && mysqli_num_rows($res_cols4) == 0) {
-    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN tipo_horas VARCHAR(50) NOT NULL DEFAULT 'Horas Comunes' AFTER usuario_id");
-}
-$res_cols5 = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'tractor'");
-if ($res_cols5 && mysqli_num_rows($res_cols5) == 0) {
-    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN tractor VARCHAR(100) NULL AFTER tipo_horas");
+} else {
+    // Migración: agregar columnas faltantes (servidor puede tener tabla antigua)
+    $cols_check = ['cant_gasoil'=>'horas','cambio_aceite'=>'cant_gasoil','en_cc'=>'cambio_aceite','tipo_horas'=>'usuario_id','tractor'=>'tipo_horas'];
+    $cols_def = [
+        'cant_gasoil'=>'DECIMAL(6,2) NULL',
+        'cambio_aceite'=>'TINYINT(1) DEFAULT 0',
+        'en_cc'=>'TINYINT(1) DEFAULT 0',
+        'tipo_horas'=>"VARCHAR(50) NOT NULL DEFAULT 'Horas Comunes'",
+        'tractor'=>'VARCHAR(100) NULL'
+    ];
+    foreach ($cols_check as $col => $after) {
+        $r = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE '$col'");
+        if (!$r || mysqli_num_rows($r) == 0) {
+            mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN `$col` {$cols_def[$col]} AFTER `$after`");
+        }
+    }
 }
 
 // Tabla gasoil: + carga sisterna, - consumo tractor
