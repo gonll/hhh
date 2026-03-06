@@ -461,7 +461,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 460px; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
         /* Columnas de datos: ellipsis en personal/tractor para evitar que nombres largos rompan el layout */
-        .tabla-listado-pdt td.col-apellido { min-width: 80px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; position: sticky; right: 0; z-index: 3; background: #fff !important; box-shadow: -4px 0 6px rgba(0,0,0,0.08); }
         .tabla-listado-pdt th.col-acciones { background: #007bff !important; box-shadow: -4px 0 6px rgba(0,0,0,0.15); }
         .tabla-listado-pdt td.col-acciones { background: #fff !important; }
@@ -482,7 +482,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         #modalObservaciones .modal-caja .obs-contenido { white-space: pre-wrap; color: #333; margin-bottom: 16px; }
         #modalObservaciones .modal-caja .btn { cursor: pointer; }
         .tabla-listado-pdt th.col-id, .tabla-listado-pdt td.col-id { min-width: 40px; }
-        .tabla-listado-pdt th.col-apellido, .tabla-listado-pdt td.col-apellido { min-width: 80px; }
+        .tabla-listado-pdt th.col-personal, .tabla-listado-pdt td.col-personal { min-width: 80px; }
         .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { min-width: 90px; }
         .tabla-listado-pdt th.col-fecha, .tabla-listado-pdt td.col-fecha { min-width: 85px; }
         .tabla-listado-pdt th.col-cantidad, .tabla-listado-pdt td.col-cantidad { min-width: 55px; }
@@ -864,13 +864,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         <table class="tabla-listado-pdt">
             <colgroup>
                 <col style="width:40px">
-                <col style="width:200px">
                 <col style="width:220px">
             </colgroup>
             <thead>
                 <tr>
                     <th class="col-id">ID</th>
-                    <th class="col-apellido">Apellido</th>
                     <th class="col-acciones">Acciones</th>
                 </tr>
             </thead>
@@ -899,7 +897,6 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         ?>
                         <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= $uid ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
                             <td class="col-id" title="<?= $pid ?>"><?= $pid ?><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars(trim((string)$p('observaciones'))) ?></span><?php endif; ?></td>
-                            <td class="col-apellido" title="<?= $nom ?>"><?= mb_strlen($nom) > 30 ? mb_substr($nom, 0, 30) . '…' : $nom ?></td>
                             <td class="col-acciones">
                                 <div style="display: flex; justify-content: flex-end; width: 100%;">
                                 <div class="acciones-botones">
@@ -924,7 +921,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="3" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="2" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
@@ -1168,8 +1165,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     if (!tr || e.target.closest('form') || e.target.closest('button') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
                     var uid = tr.getAttribute('data-usuario-id');
                     if (!uid || !usuarioIdInput) return;
-                    var tdApellido = tr.querySelector('.col-apellido');
-                    var nombre = tdApellido ? (tdApellido.textContent || tdApellido.getAttribute('title') || '').trim() : '';
+                    var u = usuarios.find(function(x) { return String(x.id) === uid; });
+                    var nombre = (u && u.apellido) ? u.apellido : '';
                     usuarioIdInput.value = uid;
                     if (buscador) buscador.value = nombre;
                     if (nombreUsuarioSel) nombreUsuarioSel.textContent = nombre;
