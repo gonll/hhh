@@ -324,8 +324,8 @@ if ($res_lista) {
     }
 }
 
-// Obtener usuarios para el buscador
-$sql_usuarios = "SELECT id, apellido FROM usuarios ORDER BY apellido ASC";
+// Obtener usuarios para el buscador (solo los que tienen "(FINCA)" en el apellido)
+$sql_usuarios = "SELECT id, apellido FROM usuarios WHERE apellido LIKE '%(FINCA)%' ORDER BY apellido ASC";
 $res_usuarios = mysqli_query($conexion, $sql_usuarios);
 $usuarios = [];
 while ($u = mysqli_fetch_assoc($res_usuarios)) {
