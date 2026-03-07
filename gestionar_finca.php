@@ -464,11 +464,12 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         th { background: #007bff; color: white; padding: 6px 6px; text-align: left; font-size: 11px; }
         td { padding: 5px 6px; border-bottom: 1px solid #eee; font-size: 11px; }
         tr:hover { background: #f8f9fa; }
-        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 655px; }
+        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 740px; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
         /* Columnas de datos: ellipsis en personal/tractor para evitar que nombres largos rompan el layout */
         .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-apellido, .tabla-listado-pdt th.col-apellido { width: 120px; max-width: 120px; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tabla-listado-pdt td.col-fecha, .tabla-listado-pdt th.col-fecha { width: 85px; min-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-tipo, .tabla-listado-pdt th.col-tipo { width: 100px; min-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-tractor, .tabla-listado-pdt th.col-tractor { width: 80px; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-horas, .tabla-listado-pdt th.col-horas { width: 55px; min-width: 55px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -540,6 +541,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             .form-row .form-group.checkbox-group { flex: 1 1 auto; }
             #grid1 { min-height: 250px; max-height: 50vh; }
             .tabla-listado-pdt th.col-apellido, .tabla-listado-pdt td.col-apellido { width: 110px; max-width: 110px; min-width: 110px; }
+            .tabla-listado-pdt th.col-fecha, .tabla-listado-pdt td.col-fecha { width: 75px; min-width: 75px; }
             .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 90px; min-width: 90px; }
             .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { width: 75px; min-width: 75px; }
             .tabla-listado-pdt th.col-horas, .tabla-listado-pdt td.col-horas { width: 50px; min-width: 50px; }
@@ -557,6 +559,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             .btn { padding: 8px 10px; font-size: 12px; }
             .acciones-botones .btn { padding: 5px 8px; font-size: 10px; }
             .tabla-listado-pdt th.col-apellido, .tabla-listado-pdt td.col-apellido { width: 100px; max-width: 100px; min-width: 100px; }
+            .tabla-listado-pdt th.col-fecha, .tabla-listado-pdt td.col-fecha { width: 70px; min-width: 70px; }
             .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 80px; min-width: 80px; }
             .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { width: 70px; min-width: 70px; }
             .tabla-listado-pdt th.col-horas, .tabla-listado-pdt td.col-horas { width: 45px; min-width: 45px; }
@@ -884,6 +887,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         <table class="tabla-listado-pdt">
             <colgroup>
                 <col style="width:120px">
+                <col style="width:85px">
                 <col style="width:100px">
                 <col style="width:80px">
                 <col style="width:55px">
@@ -893,6 +897,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <thead>
                 <tr>
                     <th class="col-apellido">Apellido</th>
+                    <th class="col-fecha">Fecha</th>
                     <th class="col-tipo">Tipo</th>
                     <th class="col-tractor">Tractor</th>
                     <th class="col-horas">Horas</th>
@@ -931,6 +936,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= $uid ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
                             <?php $horas_show = number_format($horas, 2, ',', '.'); if (strlen($horas_show) > 6) { $horas_show = substr($horas_show, 0, 6) . '…'; } ?>
                             <td class="col-apellido" title="<?= $nom ?>"><?= $nom_show ?></td>
+                            <td class="col-fecha" title="<?= $fechaFmt ?>"><?= $fechaFmt ?></td>
                             <td class="col-tipo" title="<?= $tipo ?>"><?= $tipo_show ?></td>
                             <td class="col-tractor" title="<?= $tractor ?>"><?= $tractor_show ?></td>
                             <td class="col-horas" title="<?= number_format($horas, 2, ',', '.') ?>"><?= $horas_show ?></td>
@@ -959,7 +965,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="6" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="7" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
