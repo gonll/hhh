@@ -678,7 +678,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                             <strong>Sel:</strong> <span id="nombreUsuarioSel"><?= htmlspecialchars($nombre_personal_mostrar) ?></span>
                         </div>
                         <div id="etiquetasHorasCCNo" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"></div>
-                        <?php if ($mostrar_vista_completa): ?>
+                        <?php if ($mostrar_vista_completa && !$desde_cel): ?>
                         <div id="btnCargarCCContainer" style="display: none; align-items: center; margin-left: auto;">
                             <button type="button" id="btnCargarCC" class="btn btn-success" style="font-size: 10px; padding: 5px 8px; flex-shrink: 0; white-space: nowrap;" title="Cargar en cuenta corriente">Cargar en cuenta corriente trabajos CC=NO</button>
                         </div>
@@ -946,7 +946,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                                         <input type="hidden" name="pdt_id" value="<?= $pid ?>">
                                         <button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm('¿Eliminar este PDT?')">Eliminar</button>
                                     </form>
-                                    <?php if ($encc == 0): ?>
+                                    <?php if ($encc == 0 && !$desde_cel): ?>
                                     <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
                                         <input type="hidden" name="pdt_id" value="<?= $pid ?>">
                                         <button type="submit" name="cargar_cc" class="btn btn-success">Cargar en CC</button>
