@@ -1,16 +1,7 @@
 <?php
 include 'db.php';
-include 'crear_tabla_cosecha.php';
-
-// Desde celular: redirigir a versión móvil (login zafra/herrera)
-$ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-if (preg_match('/Mobile|Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i', $ua)) {
-    $z = isset($_GET['zafra']) ? '?zafra=' . (int)$_GET['zafra'] : '';
-    header('Location: cosecha_cel.php' . $z);
-    exit;
-}
-
 include 'verificar_sesion.php';
+include 'crear_tabla_cosecha.php';
 
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
 if ($nivelAcceso < 2) {
@@ -181,14 +172,15 @@ if ($r_variedades) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cosecha - Hojas de ruta</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 15px; background: #f5f5f5; font-size: 12px; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 15px; background: #f5f5f5; font-size: 12px; -webkit-text-size-adjust: 100%; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h2 { color: #6f42c1; margin-top: 0; margin-bottom: 12px; font-size: 18px; }
         .encabezado { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-        .zafra-wrap { margin-left: auto; }
+        .zafra-wrap { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .zafra-wrap label { font-size: 11px; margin-right: 6px; }
         .zafra-wrap select { padding: 6px 10px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px; }
         .mensaje { padding: 8px; margin-bottom: 12px; border-radius: 4px; font-size: 12px; }
@@ -211,7 +203,22 @@ if ($r_variedades) {
         tr:nth-child(even) { background: #f9f9f9; }
         .acciones { display: flex; gap: 4px; flex-wrap: wrap; }
         .volver { margin-top: 15px; }
-        .wrap-tabla { overflow-x: auto; max-height: 400px; overflow-y: auto; }
+        .wrap-tabla { overflow-x: auto; max-height: 400px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        @media (max-width: 768px) {
+            body { margin: 10px; font-size: 14px; }
+            .container { padding: 12px; }
+            .encabezado { flex-direction: column; align-items: stretch; }
+            .zafra-wrap { margin-left: 0; }
+            .form-row { flex-direction: column; gap: 12px; }
+            .form-row .campo { min-width: 100%; }
+            .finca-variedad { flex-direction: column; min-width: 100%; }
+            .finca-variedad .campo-variedad { flex: 1 1 auto; transform: none; }
+            input, select { padding: 10px 12px; font-size: 16px; min-height: 44px; }
+            .btn { padding: 12px 16px; font-size: 14px; min-height: 44px; }
+            .acciones .btn { padding: 8px 12px; font-size: 12px; min-height: 36px; }
+            .wrap-tabla { max-height: 50vh; }
+            table { font-size: 12px; min-width: 500px; }
+        }
     </style>
 </head>
 <body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){e.preventDefault();window.location.href='index.php';return false;}">
