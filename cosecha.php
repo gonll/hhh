@@ -127,14 +127,8 @@ if ($r_fincas) {
     }
 }
 
-// Lista de variedades existentes (de todas las zafras)
-$variedades_lista = [];
-$r_variedades = mysqli_query($conexion, "SELECT DISTINCT variedad FROM cosecha_hojas_ruta WHERE variedad != '' AND variedad IS NOT NULL ORDER BY variedad");
-if ($r_variedades) {
-    while ($row = mysqli_fetch_assoc($r_variedades)) {
-        $variedades_lista[] = $row['variedad'];
-    }
-}
+// Variedades fijas para elegir (03/12, 02/22, 06/7) + opción otra
+$variedades_fijas = ['03/12', '02/22', '06/7'];
 
 // Último registro para valores por defecto (solo cuando no estamos editando)
         $def_tickets = '';
@@ -192,7 +186,10 @@ if ($r_variedades) {
         .form-row .campo { flex: 1; min-width: 100px; }
         .finca-variedad { display: flex; gap: 4px; flex: 1; min-width: 180px; }
         .finca-variedad .campo { flex: 1; min-width: 0; }
-        .finca-variedad .campo-variedad { flex: 0 0 130px; transform: translateX(-3cm); }
+        .finca-variedad .campo-variedad { flex: 0 0 auto; min-width: 140px; }
+        .variedad-row { display: flex; align-items: flex-end; gap: 6px; flex-wrap: nowrap; }
+        .variedad-row #variedadOtroWrap { display: none; margin-top: 0; }
+        .variedad-row #variedadOtroWrap.visible { display: inline-block !important; }
         .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; text-decoration: none; display: inline-block; }
         .btn-primary { background: #6f42c1; color: white; }
         .btn-secondary { background: #6c757d; color: white; }
@@ -213,6 +210,7 @@ if ($r_variedades) {
             .form-row .campo { min-width: 100%; }
             .finca-variedad { flex-direction: column; min-width: 100%; }
             .finca-variedad .campo-variedad { flex: 1 1 auto; transform: none; }
+            .variedad-row { flex-wrap: wrap; }
             input, select { padding: 10px 12px; font-size: 16px; min-height: 44px; }
             .btn { padding: 12px 16px; font-size: 14px; min-height: 44px; }
             .acciones .btn { padding: 8px 12px; font-size: 12px; min-height: 36px; }
@@ -290,16 +288,25 @@ if ($r_variedades) {
                         <input type="text" name="finca_nueva" id="fincaNueva" placeholder="Escriba la nueva finca" value="">
                     </div>
                 </div>
+                <?php
+                $variedad_actual = $fila_edit ? ($fila_edit['variedad'] ?? '') : $def_variedad;
+                $es_otra_variedad = ($variedad_actual !== '' && !in_array($variedad_actual, $variedades_fijas));
+                $variedad_sel_val = $es_otra_variedad ? '__otro__' : $variedad_actual;
+                $variedad_nueva_val = $es_otra_variedad ? $variedad_actual : '';
+                ?>
                 <div class="campo campo-variedad">
                     <label>Variedad</label>
-                    <select name="variedad_sel" id="selVariedad" onchange="document.getElementById('variedadOtroWrap').style.display=(this.value==='__otro__')?'block':'none';">
-                        <?php foreach ($variedades_lista as $vn): ?>
-                        <option value="<?= htmlspecialchars($vn) ?>" <?= (($fila_edit ? ($fila_edit['variedad'] ?? '') : $def_variedad) === $vn) ? 'selected' : '' ?>><?= htmlspecialchars($vn) ?></option>
-                        <?php endforeach; ?>
-                        <option value="__otro__">Agregar otra variedad</option>
-                    </select>
-                    <div id="variedadOtroWrap" style="display:none; margin-top:4px;">
-                        <input type="text" name="variedad_nueva" id="variedadNueva" placeholder="Escriba la nueva variedad" value="" style="min-width:110px;">
+                    <div class="variedad-row">
+                        <select name="variedad_sel" id="selVariedad" onchange="var w=document.getElementById('variedadOtroWrap');w.classList.toggle('visible',this.value==='__otro__');">
+                            <option value="">--</option>
+                            <?php foreach ($variedades_fijas as $vn): ?>
+                            <option value="<?= htmlspecialchars($vn) ?>" <?= ($variedad_sel_val === $vn) ? 'selected' : '' ?>><?= htmlspecialchars($vn) ?></option>
+                            <?php endforeach; ?>
+                            <option value="__otro__" <?= ($variedad_sel_val === '__otro__') ? 'selected' : '' ?>>Otra variedad</option>
+                        </select>
+                        <div id="variedadOtroWrap" class="<?= $es_otra_variedad ? 'visible' : '' ?>" style="margin-top:0;">
+                            <input type="text" name="variedad_nueva" id="variedadNueva" placeholder="Escriba la variedad" value="<?= htmlspecialchars($variedad_nueva_val) ?>" style="min-width:100px;">
+                        </div>
                     </div>
                 </div>
             </div>
