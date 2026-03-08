@@ -101,6 +101,7 @@ if ($nivelAcceso === 3) {
         .btn-indice { background: #f39c12; }
         .btn-finca { background: #28a745; }
         .btn-arriendos { background: #0047AB; }
+        .btn-cosecha { background: #6f42c1; }
         .btn-admin-prop { background: #17a2b8; }
         
         /* Cabecera Central y Reloj */
@@ -280,6 +281,7 @@ if ($nivelAcceso === 3) {
                 <a href="gestionar_finca.php?modo=completo" class="btn-abm-prop btn-finca" style="flex: 1;">Finca</a>
                 <a href="gestionar_azucares.php" class="btn-abm-prop" style="flex: 1;">Azucar</a>
                 <a href="arriendos.php" class="btn-abm-prop btn-arriendos" style="flex: 1;">Arriendos</a>
+                <a href="cosecha.php" class="btn-abm-prop btn-cosecha" style="flex: 1;">Cosecha</a>
             </div>
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                 <a href="propiedades.php" class="btn-abm-prop btn-admin-prop" style="flex: 1;">⚙️ Admin. Propiedades</a>
