@@ -590,6 +590,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <span id="valoresSalarialesFinca" style="font-size: 11px; color: #333; padding: 4px 8px; background: #e8f4e8; border-radius: 4px; border: 1px solid #c8e6c9;">
                     Hora común: $ <?= number_format($ultima_tabla_salarial['valor_hora_comun'], 2, ',', '.') ?> | Hora tractor: $ <?= number_format($ultima_tabla_salarial['valor_hora_tractor'], 2, ',', '.') ?>
                 </span>
+                <?php if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
+                <a href="gestionar_convenios.php" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">Convenios</a>
+                <?php endif; ?>
                 <?php endif; ?>
                 <?php /* Sección carga gasoil: habilitada también en partes desde cel */ ?>
                 <div class="seccion-carga-gasoil" style="display: flex; flex-direction: column; gap: 6px;">
