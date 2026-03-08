@@ -140,7 +140,9 @@ function renderFila($m, &$saldo, $conexion, $ultima_liq_fecha = null, $ultima_li
     $fecha_raw = $m['fecha'];
     $clase_fecha = (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 2) ? 'celda-fecha-editable' : '';
     $title_fecha = $clase_fecha ? " title='Clic para editar fecha'" : '';
-    return "<tr class='fila-mov' data-movimiento-id=\"{$m['movimiento_id']}\" data-concepto=\"$concepto_attr\" data-compro=\"$compro_attr\" data-ref=\"$ref_attr\" data-monto=\"" . (float)$m['monto'] . "\" data-arriendo-id=\"$arriendo_id\" data-arriendo-fecha=\"$arriendo_fecha\" data-fecha=\"$fecha_raw\" onclick=\"seleccionarFila(this, '{$m['movimiento_id']}', '$fechaFormateada', '" . addslashes(strtoupper($m['concepto'])) . "', '" . addslashes(strtoupper($m['comprobante'])) . "', '" . addslashes(strtoupper($m['referencia'])) . "', '{$m['monto']}')\">
+    $es_fijo_mes = (stripos($m['concepto'] ?? '', 'FIJO DE MES') === 0);
+    $tr_style = $es_fijo_mes ? " style='color:#E91E63 !important; font-weight:bold;'" : '';
+    return "<tr class='fila-mov'$tr_style data-movimiento-id=\"{$m['movimiento_id']}\" data-concepto=\"$concepto_attr\" data-compro=\"$compro_attr\" data-ref=\"$ref_attr\" data-monto=\"" . (float)$m['monto'] . "\" data-arriendo-id=\"$arriendo_id\" data-arriendo-fecha=\"$arriendo_fecha\" data-fecha=\"$fecha_raw\" onclick=\"seleccionarFila(this, '{$m['movimiento_id']}', '$fechaFormateada', '" . addslashes(strtoupper($m['concepto'])) . "', '" . addslashes(strtoupper($m['comprobante'])) . "', '" . addslashes(strtoupper($m['referencia'])) . "', '{$m['monto']}')\">
         <td class='al-cen $clase_fecha'$title_fecha>$fechaFormateada</td>
         <td class='al-izq'>" . strtoupper($m['concepto']) . "</td>
         <td class='al-cen'>$compro_html</td>
