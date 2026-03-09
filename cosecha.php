@@ -20,8 +20,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['zafra'])) {
 }
 if ($anio_zafra < 2000 || $anio_zafra > 2100) $anio_zafra = $anio_actual;
 
-// Exportar a Excel (HTML con alineación central) cuando se solicita
+// Exportar a Excel (HTML con alineación central) cuando se solicita - solo nivel 3
 if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
+    if ($nivelAcceso < 3) {
+        header('Location: cosecha.php?zafra=' . $anio_zafra . '&msg=sin_permiso');
+        exit;
+    }
     $r_export = mysqli_query($conexion, "SELECT fecha, hora, tickets, remito, viaje, camion, finca, variedad FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
     $nombre = 'cosecha_zafra_' . $anio_zafra . '.xls';
     header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
@@ -85,11 +89,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $r_check = mysqli_query($conexion, "SELECT fecha FROM cosecha_hojas_ruta WHERE id = $id LIMIT 1");
                 $puede_actualizar = ($nivelAcceso >= 3);
                 if (!$puede_actualizar && $r_check && $row_check = mysqli_fetch_assoc($r_check)) {
-                    $fecha_orig = $row_check['fecha'] ?? '';
-                    $puede_actualizar = ($fecha_orig <= date('Y-m-d'));
+                    $fecha_orig = substr(trim($row_check['fecha'] ?? ''), 0, 10);
+                    $hoy_check = date('Y-m-d');
+                    $ayer_check = date('Y-m-d', strtotime('-1 day'));
+                    $puede_actualizar = ($fecha_orig === $hoy_check || $fecha_orig === $ayer_check);
                 }
                 if (!$puede_actualizar) {
-                    $mensaje = 'Solo se puede modificar registros del día de la fecha o anteriores.';
+                    $mensaje = 'Solo se puede modificar registros del día de la fecha o del día anterior.';
                 } else {
                 $sql = "UPDATE cosecha_hojas_ruta SET anio_zafra=$anio, fecha='$fecha_esc', hora=$hora_esc, tickets='$tickets_esc', remito='$remito_esc', viaje='$viaje_esc', camion='$camion_esc', finca='$finca_esc', variedad='$variedad_esc' WHERE id=$id";
                 if (mysqli_query($conexion, $sql)) {
@@ -113,10 +119,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $editar_id = (int)$_POST['id'];
         $r = mysqli_query($conexion, "SELECT * FROM cosecha_hojas_ruta WHERE id = $editar_id LIMIT 1");
         if ($r && $fila_edit = mysqli_fetch_assoc($r)) {
-            $fecha_reg = $fila_edit['fecha'] ?? '';
+            $fecha_reg = substr(trim($fila_edit['fecha'] ?? ''), 0, 10);
             $hoy = date('Y-m-d');
-            if ($nivelAcceso < 3 && $fecha_reg > $hoy) {
-                $mensaje = 'Solo se puede modificar registros del día de la fecha o anteriores.';
+            $ayer = date('Y-m-d', strtotime('-1 day'));
+            if ($nivelAcceso < 3 && $fecha_reg !== $hoy && $fecha_reg !== $ayer) {
+                $mensaje = 'Solo se puede modificar registros del día de la fecha o del día anterior.';
                 $editar_id = null;
                 $fila_edit = null;
             }
@@ -130,25 +137,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$puede_eliminar) {
             $r = mysqli_query($conexion, "SELECT fecha FROM cosecha_hojas_ruta WHERE id = $id LIMIT 1");
             if ($r && $row = mysqli_fetch_assoc($r)) {
-                $fecha_reg = $row['fecha'] ?? '';
-                $puede_eliminar = ($fecha_reg <= date('Y-m-d'));
+                $fecha_reg = substr(trim($row['fecha'] ?? ''), 0, 10);
+                $hoy = date('Y-m-d');
+                $ayer = date('Y-m-d', strtotime('-1 day'));
+                $puede_eliminar = ($fecha_reg === $hoy || $fecha_reg === $ayer);
             }
         }
         if ($puede_eliminar && mysqli_query($conexion, "DELETE FROM cosecha_hojas_ruta WHERE id = $id")) {
             $mensaje = 'Registro eliminado.';
         } else {
-            $mensaje = $puede_eliminar ? 'Error al eliminar.' : 'Solo se puede eliminar registros del día de la fecha o anteriores.';
+            $mensaje = $puede_eliminar ? 'Error al eliminar.' : 'Solo se puede eliminar registros del día de la fecha o del día anterior.';
         }
     }
 }
 
 $lista = mysqli_query($conexion, "SELECT id, anio_zafra, fecha, hora, tickets, remito, viaje, camion, finca, variedad, fecha_creacion FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
 $hoy = date('Y-m-d');
-$puede_modificar_eliminar = function($fecha_reg) use ($nivelAcceso, $hoy) {
+$ayer = date('Y-m-d', strtotime('-1 day'));
+$puede_modificar_eliminar = function($fecha_reg) use ($nivelAcceso, $hoy, $ayer) {
     if ($nivelAcceso >= 3) return true;
     if (empty($fecha_reg)) return false;
     $f = substr(trim($fecha_reg), 0, 10); // Y-m-d
-    return $f <= $hoy;
+    return ($f === $hoy || $f === $ayer);
 };
 
 // Lista de fincas existentes (de todas las zafras)
@@ -269,7 +279,7 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                     <?php endfor; ?>
                 </select>
             </form>
-            <a href="cosecha.php?zafra=<?= $anio_zafra ?>&exportar=excel" class="btn btn-primary">Exportar Excel</a>
+            <?php if ($nivelAcceso >= 3): ?><a href="cosecha.php?zafra=<?= $anio_zafra ?>&exportar=excel" class="btn btn-primary">Exportar Excel</a><?php endif; ?>
         </div>
     </div>
 
