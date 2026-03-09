@@ -22,14 +22,14 @@ if ($anio_zafra < 2000 || $anio_zafra > 2100) $anio_zafra = $anio_actual;
 
 // Exportar a Excel (HTML con alineación central) cuando se solicita
 if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
-    $r_export = mysqli_query($conexion, "SELECT fecha, hora, tickets, remito, viaje, camion, finca, variedad, lat, lng FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
+    $r_export = mysqli_query($conexion, "SELECT fecha, hora, tickets, remito, viaje, camion, finca, variedad FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
     $nombre = 'cosecha_zafra_' . $anio_zafra . '.xls';
     header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $nombre . '"');
     echo "\xEF\xBB\xBF"; // UTF-8 BOM
     echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table border="1" style="border-collapse:collapse;">';
     echo '<tr style="background:#6f42c1;color:white;">';
-    foreach (['Fecha', 'Hora', 'Tickets', 'Remito', 'Viaje', 'Camion', 'Finca', 'Variedad', 'Lat', 'Lng'] as $h) {
+    foreach (['Fecha', 'Hora', 'Tickets', 'Remito', 'Viaje', 'Camion', 'Finca', 'Variedad'] as $h) {
         echo '<th style="text-align:center;padding:6px;">' . htmlspecialchars($h) . '</th>';
     }
     echo '</tr>';
@@ -37,9 +37,7 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
         while ($row = mysqli_fetch_assoc($r_export)) {
             $hora = $row['hora'] ? substr($row['hora'], 0, 5) : '-';
             echo '<tr>';
-            $lat_val = isset($row['lat']) && $row['lat'] !== null ? $row['lat'] : '-';
-            $lng_val = isset($row['lng']) && $row['lng'] !== null ? $row['lng'] : '-';
-            foreach ([$row['fecha'], $hora, $row['tickets'] ?? '-', $row['remito'] ?? '-', $row['viaje'] ?? '-', $row['camion'] ?? '-', $row['finca'] ?? '-', $row['variedad'] ?? '-', $lat_val, $lng_val] as $cel) {
+            foreach ([$row['fecha'], $hora, $row['tickets'] ?? '-', $row['remito'] ?? '-', $row['viaje'] ?? '-', $row['camion'] ?? '-', $row['finca'] ?? '-', $row['variedad'] ?? '-'] as $cel) {
                 echo '<td style="text-align:center;padding:6px;">' . htmlspecialchars($cel) . '</td>';
             }
             echo '</tr>';
@@ -81,22 +79,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $camion_esc = mysqli_real_escape_string($conexion, $camion);
             $finca_esc = mysqli_real_escape_string($conexion, $finca);
             $variedad_esc = mysqli_real_escape_string($conexion, $variedad);
-            $lat = isset($_POST['lat']) && $_POST['lat'] !== '' ? (float)$_POST['lat'] : null;
-            $lng = isset($_POST['lng']) && $_POST['lng'] !== '' ? (float)$_POST['lng'] : null;
-            $lat_sql = ($lat !== null && $lng !== null) ? (string)$lat : "NULL";
-            $lng_sql = ($lat !== null && $lng !== null) ? (string)$lng : "NULL";
 
             if (isset($_POST['id']) && (int)$_POST['id'] > 0) {
                 $id = (int)$_POST['id'];
-                $sql = "UPDATE cosecha_hojas_ruta SET anio_zafra=$anio, fecha='$fecha_esc', hora=$hora_esc, tickets='$tickets_esc', remito='$remito_esc', viaje='$viaje_esc', camion='$camion_esc', finca='$finca_esc', variedad='$variedad_esc', lat=$lat_sql, lng=$lng_sql WHERE id=$id";
+                $r_check = mysqli_query($conexion, "SELECT fecha FROM cosecha_hojas_ruta WHERE id = $id LIMIT 1");
+                $puede_actualizar = ($nivelAcceso >= 3);
+                if (!$puede_actualizar && $r_check && $row_check = mysqli_fetch_assoc($r_check)) {
+                    $fecha_orig = $row_check['fecha'] ?? '';
+                    $puede_actualizar = ($fecha_orig <= date('Y-m-d'));
+                }
+                if (!$puede_actualizar) {
+                    $mensaje = 'Solo se puede modificar registros del día de la fecha o anteriores.';
+                } else {
+                $sql = "UPDATE cosecha_hojas_ruta SET anio_zafra=$anio, fecha='$fecha_esc', hora=$hora_esc, tickets='$tickets_esc', remito='$remito_esc', viaje='$viaje_esc', camion='$camion_esc', finca='$finca_esc', variedad='$variedad_esc' WHERE id=$id";
                 if (mysqli_query($conexion, $sql)) {
                     header('Location: cosecha.php?zafra=' . $anio . '&msg=ok');
                     exit;
                 } else {
                     $mensaje = 'Error: ' . mysqli_error($conexion);
                 }
+                }
             } else {
-                $sql = "INSERT INTO cosecha_hojas_ruta (anio_zafra, fecha, hora, tickets, remito, viaje, camion, finca, variedad, lat, lng) VALUES ($anio, '$fecha_esc', $hora_esc, '$tickets_esc', '$remito_esc', '$viaje_esc', '$camion_esc', '$finca_esc', '$variedad_esc', $lat_sql, $lng_sql)";
+                $sql = "INSERT INTO cosecha_hojas_ruta (anio_zafra, fecha, hora, tickets, remito, viaje, camion, finca, variedad) VALUES ($anio, '$fecha_esc', $hora_esc, '$tickets_esc', '$remito_esc', '$viaje_esc', '$camion_esc', '$finca_esc', '$variedad_esc')";
                 if (mysqli_query($conexion, $sql)) {
                     header('Location: cosecha.php?zafra=' . $anio . '&msg=ok');
                     exit;
@@ -109,22 +113,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $editar_id = (int)$_POST['id'];
         $r = mysqli_query($conexion, "SELECT * FROM cosecha_hojas_ruta WHERE id = $editar_id LIMIT 1");
         if ($r && $fila_edit = mysqli_fetch_assoc($r)) {
-            // ok
+            $fecha_reg = $fila_edit['fecha'] ?? '';
+            $hoy = date('Y-m-d');
+            if ($nivelAcceso < 3 && $fecha_reg > $hoy) {
+                $mensaje = 'Solo se puede modificar registros del día de la fecha o anteriores.';
+                $editar_id = null;
+                $fila_edit = null;
+            }
         } else {
             $editar_id = null;
             $fila_edit = null;
         }
     } elseif (isset($_POST['eliminar'])) {
         $id = (int)$_POST['id'];
-        if (mysqli_query($conexion, "DELETE FROM cosecha_hojas_ruta WHERE id = $id")) {
+        $puede_eliminar = ($nivelAcceso >= 3);
+        if (!$puede_eliminar) {
+            $r = mysqli_query($conexion, "SELECT fecha FROM cosecha_hojas_ruta WHERE id = $id LIMIT 1");
+            if ($r && $row = mysqli_fetch_assoc($r)) {
+                $fecha_reg = $row['fecha'] ?? '';
+                $puede_eliminar = ($fecha_reg <= date('Y-m-d'));
+            }
+        }
+        if ($puede_eliminar && mysqli_query($conexion, "DELETE FROM cosecha_hojas_ruta WHERE id = $id")) {
             $mensaje = 'Registro eliminado.';
         } else {
-            $mensaje = 'Error al eliminar.';
+            $mensaje = $puede_eliminar ? 'Error al eliminar.' : 'Solo se puede eliminar registros del día de la fecha o anteriores.';
         }
     }
 }
 
-$lista = mysqli_query($conexion, "SELECT id, anio_zafra, fecha, hora, tickets, remito, viaje, camion, finca, variedad, lat, lng, fecha_creacion FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
+$lista = mysqli_query($conexion, "SELECT id, anio_zafra, fecha, hora, tickets, remito, viaje, camion, finca, variedad, fecha_creacion FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
+$hoy = date('Y-m-d');
+$puede_modificar_eliminar = function($fecha_reg) use ($nivelAcceso, $hoy) {
+    return $nivelAcceso >= 3 || ($fecha_reg && $fecha_reg <= $hoy);
+};
 
 // Lista de fincas existentes (de todas las zafras)
 $fincas_lista = [];
@@ -208,7 +230,7 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
         tr:nth-child(even) { background: #f9f9f9; }
         .acciones { display: flex; gap: 4px; flex-wrap: wrap; }
         .volver { margin-top: 15px; }
-        .wrap-tabla { overflow-x: auto; max-height: 400px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .wrap-tabla { overflow-x: auto; max-height: 400px; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
         @media (max-width: 768px) {
             body { margin: 10px; font-size: 14px; }
             .container { padding: 12px; }
@@ -222,7 +244,7 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
             input, select { padding: 10px 12px; font-size: 16px; min-height: 44px; }
             .btn { padding: 12px 16px; font-size: 14px; min-height: 44px; }
             .acciones .btn { padding: 8px 12px; font-size: 12px; min-height: 36px; }
-            .wrap-tabla { max-height: 50vh; }
+            .wrap-tabla { max-height: 50vh; overflow-y: scroll; }
             table { font-size: 12px; min-width: 500px; }
         }
     </style>
@@ -257,8 +279,6 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
             <input type="hidden" name="id" value="<?= $editar_id ?>">
         <?php endif; ?>
         <input type="hidden" name="anio_zafra" value="<?= $anio_zafra ?>">
-        <input type="hidden" name="lat" id="gpsLat" value="">
-        <input type="hidden" name="lng" id="gpsLng" value="">
         <div class="form-row">
             <div class="campo" style="flex:0 0 120px;">
                 <label>Fecha</label>
@@ -343,7 +363,6 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                     <th>Camion</th>
                     <th>Finca</th>
                     <th>Variedad</th>
-                    <th title="Ubicación GPS">Lat/Lng</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -359,9 +378,10 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                             <td><?= htmlspecialchars($f['camion'] ?? '-') ?></td>
                             <td><?= htmlspecialchars($f['finca'] ?? '-') ?></td>
                             <td><?= htmlspecialchars($f['variedad'] ?? '-') ?></td>
-                            <td style="font-size:10px;"><?php if (isset($f['lat']) && $f['lat'] !== null && isset($f['lng']) && $f['lng'] !== null): ?><a href="https://www.google.com/maps?q=<?= urlencode($f['lat'] . ',' . $f['lng']) ?>" target="_blank" rel="noopener" title="Ver en mapa"><?= round($f['lat'], 5) ?>, <?= round($f['lng'], 5) ?></a><?php else: ?>-<?php endif; ?></td>
                             <td>
                                 <div class="acciones">
+                                    <?php $puede = $puede_modificar_eliminar($f['fecha'] ?? ''); ?>
+                                    <?php if ($puede): ?>
                                     <form method="POST" action="cosecha.php?zafra=<?= $anio_zafra ?>" style="display:inline;">
                                         <input type="hidden" name="id" value="<?= $f['id'] ?>">
                                         <input type="hidden" name="anio_zafra" value="<?= $anio_zafra ?>">
@@ -372,13 +392,16 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                                         <input type="hidden" name="anio_zafra" value="<?= $anio_zafra ?>">
                                         <button type="submit" name="eliminar" class="btn btn-danger">Eliminar</button>
                                     </form>
+                                    <?php else: ?>
+                                    <span style="font-size:10px; color:#999;" title="Solo nivel 3 o registros del día/anteriores">—</span>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
                     <?php endwhile; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="10" style="text-align:center; padding:15px; color:#666;">No hay registros para esta zafra.</td>
+                        <td colspan="9" style="text-align:center; padding:15px; color:#666;">No hay registros para esta zafra.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
@@ -389,41 +412,6 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
         <a href="<?= $es_usuario_zafra ? 'logout.php' : 'index.php' ?>" class="btn btn-secondary"><?= $es_usuario_zafra ? 'Salir' : '← Volver a página principal' ?></a>
     </p>
 </div>
-<script>
-(function() {
-    var form = document.getElementById('formCosecha');
-    if (!form) return;
-    form.addEventListener('submit', function(e) {
-        if (form.dataset.gpsDone === '1') return;
-        e.preventDefault();
-        var latEl = document.getElementById('gpsLat');
-        var lngEl = document.getElementById('gpsLng');
-        var esMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
-        if (esMovil && navigator.geolocation) {
-            var btn = form.querySelector('button[type="submit"]');
-            var btnTextoOrig = btn ? (form.querySelector('input[name="id"]') ? 'Actualizar' : 'Guardar') : '';
-            if (btn) { btn.disabled = true; btn.textContent = 'Obteniendo ubicación...'; }
-            navigator.geolocation.getCurrentPosition(
-                function(pos) {
-                    if (latEl) latEl.value = pos.coords.latitude.toFixed(8);
-                    if (lngEl) lngEl.value = pos.coords.longitude.toFixed(8);
-                    form.dataset.gpsDone = '1';
-                    if (btn) { btn.disabled = false; btn.textContent = btnTextoOrig; }
-                    form.submit();
-                },
-                function() {
-                    form.dataset.gpsDone = '1';
-                    if (btn) { btn.disabled = false; btn.textContent = btnTextoOrig; }
-                    form.submit();
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        } else {
-            form.submit();
-        }
-    });
-})();
-</script>
 <?php include 'nav_enter_form_inc.php'; ?>
 </body>
 </html>
