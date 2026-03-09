@@ -161,12 +161,16 @@ $puede_modificar_eliminar = function($fecha_reg) use ($nivelAcceso, $hoy, $ayer)
     return ($f === $hoy || $f === $ayer);
 };
 
-// Lista de fincas existentes (de todas las zafras)
-$fincas_lista = [];
+// Fincas fijas por defecto + las agregadas por "Nueva finca" (desde BD)
+$fincas_fijas = ['Finca 6', 'Finca 4', 'Finca 7', 'Finca 5', 'Finca 2', 'Finca 10', 'Finca 11', 'Finca 47', 'Finca 29'];
+$fincas_lista = $fincas_fijas;
 $r_fincas = mysqli_query($conexion, "SELECT DISTINCT finca FROM cosecha_hojas_ruta WHERE finca != '' AND finca IS NOT NULL ORDER BY finca");
 if ($r_fincas) {
     while ($row = mysqli_fetch_assoc($r_fincas)) {
-        $fincas_lista[] = $row['finca'];
+        $fn = trim($row['finca']);
+        if ($fn !== '' && !in_array($fn, $fincas_lista)) {
+            $fincas_lista[] = $fn;
+        }
     }
 }
 
@@ -321,9 +325,11 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                 <div class="campo">
                     <label>Finca</label>
                     <select name="finca_sel" id="selFinca" onchange="document.getElementById('fincaOtroWrap').style.display=(this.value==='__otro__')?'block':'none';">
-                        <option value="">--</option>
-                        <?php foreach ($fincas_lista as $fn): ?>
-                        <option value="<?= htmlspecialchars($fn) ?>" <?= (($fila_edit ? ($fila_edit['finca'] ?? '') : $def_finca) === $fn) ? 'selected' : '' ?>><?= htmlspecialchars($fn) ?></option>
+                        <?php 
+                        $finca_sel = $fila_edit ? ($fila_edit['finca'] ?? '') : $def_finca;
+                        if ($finca_sel === '' && count($fincas_lista) > 0) $finca_sel = $fincas_lista[0];
+                        foreach ($fincas_lista as $fn): ?>
+                        <option value="<?= htmlspecialchars($fn) ?>" <?= ($finca_sel === $fn) ? 'selected' : '' ?>><?= htmlspecialchars($fn) ?></option>
                         <?php endforeach; ?>
                         <option value="__otro__">+ Nueva finca</option>
                     </select>
