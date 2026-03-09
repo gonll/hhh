@@ -31,7 +31,7 @@ while ($f = mysqli_fetch_assoc($resultado)) {
     if (!empty($f['inquilino1_id'])) {
         $inq1_id = (int)$f['inquilino1_id'];
         $nombre1 = trim($f['nombre_inquilino'] ?? '');
-        if (!empty($inq1_id) && $inq1_id != 1) {
+        if (!empty($inq1_id) && $inq1_id != 1 && $inq1_id != 7) {
             if (!isset($por_usuario[$inq1_id]) || $porcentaje > ($por_usuario[$inq1_id]['porcentaje'] ?? 0)) {
                 $por_usuario[$inq1_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre1 ?: '-', 'saldo' => 0, 'porcentaje' => $porcentaje];
             }
@@ -39,7 +39,7 @@ while ($f = mysqli_fetch_assoc($resultado)) {
         if (!empty($f['inquilino2_id'])) {
             $inq2_id = (int)$f['inquilino2_id'];
             $nombre2 = trim($f['nombre_inquilino2'] ?? '');
-            if ($inq2_id != 1) {
+            if ($inq2_id != 1 && $inq2_id != 7) {
                 if (!isset($por_usuario[$inq2_id]) || $porcentaje > ($por_usuario[$inq2_id]['porcentaje'] ?? 0)) {
                     $por_usuario[$inq2_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre2 ?: '-', 'saldo' => 0, 'porcentaje' => $porcentaje];
                 }
@@ -47,7 +47,7 @@ while ($f = mysqli_fetch_assoc($resultado)) {
         }
     } else {
         $prop_id = (int)($f['propietario_id'] ?? 0);
-        if ($prop_id > 0 && $prop_id != 1) {
+        if ($prop_id > 0 && $prop_id != 1 && $prop_id != 7) {
             $nombre = trim($f['nombre_propietario'] ?? '');
             if (!isset($por_usuario[$prop_id]) || $porcentaje > ($por_usuario[$prop_id]['porcentaje'] ?? 0)) {
                 $por_usuario[$prop_id] = ['consorcio' => $consorcio, 'propiedad' => $propiedad, 'nombre' => $nombre ?: '-', 'saldo' => 0, 'porcentaje' => $porcentaje];
