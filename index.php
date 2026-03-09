@@ -1,6 +1,7 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/config_clave_borrado.php';
 include 'respaldar_automatico.php'; // Respaldo automático diario
 $archivo_respaldo = hacerRespaldoAutomatico(); // Ejecutar respaldo si no se hizo hoy (retorna nombre de archivo si se hizo nuevo)
 if ((int)date('j') > 10) include 'actualizar_ipc_desde_api.php';
@@ -886,7 +887,7 @@ function abrirEditor(id) {
     var esNivel3 = <?= (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3) ? 'true' : 'false' ?>;
     if (esNivel3) {
         window.location.href = 'editar_usuario.php?id=' + id;
-    } else if (prompt("CLAVE DE SEGURIDAD PARA EDITAR USUARIO:") === "4961") {
+    } else if (prompt("CLAVE DE SEGURIDAD PARA EDITAR USUARIO:") === <?= json_encode(obtener_clave_borrado($conexion)) ?>) {
         window.location.href = 'editar_usuario.php?id=' + id;
     } else {
         alert("Clave incorrecta.");
@@ -1598,23 +1599,33 @@ function seleccionarFila(el, movimientoId, fecha, concepto, compro, ref, monto) 
 }
 
 function eliminarMovSeguro(movId) {
-    var proceder = false;
     if (esConsorcioUsuario) {
-        proceder = confirm("¿Eliminar este movimiento permanentemente?");
-    } else {
-        if (prompt("CLAVE DE SEGURIDAD PARA ELIMINAR:") !== "4961") {
-            alert("Clave incorrecta.");
-            return;
-        }
-        proceder = confirm("¿Eliminar este movimiento permanentemente?");
-    }
-    if (proceder) {
+        if (!confirm("¿Eliminar este movimiento permanentemente?")) return;
         fetch('eliminar_movimiento.php?mid=' + movId)
             .then(r => r.text())
             .then(res => {
                 if (res.trim() === "OK") cargarMovimientos(document.querySelector('.fila-seleccionada'), uSel);
             });
+        return;
     }
+    var claveIngresada = prompt("CLAVE DE SEGURIDAD PARA ELIMINAR:");
+    if (claveIngresada === null) return;
+    var fd = new FormData();
+    fd.append('clave', claveIngresada);
+    fetch('verificar_clave_borrado.php', { method: 'POST', body: fd })
+        .then(r => r.text())
+        .then(function(res) {
+            if (res.trim() !== "OK") {
+                alert("Clave incorrecta.");
+                return;
+            }
+            if (!confirm("¿Eliminar este movimiento permanentemente?")) return;
+            fetch('eliminar_movimiento.php?mid=' + movId)
+                .then(r2 => r2.text())
+                .then(function(res2) {
+                    if (res2.trim() === "OK") cargarMovimientos(document.querySelector('.fila-seleccionada'), uSel);
+                });
+        });
 }
 
 function generarWord() {

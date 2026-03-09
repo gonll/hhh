@@ -1,14 +1,48 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/config_clave_borrado.php';
 
 if (empty($_SESSION['acceso_nivel']) || $_SESSION['acceso_nivel'] < 3) {
     header('Location: index.php');
     exit;
 }
 
+// Crear tabla config si no existe
+@mysqli_query($conexion, "CREATE TABLE IF NOT EXISTS config (clave VARCHAR(50) PRIMARY KEY, valor TEXT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+@mysqli_query($conexion, "INSERT IGNORE INTO config (clave, valor) VALUES ('clave_borrado', '4961')");
+
 $mensaje = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear'])) {
+$mensaje_clave_borrado = '';
+$clave_borrado_recien_guardada = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cambiar_clave_borrado'])) {
+    $clave_nueva = trim($_POST['clave_borrado_nueva'] ?? '');
+    if ($clave_nueva !== '') {
+        $clave_esc = mysqli_real_escape_string($conexion, $clave_nueva);
+        if (mysqli_query($conexion, "INSERT INTO config (clave, valor) VALUES ('clave_borrado', '$clave_esc') ON DUPLICATE KEY UPDATE valor = '$clave_esc'")) {
+            $mensaje_clave_borrado = 'Nueva clave aceptada: ' . htmlspecialchars($clave_nueva);
+            $clave_borrado_recien_guardada = $clave_nueva;
+        } else {
+            $mensaje = 'Error al actualizar la clave de borrado.';
+        }
+    } else {
+        $mensaje = 'Ingrese la nueva clave de borrado.';
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cambiar_clave'])) {
+    $id = (int)($_POST['id'] ?? 0);
+    $clave_nueva = $_POST['clave_nueva'] ?? '';
+    if ($id > 0 && $clave_nueva !== '') {
+        $hash = password_hash($clave_nueva, PASSWORD_DEFAULT);
+        $hash_esc = mysqli_real_escape_string($conexion, $hash);
+        if (mysqli_query($conexion, "UPDATE accesos SET clave = '$hash_esc' WHERE id = $id")) {
+            $mensaje = 'Clave actualizada correctamente.';
+        } else {
+            $mensaje = 'Error al actualizar la clave.';
+        }
+    } else {
+        $mensaje = 'Ingrese la nueva clave.';
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear'])) {
     $usuario = trim($_POST['usuario'] ?? '');
     $clave   = $_POST['clave'] ?? '';
     $nivel   = (int)($_POST['nivel_acceso'] ?? 2);
@@ -30,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear'])) {
 }
 
 $lista = mysqli_query($conexion, "SELECT id, usuario, nivel_acceso, fecha_creacion FROM accesos ORDER BY nivel_acceso DESC, usuario ASC");
+$clave_borrado_actual = ($clave_borrado_recien_guardada !== null) ? $clave_borrado_recien_guardada : obtener_clave_borrado($conexion);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -60,7 +95,50 @@ $lista = mysqli_query($conexion, "SELECT id, usuario, nivel_acceso, fecha_creaci
 <body>
 
 <div class="card">
-    <h2>Gestionar usuarios de acceso</h2>
+    <h2>Clave interna de borrado</h2>
+    <?php if ($mensaje_clave_borrado): ?>
+    <p class="ok" style="margin:0 0 8px; font-weight:bold;"><?= $mensaje_clave_borrado ?></p>
+    <?php endif; ?>
+    <p style="font-size:10px; color:#666; margin:0 0 8px;">Clave que se pide al eliminar movimientos, editar/eliminar propiedades, etc.</p>
+    <form method="POST" style="margin-bottom:12px;" onsubmit="return confirm('¿Aceptar nueva clave de borrado?');">
+        <div class="fila-form">
+            <div>
+                <label>Nueva clave de borrado</label>
+                <input type="text" name="clave_borrado_nueva" required placeholder="Ej: 4961" value="" maxlength="20" autocomplete="off">
+            </div>
+            <div class="btn-wrap">
+                <button type="submit" name="cambiar_clave_borrado" style="background:#dc3545;">Aceptar nueva clave de borrado</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Cambiar clave de usuario</h2>
+    <form method="POST" style="margin-bottom:12px;">
+        <div class="fila-form">
+            <div>
+                <label>Usuario</label>
+                <select name="id" required>
+                    <option value="">-- Seleccionar --</option>
+                    <?php mysqli_data_seek($lista, 0); while ($u = mysqli_fetch_assoc($lista)): ?>
+                    <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['usuario']) ?> (nivel <?= $u['nivel_acceso'] ?>)</option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+            <div>
+                <label>Nueva clave</label>
+                <input type="password" name="clave_nueva" required placeholder="Contraseña nueva" autocomplete="new-password">
+            </div>
+            <div class="btn-wrap">
+                <button type="submit" name="cambiar_clave" style="background:#17a2b8;">Cambiar clave</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Crear usuario de acceso</h2>
     <?php if ($mensaje !== ''): ?>
         <p class="<?= strpos($mensaje, 'Error') !== false ? 'err' : 'ok' ?>"><?= htmlspecialchars($mensaje) ?></p>
     <?php endif; ?>
@@ -99,6 +177,7 @@ $lista = mysqli_query($conexion, "SELECT id, usuario, nivel_acceso, fecha_creaci
         </thead>
         <tbody>
             <?php
+            mysqli_data_seek($lista, 0);
             $nombres_nivel = [0 => 'Partes desde cel', 1 => 'Restringido', 2 => 'Estándar', 3 => 'Máximo'];
             while ($r = mysqli_fetch_assoc($lista)):
                 $n = (int)$r['nivel_acceso'];

@@ -1,6 +1,7 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/config_clave_borrado.php';
 $sql = "SELECT p.*, u.apellido as nombre_inquilino, a.fecha_inicio as inicio, a.fecha_fin as vencimiento 
         FROM propiedades p 
         LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
@@ -193,7 +194,7 @@ function abrirEditarPropiedad() {
     if (!esNivel3) {
         var clave = prompt("CLAVE DE SEGURIDAD PARA EDITAR PROPIEDAD:");
         if (clave === null) return;
-        if (clave !== "4961") {
+        if (clave !== <?= json_encode(obtener_clave_borrado($conexion)) ?>) {
             alert("Clave incorrecta.");
             return;
         }
@@ -211,7 +212,7 @@ function eliminarPropiedad(id) {
     if (!esNivel3) {
         var clave = prompt("CLAVE DE SEGURIDAD PARA ELIMINAR PROPIEDAD:");
         if (clave === null) return;
-        if (clave !== "4961") {
+        if (clave !== <?= json_encode(obtener_clave_borrado($conexion)) ?>) {
             alert("Clave incorrecta.");
             return;
         }

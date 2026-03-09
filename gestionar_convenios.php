@@ -1,6 +1,7 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/config_clave_borrado.php';
 
 if (!isset($_SESSION['acceso_nivel']) || $_SESSION['acceso_nivel'] < 3) {
     header('Location: index.php?msg=sin_permiso');
@@ -49,7 +50,7 @@ if (!$res_liq || mysqli_num_rows($res_liq) == 0) {
 // POST limpiar + clave: borrar liquidaciones (requiere clave de seguridad)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['limpiar']) && $_POST['limpiar'] === '1') {
     $clave_ingresada = trim($_POST['clave_limpiar'] ?? '');
-    if ($clave_ingresada === '4961') {
+    if ($clave_ingresada === obtener_clave_borrado($conexion)) {
         mysqli_query($conexion, "DELETE FROM cuentas WHERE comprobante = 'trabajo' AND (concepto LIKE 'Fijo de mes%' OR concepto LIKE 'FIJO DE MES%')");
         $res_trunc = mysqli_query($conexion, "SHOW TABLES LIKE 'convenios_finca_liquidado'");
         if ($res_trunc && mysqli_num_rows($res_trunc) > 0) {

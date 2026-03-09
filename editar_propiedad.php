@@ -1,6 +1,7 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/config_clave_borrado.php';
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=solo_lectura');
     exit;
@@ -106,7 +107,7 @@ window.addEventListener('DOMContentLoaded', function() {
         window.location.href = 'propiedades.php';
         return;
     }
-    if (clave !== "4961") {
+    if (clave !== <?= json_encode(obtener_clave_borrado($conexion)) ?>) {
         alert("Clave incorrecta.");
         window.location.href = 'propiedades.php';
         return;
