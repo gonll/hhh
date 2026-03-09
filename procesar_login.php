@@ -63,5 +63,11 @@ if ($nivel >= 1 && $nivel <= 3) {
     @respaldarYEnviarPorEmail($conexion);
 }
 
+// Nivel 0 con usuario zafra → ir directo a Cosecha
+if ($nivel === 0 && stripos($usuario, 'zafra') !== false) {
+    header('Location: cosecha.php');
+    exit;
+}
+
 header('Location: index.php');
 exit;

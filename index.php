@@ -23,9 +23,10 @@ $res_check = mysqli_query($conexion, "SELECT id FROM indices WHERE fecha = '$mes
 $falta_indice = (mysqli_num_rows($res_check) == 0);
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
 $soloLectura = ($nivelAcceso < 2);
-// Nivel 0: solo puede Partes desde cel
+// Nivel 0: usuario zafra → Cosecha; resto → Partes desde cel
 if ($nivelAcceso === 0) {
-    header('Location: partes_desde_cel.php');
+    $usuario = (string)($_SESSION['acceso_usuario'] ?? '');
+    header('Location: ' . (stripos($usuario, 'zafra') !== false ? 'cosecha.php' : 'partes_desde_cel.php'));
     exit;
 }
 // Usuarios para modal Ant/cel (nivel 3): todos excepto CAJA (id 1)

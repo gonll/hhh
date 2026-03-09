@@ -4,7 +4,9 @@ include 'verificar_sesion.php';
 include 'crear_tabla_cosecha.php';
 
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
-if ($nivelAcceso < 2) {
+$usuario = (string)($_SESSION['acceso_usuario'] ?? '');
+$es_usuario_zafra = ($nivelAcceso === 0 && stripos($usuario, 'zafra') !== false);
+if ($nivelAcceso < 2 && !$es_usuario_zafra) {
     header('Location: index.php?msg=sin_permiso');
     exit;
 }
@@ -225,13 +227,13 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
         }
     </style>
 </head>
-<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){e.preventDefault();window.location.href='index.php';return false;}">
+<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){e.preventDefault();window.location.href='<?= $es_usuario_zafra ? 'logout.php' : 'index.php' ?>';return false;}">
 
 <div class="container">
     <div class="encabezado">
         <div>
             <h2>Cosecha - Hojas de ruta</h2>
-            <a href="index.php" class="btn btn-secondary" style="margin-top:4px;">← Volver a página principal</a>
+            <a href="<?= $es_usuario_zafra ? 'logout.php' : 'index.php' ?>" class="btn btn-secondary" style="margin-top:4px;"><?= $es_usuario_zafra ? 'Salir' : '← Volver a página principal' ?></a>
         </div>
         <div class="zafra-wrap" style="display:flex; align-items:center; gap:8px;">
             <form method="GET" style="display:inline;">
@@ -384,7 +386,7 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
     </div>
 
     <p class="volver">
-        <a href="index.php" class="btn btn-secondary">← Volver a página principal</a>
+        <a href="<?= $es_usuario_zafra ? 'logout.php' : 'index.php' ?>" class="btn btn-secondary"><?= $es_usuario_zafra ? 'Salir' : '← Volver a página principal' ?></a>
     </p>
 </div>
 <script>
