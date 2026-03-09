@@ -405,7 +405,7 @@ if ($nivelAcceso === 3) {
                     <input type="text" id="cobroCaja_vuelto" readonly placeholder="0" style="width:90px; padding:6px 8px; background:#f8f9fa; border:1px solid #ced4da; border-radius:4px; text-align:right;">
                 </div>
                 <label style="display:flex; align-items:center; gap:6px; cursor:default;">
-                    <input type="checkbox" id="cobroCaja_dejarCuenta" style="cursor:default;">
+                    <input type="checkbox" id="cobroCaja_dejarCuenta" style="cursor:pointer;" onchange="guardarDejarCuentaDefault(this.checked)">
                     <span>Dejar a cuenta próximo pago</span>
                 </label>
                 <div style="display:flex; gap:8px; margin-left:auto;">
@@ -1433,6 +1433,10 @@ function ponerFechaActualCobroCaja() {
     inp.value = String(hoy.getDate()).padStart(2, '0') + '/' + String(hoy.getMonth() + 1).padStart(2, '0') + '/' + hoy.getFullYear();
 }
 
+function guardarDejarCuentaDefault(checked) {
+    try { sessionStorage.setItem("cobroCaja_dejarCuentaDefault", checked ? "1" : "0"); } catch (e) {}
+}
+
 function resetCobroCaja() {
     cobroCajaItem1 = null;
     cobroCajaItem2 = null;
@@ -1451,7 +1455,9 @@ function resetCobroCaja() {
     if (el2) el2.textContent = "";
     if (dinero) dinero.value = "";
     if (vuelto) vuelto.value = "";
-    if (chk) chk.checked = false;
+    var dejarCuentaDefault = false;
+    try { dejarCuentaDefault = sessionStorage.getItem("cobroCaja_dejarCuentaDefault") === "1"; } catch (e) {}
+    if (chk) chk.checked = dejarCuentaDefault;
     ponerFechaActualCobroCaja();
 }
 
