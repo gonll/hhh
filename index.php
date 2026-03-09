@@ -385,9 +385,12 @@ if ($nivelAcceso === 3) {
                     <label style="font-weight:bold;">Fecha</label>
                     <input type="text" id="cobroCaja_fecha" placeholder="dd/mm/aaaa" maxlength="10" style="width:95px; padding:6px 8px; border:1px solid #a5d6a7; border-radius:4px;" title="Formato: dd/mm/aaaa">
                 </div>
-                <div style="display:flex; align-items:center; gap:6px;">
-                    <label style="font-weight:bold;">Dinero Ingresado</label>
-                    <input type="number" id="cobroCaja_dinero" step="0.01" min="0" placeholder="0" oninput="actualizarCobroCajaVuelto()" style="width:100px; padding:6px 8px; border:1px solid #a5d6a7; border-radius:4px;">
+                <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-weight:bold;">Dinero Ingresado</label>
+                        <input type="number" id="cobroCaja_dinero" step="0.01" min="0" placeholder="0" oninput="actualizarCobroCajaVuelto(); mostrarCartelExpensasPrimero(this)" style="width:100px; padding:6px 8px; border:1px solid #a5d6a7; border-radius:4px;">
+                    </div>
+                    <div id="cartelExpensasPrimero" style="display:none; font-size:10px; color:#856404; font-weight:bold;">Primero las expensas siempre</div>
                 </div>
                 <div id="cobroCaja_item1Wrap" style="display:none; flex:0 0 auto; align-items:center; gap:6px;">
                     <label style="font-weight:bold;">Item 1</label>
@@ -645,6 +648,7 @@ let uSel = null;
 let tipo = ''; 
 let movSel = null;
 let esConsorcioUsuario = false;
+let esPropietarioOInquilino = false;
 let movScrollData = null;
 
 // Parsear monto: acepta 24.44 o 24,44 (teclado numérico). Evita que 24.44 se interprete como 2.444.
@@ -757,6 +761,7 @@ function cargarMovimientos(fila, id) {
     if (btnBorrarLiq) btnBorrarLiq.style.display = esConsorcioUsuario ? "inline-block" : "none";
     
     // Cobro Exp/transferencia y Cobro expensas efvo: solo si es propietario o inquilino. Sueldo/Extras: solo si NO es propietario ni inquilino (y no Caja).
+    esPropietarioOInquilino = false;
     if (esCajaUsuario) {
         if (btnCobroExpTransf) btnCobroExpTransf.style.display = "none";
         if (btnCobroExpEfvo) btnCobroExpEfvo.style.display = "none";
@@ -766,6 +771,7 @@ function cargarMovimientos(fila, id) {
             .then(function(r) { return r.json(); })
             .then(function(props) {
                 var esPropOInq = props && props.length > 0;
+                esPropietarioOInquilino = esPropOInq;
                 var esInquilino = props && props.some(function(p) { return (p.rol || "").toUpperCase() === "INQUILINO"; });
                 if (btnCobroExpTransf) btnCobroExpTransf.style.display = esPropOInq ? "block" : "none";
                 if (btnCobroExpEfvo) btnCobroExpEfvo.style.display = esPropOInq ? "block" : "none";
@@ -1618,6 +1624,20 @@ function generarWord() {
 
 // Orden de campos al cargar movimiento (Enter pasa al siguiente)
 const CAMPOS_MOV = ['ins_fecha', 'ins_concepto', 'ins_compro', 'ins_refer', 'ins_monto'];
+
+var cartelExpensasTimer = null;
+function mostrarCartelExpensasPrimero(inp) {
+    if (!esPropietarioOInquilino) return;
+    var v = (inp.value || '').replace(/[\s,.]/g, '');
+    if (v.length > 0 && /\d/.test(v)) {
+        var el = document.getElementById('cartelExpensasPrimero');
+        if (el) {
+            el.style.display = 'block';
+            if (cartelExpensasTimer) clearTimeout(cartelExpensasTimer);
+            cartelExpensasTimer = setTimeout(function() { el.style.display = 'none'; cartelExpensasTimer = null; }, 1000);
+        }
+    }
+}
 
 (function() {
     var filaCarga = document.getElementById("filaCarga");
