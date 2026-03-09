@@ -145,7 +145,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $lista = mysqli_query($conexion, "SELECT id, anio_zafra, fecha, hora, tickets, remito, viaje, camion, finca, variedad, fecha_creacion FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
 $hoy = date('Y-m-d');
 $puede_modificar_eliminar = function($fecha_reg) use ($nivelAcceso, $hoy) {
-    return $nivelAcceso >= 3 || ($fecha_reg && $fecha_reg <= $hoy);
+    if ($nivelAcceso >= 3) return true;
+    if (empty($fecha_reg)) return false;
+    $f = substr(trim($fecha_reg), 0, 10); // Y-m-d
+    return $f <= $hoy;
 };
 
 // Lista de fincas existentes (de todas las zafras)
@@ -393,7 +396,7 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                                         <button type="submit" name="eliminar" class="btn btn-danger">Eliminar</button>
                                     </form>
                                     <?php else: ?>
-                                    <span style="font-size:10px; color:#999;" title="Solo nivel 3 o registros del día/anteriores">—</span>
+                                    <span style="font-size:10px; color:#999;">—</span>
                                     <?php endif; ?>
                                 </div>
                             </td>
