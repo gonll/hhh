@@ -112,6 +112,8 @@ if ($nivelAcceso === 3) {
         .btn-ant-cel { display: none; background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
         .btn-ant-cel:hover { background: #138496; }
         @media (max-width: 768px) { .btn-ant-cel { display: inline-block; } }
+        .btn-imprimir-estado { display: inline-block; background: #D4A5A5; color: #333; border: 1px solid #D4A5A5; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-imprimir-estado:hover { background: #C89595; }
         /* Modal Ant/cel responsive - pantalla completa en cel con 3 secciones */
         .modal-ant-cel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; align-items: center; justify-content: center; padding: 10px; box-sizing: border-box; }
         .modal-ant-cel-overlay.activo { display: flex; }
@@ -305,6 +307,7 @@ if ($nivelAcceso === 3) {
                 <h2 id="tituloMovimientos" style="font-size:1rem; color:#007bff; margin:0;">DETALLE DE CUENTA</h2>
                 <?php if ($nivelAcceso === 3): ?>
                 <button type="button" class="btn-ant-cel" onclick="abrirModalAntCel()">Ant/cel</button>
+                <button type="button" class="btn-imprimir-estado" onclick="imprimirEstadoCuenta()">Imprimir estado de cuenta</button>
                 <?php endif; ?>
             </div>
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -1154,6 +1157,14 @@ function imprimirMovimientos() {
     }
     if (n > 500) n = 500;
     window.open('imprimir_movimientos.php?id=' + uSel + '&limit=' + n, '_blank', 'width=900,height=700');
+}
+
+function imprimirEstadoCuenta() {
+    if (!uSel) {
+        alert('Seleccioná un usuario primero.');
+        return;
+    }
+    window.open('imprimir_movimientos.php?id=' + uSel + '&limit=15', '_blank', 'width=900,height=700');
 }
 
 function abrirModalAntCel() {
