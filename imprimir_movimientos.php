@@ -95,6 +95,7 @@ foreach ($filas as $m) {
 <?php endif; ?>
 <div class="no-print">
     <button onclick="window.print()" style="background:#007bff; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold;">Imprimir</button>
+    <a href="descargar_movimientos_excel.php?id=<?= (int)$id ?>" style="background:#28a745; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold; text-decoration:none; margin-left:8px; display:inline-block;">Descargar Excel</a>
     <button onclick="window.close()" style="background:#6c757d; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; margin-left:8px;">Cerrar</button>
 </div>
 </body>
