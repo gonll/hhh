@@ -504,6 +504,10 @@ function fmtNum($n) {
         .tabla-azucar .col-vendida .link-comprador:hover { color: #0056b3; }
         .tabla-azucar tbody tr.fila-seleccionada .col-vendida .link-comprador { color: white; }
         .tabla-azucar tbody tr.fila-seleccionada .col-vendida .link-comprador:hover { color: #e7f3ff; }
+        .tabla-azucar .col-operador .link-operador { color: #007bff; text-decoration: underline; cursor: pointer; }
+        .tabla-azucar .col-operador .link-operador:hover { color: #0056b3; }
+        .tabla-azucar tbody tr.fila-seleccionada .col-operador .link-operador { color: white; }
+        .tabla-azucar tbody tr.fila-seleccionada .col-operador .link-operador:hover { color: #e7f3ff; }
         .tabla-azucar .col-preciovta, .tabla-azucar .col-preciofac { width: 75px; }
         .tabla-azucar .col-nfact, .tabla-azucar .col-nremt { width: 70px; }
         .tabla-azucar .sin-dato { color: #999; }
@@ -613,7 +617,7 @@ function fmtNum($n) {
         .modal-alta #alta_cantidad { -moz-appearance: textfield; appearance: textfield; }
     </style>
 </head>
-<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
+<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
         <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
 
@@ -704,7 +708,9 @@ function fmtNum($n) {
                             data-facturada-a-apellido="<?= htmlspecialchars($r['facturada_a_apellido'] ?? '') ?>"
                             data-preciofac="<?= $r['precio_fac'] !== null && $r['precio_fac'] !== '' ? (float)$r['precio_fac'] : '' ?>"
                             data-nfact="<?= htmlspecialchars($r['n_fact'] ?? '') ?>"
-                            data-nremt="<?= htmlspecialchars($r['n_remt'] ?? '') ?>">
+                            data-nremt="<?= htmlspecialchars($r['n_remt'] ?? '') ?>"
+                            data-operador-id="<?= (int)($r['operador_id'] ?? 0) ?>"
+                            data-operador-apellido="<?= htmlspecialchars($r['operador_apellido'] ?? '') ?>">
                             <td class="col-fecha"><?= htmlspecialchars(fmtFecha($r['fecha'])) ?></td>
                             <td class="col-l"><?= (int)$r['linea'] ?></td>
                             <td class="col-articulo"><?= htmlspecialchars($r['articulo']) ?></td>
@@ -723,7 +729,15 @@ function fmtNum($n) {
                                     echo $vnom;
                                 }
                             ?></td>
-                            <td class="col-operador <?= empty($r['operador_apellido']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['operador_apellido'] ?? '') ?></td>
+                            <td class="col-operador <?= empty($r['operador_apellido']) ? 'sin-dato' : '' ?>"><?php
+                                $oid = (int)($r['operador_id'] ?? 0);
+                                $onom = htmlspecialchars($r['operador_apellido'] ?? '');
+                                if ($oid > 0 && $onom !== '') {
+                                    echo '<a href="#" class="link-operador" data-operador-id="' . $oid . '" data-operador-apellido="' . htmlspecialchars($r['operador_apellido'] ?? '', ENT_QUOTES, 'UTF-8') . '">' . $onom . '</a>';
+                                } else {
+                                    echo $onom;
+                                }
+                            ?></td>
                             <td class="col-preciovta"><?= fmtNum($r['precio_vta']) ?></td>
                             <td class="col-fechafact"><?= htmlspecialchars(fmtFecha($r['fecha_fact'])) ?></td>
                             <td class="col-cantfact"><?= (int)$r['cant_fact'] ?></td>
@@ -952,6 +966,31 @@ function fmtNum($n) {
             </div>
         </div>
 
+        <!-- Modal operaciones del operador -->
+        <div id="modalOperacionesOperador" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalOperacionesOperador()">
+            <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 90%; max-height: 90vh; overflow: auto;">
+                <h3 id="modalOperacionesOperadorTitulo">Operaciones del operador: <span id="modalOperadorNombre"></span></h3>
+                <div style="margin-bottom: 15px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #007bff; color: white;">
+                                <th class="al-cen" style="padding: 6px; border: 1px solid #0056b3;">Op</th>
+                                <th class="al-izq" style="padding: 6px; border: 1px solid #0056b3;">Vendida a</th>
+                                <th class="al-der" style="padding: 6px; border: 1px solid #0056b3; width: 150px;">Saldo</th>
+                                <th style="padding: 6px; border: 1px solid #0056b3; width: 80px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaOperacionesOperador">
+                            <tr><td colspan="4" style="text-align:center; padding:30px; color:gray;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="botones">
+                    <button type="button" class="btn-cerrar-venta" onclick="cerrarModalOperacionesOperador()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+
         <p class="volver">
             <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
         </p>
@@ -963,7 +1002,13 @@ function fmtNum($n) {
             var modalVenta = document.getElementById('modalVenta');
             var modalFactura = document.getElementById('modalFactura');
             var modalMovOp = document.getElementById('modalMovimientosOperacion');
+            var modalOpsOp = document.getElementById('modalOperacionesOperador');
             var modalAlta = document.getElementById('modalAltaStock');
+            if (modalOpsOp && modalOpsOp.classList.contains('activo')) {
+                cerrarModalOperacionesOperador();
+                e.preventDefault();
+                return;
+            }
             if (modalMovOp && modalMovOp.classList.contains('activo')) {
                 cerrarModalMovimientosOperacion();
                 e.preventDefault();
@@ -1610,6 +1655,45 @@ function fmtNum($n) {
         }
     }
 
+    function abrirModalOperacionesOperador(operadorId, operadorNombre) {
+        document.getElementById('modalOperadorNombre').textContent = operadorNombre || 'Operador';
+        document.getElementById('modalOperacionesOperador').classList.add('activo');
+        var tbody = document.getElementById('tablaOperacionesOperador');
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:gray;">Cargando...</td></tr>';
+        fetch('obtener_operaciones_operador.php?operador_id=' + encodeURIComponent(operadorId))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:red;">' + esc(data.error || 'Error') + '</td></tr>';
+                    return;
+                }
+                var ops = data.operaciones || [];
+                if (ops.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:gray;">No hay operaciones para este operador.</td></tr>';
+                    return;
+                }
+                var html = '';
+                var totalSaldo = 0;
+                ops.forEach(function(op) {
+                    var saldo = parseFloat(op.saldo) || 0;
+                    totalSaldo += saldo;
+                    var colorSaldo = saldo >= 0 ? '#28a745' : '#dc3545';
+                    var saldoStr = '$ ' + saldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    html += '<tr><td class="al-cen">' + esc(op.operacion) + '</td><td class="al-izq">' + esc(op.vendida_a || '—') + '</td><td class="al-der" style="color:' + colorSaldo + '; font-weight:bold;">' + saldoStr + '</td><td><a href="#" class="link-operador" onclick="event.preventDefault(); cerrarModalOperacionesOperador(); abrirModalMovimientosOperacion(' + op.operacion + '); return false;">Ver movimientos</a></td></tr>';
+                });
+                var colorTotal = totalSaldo >= 0 ? '#28a745' : '#dc3545';
+                var totalStr = totalSaldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                html += '<tr style="background:#f8f9fa; font-weight:bold; border-top:2px solid #007bff;"><td colspan="2" class="al-der" style="padding:8px;">TOTAL:</td><td class="al-der" style="padding:8px; color:' + colorTotal + ';">$ ' + totalStr + '</td><td></td></tr>';
+                tbody.innerHTML = html;
+            })
+            .catch(function(err) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:red;">Error al cargar: ' + esc(err.message) + '</td></tr>';
+            });
+    }
+    function cerrarModalOperacionesOperador() {
+        document.getElementById('modalOperacionesOperador').classList.remove('activo');
+    }
+
     // Función para guardar nuevo cobro desde el modal de operación
     function guardarCobroOperacion() {
         var usuarioId = document.getElementById('cobro_usuario_id').value;
@@ -1737,13 +1821,27 @@ function fmtNum($n) {
     // Agregar event listeners a las celdas de operación (event delegation para funcionar con filas dinámicas)
     (function() {
         function manejarClickOP(e) {
-            var celda = e.target;
-            if (celda.classList.contains('col-operacion')) {
-                var operacion = celda.textContent.trim();
+            var celdaOp = e.target.closest('.col-operacion');
+            if (celdaOp) {
+                var operacion = celdaOp.textContent.trim();
                 if (operacion && operacion !== '' && operacion !== '0') {
                     e.stopPropagation();
                     e.preventDefault();
                     abrirModalMovimientosOperacion(operacion);
+                }
+                return;
+            }
+            var celdaOperador = e.target.closest('.col-operador');
+            if (celdaOperador) {
+                var link = celdaOperador.querySelector('.link-operador');
+                if (link) {
+                    var oid = link.getAttribute('data-operador-id');
+                    var onom = link.getAttribute('data-operador-apellido') || '';
+                    if (oid && oid !== '0') {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        abrirModalOperacionesOperador(parseInt(oid, 10), onom);
+                    }
                 }
             }
         }
