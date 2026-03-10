@@ -76,7 +76,7 @@ if ($res_stock) {
     }
 }
 
-$res_faltan = mysqli_query($conexion, "SELECT COUNT(*) AS n, COALESCE(SUM(cantidad), 0) AS total FROM stock WHERE vendida_a_id IS NULL");
+$res_faltan = mysqli_query($conexion, "SELECT COUNT(*) AS n, COALESCE(SUM(cantidad), 0) - COALESCE(SUM(IFNULL(cant_vta, 0)), 0) AS total FROM stock WHERE vendida_a_id IS NULL");
 $faltan_vender = 0;
 $faltan_vender_cantidad = 0;
 if ($res_faltan && $r = mysqli_fetch_assoc($res_faltan)) {
