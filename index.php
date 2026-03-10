@@ -158,7 +158,11 @@ if ($nivelAcceso === 3) {
         #ant_fecha_cal { display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; border: 1px solid #007bff; border-radius: 4px; box-sizing: border-box; font-size: inherit; }
 
         .scroll-usuarios { flex-grow: 1; overflow-y: auto; border: 1px solid #eee; margin-top: 5px; }
-        .scroll-grid { flex: 1; min-height: 0; overflow-y: scroll; overflow-x: auto; border: 1px solid #ddd; margin-top: 5px; background: #fff; }
+        .scroll-grid { flex: 1; min-height: 0; overflow-y: scroll; overflow-x: auto; border: 1px solid #ddd; margin-top: 5px; background: #fff; scrollbar-gutter: stable; }
+        .scroll-grid::-webkit-scrollbar { width: 12px; }
+        .scroll-grid::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 6px; }
+        .scroll-grid::-webkit-scrollbar-thumb { background: #888; border-radius: 6px; }
+        .scroll-grid::-webkit-scrollbar-thumb:hover { background: #555; }
 
         .tabla-datos { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
         .tabla-datos th { background: #007bff; color: white; padding: 8px 5px; position: sticky; top: 0; z-index: 10; font-weight: bold; }
@@ -386,6 +390,10 @@ if ($nivelAcceso === 3) {
         <!-- Panel Cobro en caja (sin título visible) -->
         <div id="panelCobroCaja" style="display:none; margin-top:10px; margin-bottom:10px; padding:12px; background:#e8f5e9; border-radius:6px; border:1px solid #a5d6a7;">
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px; font-size:11px;">
+                <div id="cobroCaja_saldoWrap" style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-weight:bold;">Saldo a la fecha:</label>
+                    <span id="cobroCaja_saldo" style="font-weight:bold; min-width:90px;">$ 0,00</span>
+                </div>
                 <div style="display:flex; align-items:center; gap:6px;">
                     <label style="font-weight:bold;">Fecha</label>
                     <input type="text" id="cobroCaja_fecha" placeholder="dd/mm/aaaa" maxlength="10" style="width:95px; padding:6px 8px; border:1px solid #a5d6a7; border-radius:4px;" title="Formato: dd/mm/aaaa">
@@ -393,7 +401,7 @@ if ($nivelAcceso === 3) {
                 <div style="display:flex; flex-direction:column; align-items:flex-start; gap:2px;">
                     <div style="display:flex; align-items:center; gap:6px;">
                         <label style="font-weight:bold;">Dinero Ingresado</label>
-                        <input type="number" id="cobroCaja_dinero" step="0.01" min="0" placeholder="0" oninput="actualizarCobroCajaVuelto(); mostrarCartelExpensasPrimero(this)" style="width:100px; padding:6px 8px; border:1px solid #a5d6a7; border-radius:4px;">
+                        <input type="text" id="cobroCaja_dinero" inputmode="decimal" placeholder="0" oninput="actualizarCobroCajaVuelto(); mostrarCartelExpensasPrimero(this)" style="width:100px; padding:6px 8px; border:1px solid #a5d6a7; border-radius:4px;">
                     </div>
                     <div id="cartelExpensasPrimero" style="display:none; font-size:10px; color:#856404; font-weight:bold;">Primero las expensas siempre</div>
                 </div>
@@ -655,6 +663,7 @@ let movSel = null;
 let esConsorcioUsuario = false;
 let esPropietarioOInquilino = false;
 let movScrollData = null;
+let saldoActualCuenta = 0;
 
 // Parsear monto: acepta 24.44 o 24,44 (teclado numérico). Evita que 24.44 se interprete como 2.444.
 function parseMonto(str) {
@@ -813,12 +822,14 @@ function cargarMovimientos(fila, id) {
             movScrollData.last_id = data.last_id || 0;
             movScrollData.has_more_older = !!data.has_more_older;
             movScrollData.has_more_newer = !!data.has_more_newer;
+            var saldo = parseFloat(data.saldo_actual);
+            saldoActualCuenta = isNaN(saldo) ? 0 : saldo;
             var saldoEl = document.getElementById("migrar-saldo-actual");
             if (saldoEl) {
-                var saldo = parseFloat(data.saldo_actual);
                 saldoEl.setAttribute('data-valor', isNaN(saldo) ? '0' : saldo);
                 saldoEl.textContent = (isNaN(saldo) ? '--' : '$ ' + saldo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             }
+            actualizarSaldoCobroPanel();
             actualizarDiferenciaMigrar();
             document.getElementById("divScroll").scrollTop = document.getElementById("divScroll").scrollHeight;
             if (esConsorcioUsuario) {
@@ -842,6 +853,8 @@ function cargarMovimientos(fila, id) {
         .catch(function() {
             document.getElementById("tablaMovimientos").innerHTML = "<tr><td colspan='7' style='text-align:center; padding:30px; color:red;'>Error al cargar movimientos</td></tr>";
             movScrollData = null;
+            saldoActualCuenta = 0;
+            actualizarSaldoCobroPanel();
         });
 }
 
@@ -861,6 +874,8 @@ function onScrollMovimientos() {
                 movScrollData.first_fecha = data.first_fecha || movScrollData.first_fecha;
                 movScrollData.first_id = data.first_id || movScrollData.first_id;
                 movScrollData.has_more_older = !!data.has_more_older;
+                var saldo = parseFloat(data.saldo_actual);
+                if (!isNaN(saldo)) { saldoActualCuenta = saldo; actualizarSaldoCobroPanel(); }
                 div.scrollTop = div.scrollHeight - oldHeight;
             } else {
                 movScrollData.has_more_older = false;
@@ -877,6 +892,8 @@ function onScrollMovimientos() {
                 movScrollData.last_fecha = data.last_fecha || movScrollData.last_fecha;
                 movScrollData.last_id = data.last_id || movScrollData.last_id;
                 movScrollData.has_more_newer = !!data.has_more_newer;
+                var saldo = parseFloat(data.saldo_actual);
+                if (!isNaN(saldo)) { saldoActualCuenta = saldo; actualizarSaldoCobroPanel(); }
                 div.scrollTop = div.scrollHeight;
             } else {
                 movScrollData.has_more_newer = false;
@@ -1439,6 +1456,14 @@ function migrarSaldo() {
 
 var cobroCajaItem1 = null, cobroCajaItem2 = null;
 
+function actualizarSaldoCobroPanel() {
+    var el = document.getElementById("cobroCaja_saldo");
+    if (!el) return;
+    var s = saldoActualCuenta;
+    el.textContent = "$ " + s.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    el.style.color = s >= 0 ? "#28a745" : "#dc3545";
+}
+
 function ponerFechaActualCobroCaja() {
     var inp = document.getElementById("cobroCaja_fecha");
     if (!inp) return;
@@ -1461,6 +1486,7 @@ function resetCobroCaja() {
     var dinero = document.getElementById("cobroCaja_dinero");
     var vuelto = document.getElementById("cobroCaja_vuelto");
     var chk = document.getElementById("cobroCaja_dejarCuenta");
+    actualizarSaldoCobroPanel();
     if (wrap1) wrap1.style.display = "none";
     if (wrap2) wrap2.style.display = "none";
     if (wrapV) wrapV.style.display = "none";
@@ -1507,9 +1533,9 @@ function asignarCobroCajaItem(concepto, monto, periodo) {
 }
 
 function actualizarCobroCajaVuelto() {
-    var dinero = parseFloat((document.getElementById("cobroCaja_dinero") || {}).value) || 0;
-    var total = (cobroCajaItem1 ? cobroCajaItem1.monto : 0) + (cobroCajaItem2 ? cobroCajaItem2.monto : 0);
-    var vuelto = dinero - total;
+    var dinero = parseMonto((document.getElementById("cobroCaja_dinero") || {}).value) || 0;
+    var totalItems = (cobroCajaItem1 ? cobroCajaItem1.monto : 0) + (cobroCajaItem2 ? cobroCajaItem2.monto : 0);
+    var vuelto = dinero - totalItems;
     var el = document.getElementById("cobroCaja_vuelto");
     if (el) el.value = vuelto >= 0 ? vuelto.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (vuelto.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " (falta)");
 }
@@ -1517,9 +1543,13 @@ function actualizarCobroCajaVuelto() {
 function aceptarCobroCaja() {
     if (!uSel || uSel === 1) { alert("Seleccioná un usuario válido."); return; }
     if (!cobroCajaItem1 && !cobroCajaItem2) { alert("Seleccioná al menos un registro en la grilla."); return; }
-    var dinero = parseFloat((document.getElementById("cobroCaja_dinero") || {}).value) || 0;
-    if (dinero <= 0) { alert("Ingresá el monto de dinero recibido."); return; }
+    var dinero = parseMonto((document.getElementById("cobroCaja_dinero") || {}).value) || 0;
+    if (isNaN(dinero) || dinero < 0) { alert("Ingresá un monto válido de dinero recibido."); return; }
     var totalItems = (cobroCajaItem1 ? cobroCajaItem1.monto : 0) + (cobroCajaItem2 ? cobroCajaItem2.monto : 0);
+    if (totalItems > 0 && dinero <= 0) {
+        alert("Ingresá el monto de dinero recibido.");
+        return;
+    }
     var items = [];
     if (dinero < totalItems) {
         if (!cobroCajaItem2) {
@@ -1575,8 +1605,9 @@ function aceptarCobroCaja() {
                         itemsRecibo.push({ concepto: "(A ENTREGAR VUELTO)", monto: vuelto });
                     }
                 }
+                var totalRecibo = itemsRecibo.reduce(function(s, it) { return s + (parseFloat(it.monto) || 0); }, 0);
                 var periodoRecibo = (cobroCajaItem1 && cobroCajaItem1.periodo) ? cobroCajaItem1.periodo : ((cobroCajaItem2 && cobroCajaItem2.periodo) ? cobroCajaItem2.periodo : "");
-                var urlRecibo = "generar_recibo_cobro_caja.php?usuario_id=" + uSel + "&fecha=" + encodeURIComponent(fechaISO) + "&items=" + encodeURIComponent(JSON.stringify(itemsRecibo)) + "&total=" + encodeURIComponent(dinero.toFixed(2));
+                var urlRecibo = "generar_recibo_cobro_caja.php?usuario_id=" + uSel + "&fecha=" + encodeURIComponent(fechaISO) + "&items=" + encodeURIComponent(JSON.stringify(itemsRecibo)) + "&total=" + encodeURIComponent(totalRecibo.toFixed(2));
                 if (periodoRecibo) urlRecibo += "&periodo=" + encodeURIComponent(periodoRecibo);
                 window.open(urlRecibo, "_blank", "noopener");
                 resetCobroCaja();
