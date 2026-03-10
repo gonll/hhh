@@ -158,14 +158,19 @@ if ($nivelAcceso === 3) {
         #ant_fecha_cal { display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; border: 1px solid #007bff; border-radius: 4px; box-sizing: border-box; font-size: inherit; }
 
         .scroll-usuarios { flex-grow: 1; overflow-y: auto; border: 1px solid #eee; margin-top: 5px; }
-        .scroll-grid { flex: 1; min-height: 0; overflow-y: scroll; overflow-x: auto; border: 1px solid #ddd; margin-top: 5px; background: #fff; scrollbar-gutter: stable; }
-        .scroll-grid::-webkit-scrollbar { width: 12px; }
-        .scroll-grid::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 6px; }
-        .scroll-grid::-webkit-scrollbar-thumb { background: #888; border-radius: 6px; }
-        .scroll-grid::-webkit-scrollbar-thumb:hover { background: #555; }
+        .scroll-grid { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid #ddd; margin-top: 5px; background: #fff; }
+        .tabla-header { flex-shrink: 0; width: 100%; }
+        .scroll-movimientos { flex: 1; min-height: 0; overflow-y: scroll !important; overflow-x: auto; scrollbar-gutter: stable; }
+        .scroll-movimientos::-webkit-scrollbar { width: 12px; }
+        .scroll-movimientos::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 6px; }
+        .scroll-movimientos::-webkit-scrollbar-thumb { background: #888; border-radius: 6px; }
+        .scroll-movimientos::-webkit-scrollbar-thumb:hover { background: #555; }
+        .tabla-carga { flex-shrink: 0; border-top: 1px solid #ddd; }
 
         .tabla-datos { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
-        .tabla-datos th { background: #007bff; color: white; padding: 8px 5px; position: sticky; top: 0; z-index: 10; font-weight: bold; }
+        .tabla-datos th { background: #007bff; color: white; padding: 8px 5px; font-weight: bold; }
+        .tabla-header { border-bottom: 1px solid #007bff; }
+        .tabla-body td { border: 1px solid #ddd; padding: 8px 5px; }
         
         .tabla-usuarios { width: 100%; border-collapse: collapse; }
         .tabla-usuarios td { 
@@ -329,23 +334,37 @@ if ($nivelAcceso === 3) {
         </div>
         
         <div class="scroll-grid" id="divScroll">
-            <table class="tabla-datos">
+            <table class="tabla-datos tabla-header">
+                <colgroup>
+                    <col style="width:12%"><col style="width:36%"><col style="width:14%"><col style="width:10%"><col style="width:13%"><col style="width:13%"><col style="width:40px">
+                </colgroup>
                 <thead>
                     <tr>
-                        <th style="width:12%;" class="al-cen">FECHA</th>
-                        <th style="width:36%;" class="al-izq">CONCEPTO</th>
-                        <th style="width:14%;" class="al-cen">COMPROB</th>
-                        <th style="width:10%;" class="al-cen">REF</th>
-                        <th style="width:13%;" class="al-der">MONTO</th>
-                        <th style="width:13%;" class="al-der">SALDO</th>
-                        <th style="width:40px;" class="al-cen">X</th>
+                        <th class="al-cen">FECHA</th>
+                        <th class="al-izq">CONCEPTO</th>
+                        <th class="al-cen">COMPROB</th>
+                        <th class="al-cen">REF</th>
+                        <th class="al-der">MONTO</th>
+                        <th class="al-der">SALDO</th>
+                        <th class="al-cen">X</th>
                     </tr>
                 </thead>
-                <tbody id="tablaMovimientos">
-                    <tr><td colspan="7" style="padding:50px; text-align:center; color:gray;">SELECCIONE UN USUARIO</td></tr>
-                </tbody>
-                
-                <?php if (!$soloLectura): ?>
+            </table>
+            <div class="scroll-movimientos" id="scrollMovimientos">
+                <table class="tabla-datos tabla-body">
+                <colgroup>
+                    <col style="width:12%"><col style="width:36%"><col style="width:14%"><col style="width:10%"><col style="width:13%"><col style="width:13%"><col style="width:40px">
+                </colgroup>
+                    <tbody id="tablaMovimientos">
+                        <tr><td colspan="7" style="padding:50px; text-align:center; color:gray;">SELECCIONE UN USUARIO</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <?php if (!$soloLectura): ?>
+            <table class="tabla-datos tabla-carga">
+                <colgroup>
+                    <col style="width:12%"><col style="width:36%"><col style="width:14%"><col style="width:10%"><col style="width:13%"><col style="width:13%"><col style="width:40px">
+                </colgroup>
                 <tfoot id="filaCarga" style="display:none; background:#f8f9fa;">
                     <tr id="filaCheckCaja" style="display:none;">
                         <td colspan="4" style="padding: 4px 8px; font-size: 11px;">
@@ -382,8 +401,8 @@ if ($nivelAcceso === 3) {
                         <td colspan="2"><button onclick="guardar()" style="background:#28a745; color:white; width:100%; border:none; padding:5px; font-weight:bold; cursor:pointer;">OK</button></td>
                     </tr>
                 </tfoot>
-                <?php endif; ?>
             </table>
+            <?php endif; ?>
         </div>
 
         <?php if (!$soloLectura): ?>
@@ -831,7 +850,7 @@ function cargarMovimientos(fila, id) {
             }
             actualizarSaldoCobroPanel();
             actualizarDiferenciaMigrar();
-            document.getElementById("divScroll").scrollTop = document.getElementById("divScroll").scrollHeight;
+            document.getElementById("scrollMovimientos").scrollTop = document.getElementById("scrollMovimientos").scrollHeight;
             if (esConsorcioUsuario) {
                 fetch('obtener_resumen_consorcio.php?id=' + id)
                     .then(r => r.json())
@@ -860,7 +879,7 @@ function cargarMovimientos(fila, id) {
 
 function onScrollMovimientos() {
     if (!movScrollData || movScrollData.loading || !uSel) return;
-    var div = document.getElementById("divScroll");
+    var div = document.getElementById("scrollMovimientos");
     if (!div) return;
     var margin = 80;
     if (movScrollData.has_more_older && div.scrollTop <= margin) {
@@ -2138,7 +2157,7 @@ function guardar() {
     function cerrarModalMovimientosOperacion() {
         document.getElementById('modalMovimientosOperacion').classList.remove('visible');
     }
-    var divScroll = document.getElementById('divScroll');
+    var divScroll = document.getElementById('scrollMovimientos');
     if (divScroll) {
         divScroll.addEventListener('scroll', function() {
             onScrollMovimientos();
