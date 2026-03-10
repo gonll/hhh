@@ -250,7 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tractor = trim($pdt_row['tractor'] ?? '');
             $fecha_pdt = $pdt_row['fecha'];
             $horas = (float)($pdt_row['horas'] ?? 0);
-            $es_tractor = (stripos($tipo_horas, 'tractor') !== false);
+            $es_tractor = ($tipo_horas === 'Horas tractos' || stripos($tipo_horas, 'tracto') !== false);
             $res_ts = mysqli_query($conexion, "SELECT valor_hora_comun, valor_hora_tractor FROM tabla_salarial ORDER BY id DESC LIMIT 1");
             $precio = 0;
             if ($res_ts && $ts = mysqli_fetch_assoc($res_ts)) {
