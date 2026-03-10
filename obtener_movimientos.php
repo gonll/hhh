@@ -46,7 +46,7 @@ if ($load_older) {
             ORDER BY fecha ASC, movimiento_id ASC LIMIT 10";
     $res = mysqli_query($conexion, $sql);
 } else {
-    $sql = "SELECT * FROM (SELECT * FROM cuentas WHERE usuario_id = $id ORDER BY fecha DESC, movimiento_id DESC LIMIT 10) AS sub ORDER BY fecha ASC, movimiento_id ASC";
+    $sql = "SELECT * FROM (SELECT * FROM cuentas WHERE usuario_id = $id ORDER BY fecha DESC, movimiento_id DESC LIMIT 30) AS sub ORDER BY fecha ASC, movimiento_id ASC";
     $res = mysqli_query($conexion, $sql);
 }
 

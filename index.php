@@ -158,9 +158,9 @@ if ($nivelAcceso === 3) {
         #ant_fecha_cal { display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; border: 1px solid #007bff; border-radius: 4px; box-sizing: border-box; font-size: inherit; }
 
         .scroll-usuarios { flex-grow: 1; overflow-y: auto; border: 1px solid #eee; margin-top: 5px; }
-        .scroll-grid { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid #ddd; margin-top: 5px; background: #fff; }
+        .scroll-grid { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid #ddd; margin-top: 5px; background: #fff; overflow: hidden; }
         .tabla-header { flex-shrink: 0; width: 100%; }
-        .scroll-movimientos { flex: 1; min-height: 0; overflow-y: scroll !important; overflow-x: auto; scrollbar-gutter: stable; }
+        .scroll-movimientos { flex: 1 1 0; min-height: 150px; overflow-y: scroll !important; overflow-x: auto; scrollbar-gutter: stable; }
         .scroll-movimientos::-webkit-scrollbar { width: 12px; }
         .scroll-movimientos::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 6px; }
         .scroll-movimientos::-webkit-scrollbar-thumb { background: #888; border-radius: 6px; }
@@ -351,6 +351,7 @@ if ($nivelAcceso === 3) {
                 </thead>
             </table>
             <div class="scroll-movimientos" id="scrollMovimientos">
+                <div id="btnCargarAnteriores" style="display:none; padding:6px 12px; background:#e7f3ff; border-bottom:1px solid #007bff; text-align:center; cursor:pointer; font-size:11px; font-weight:bold; color:#007bff;" onclick="cargarMasAnteriores()">↑ Cargar más movimientos anteriores</div>
                 <table class="tabla-datos tabla-body">
                 <colgroup>
                     <col style="width:12%"><col style="width:36%"><col style="width:14%"><col style="width:10%"><col style="width:13%"><col style="width:13%"><col style="width:40px">
@@ -841,6 +842,7 @@ function cargarMovimientos(fila, id) {
             movScrollData.last_id = data.last_id || 0;
             movScrollData.has_more_older = !!data.has_more_older;
             movScrollData.has_more_newer = !!data.has_more_newer;
+            actualizarBtnCargarAnteriores();
             var saldo = parseFloat(data.saldo_actual);
             saldoActualCuenta = isNaN(saldo) ? 0 : saldo;
             var saldoEl = document.getElementById("migrar-saldo-actual");
@@ -850,7 +852,11 @@ function cargarMovimientos(fila, id) {
             }
             actualizarSaldoCobroPanel();
             actualizarDiferenciaMigrar();
-            document.getElementById("scrollMovimientos").scrollTop = document.getElementById("scrollMovimientos").scrollHeight;
+            var scrollEl = document.getElementById("scrollMovimientos");
+            if (scrollEl) {
+                scrollEl.scrollTop = scrollEl.scrollHeight;
+                setTimeout(function() { onScrollMovimientos(); }, 100);
+            }
             if (esConsorcioUsuario) {
                 fetch('obtener_resumen_consorcio.php?id=' + id)
                     .then(r => r.json())
@@ -874,13 +880,44 @@ function cargarMovimientos(fila, id) {
             movScrollData = null;
             saldoActualCuenta = 0;
             actualizarSaldoCobroPanel();
+            actualizarBtnCargarAnteriores();
         });
 }
 
+function actualizarBtnCargarAnteriores() {
+    var btn = document.getElementById("btnCargarAnteriores");
+    if (btn) btn.style.display = (movScrollData && movScrollData.has_more_older && !movScrollData.loading) ? "block" : "none";
+}
+function cargarMasAnteriores() {
+    if (!movScrollData || movScrollData.loading || !uSel || !movScrollData.has_more_older) return;
+    var div = document.getElementById("scrollMovimientos");
+    if (!div) return;
+    movScrollData.loading = true;
+    actualizarBtnCargarAnteriores();
+    var url = 'obtener_movimientos.php?id=' + uSel + '&before_fecha=' + encodeURIComponent(movScrollData.first_fecha) + '&before_id=' + movScrollData.first_id;
+    fetch(url).then(r => r.json()).then(function(data) {
+        if (data.html && data.html.indexOf('NO HAY MOVIMIENTOS') < 0 && data.html.indexOf('fila-mov') >= 0) {
+            var tbody = document.getElementById("tablaMovimientos");
+            var oldHeight = div.scrollHeight;
+            tbody.innerHTML = data.html + tbody.innerHTML;
+            movScrollData.first_fecha = data.first_fecha || movScrollData.first_fecha;
+            movScrollData.first_id = data.first_id || movScrollData.first_id;
+            movScrollData.has_more_older = !!data.has_more_older;
+            var saldo = parseFloat(data.saldo_actual);
+            if (!isNaN(saldo)) { saldoActualCuenta = saldo; actualizarSaldoCobroPanel(); }
+            div.scrollTop = div.scrollHeight - oldHeight;
+        } else {
+            movScrollData.has_more_older = false;
+        }
+        movScrollData.loading = false;
+        actualizarBtnCargarAnteriores();
+    }).catch(function() { movScrollData.loading = false; actualizarBtnCargarAnteriores(); });
+}
 function onScrollMovimientos() {
     if (!movScrollData || movScrollData.loading || !uSel) return;
     var div = document.getElementById("scrollMovimientos");
     if (!div) return;
+    actualizarBtnCargarAnteriores();
     var margin = 80;
     if (movScrollData.has_more_older && div.scrollTop <= margin) {
         movScrollData.loading = true;
@@ -900,7 +937,8 @@ function onScrollMovimientos() {
                 movScrollData.has_more_older = false;
             }
             movScrollData.loading = false;
-        }).catch(function() { movScrollData.loading = false; });
+            actualizarBtnCargarAnteriores();
+        }).catch(function() { movScrollData.loading = false; actualizarBtnCargarAnteriores(); });
     } else if (movScrollData.has_more_newer && div.scrollTop + div.clientHeight >= div.scrollHeight - margin) {
         movScrollData.loading = true;
         var url = 'obtener_movimientos.php?id=' + uSel + '&after_fecha=' + encodeURIComponent(movScrollData.last_fecha) + '&after_id=' + movScrollData.last_id;
@@ -918,7 +956,8 @@ function onScrollMovimientos() {
                 movScrollData.has_more_newer = false;
             }
             movScrollData.loading = false;
-        }).catch(function() { movScrollData.loading = false; });
+            actualizarBtnCargarAnteriores();
+        }).catch(function() { movScrollData.loading = false; actualizarBtnCargarAnteriores(); });
     }
 }
 
