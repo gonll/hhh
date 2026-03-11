@@ -852,10 +852,21 @@ function cargarMovimientos(fila, id) {
             }
             actualizarSaldoCobroPanel();
             actualizarDiferenciaMigrar();
+            // Mostrar siempre el último movimiento cronológicamente (el más reciente) tras cualquier acción (borrar, grabar, etc.)
             var scrollEl = document.getElementById("scrollMovimientos");
-            if (scrollEl) {
-                scrollEl.scrollTop = scrollEl.scrollHeight;
-                setTimeout(function() { onScrollMovimientos(); }, 100);
+            var tbody = document.getElementById("tablaMovimientos");
+            if (scrollEl && tbody) {
+                function scrollAlUltimo() {
+                    var ultimaFila = tbody.querySelector("tr.fila-mov:last-child");
+                    if (ultimaFila) {
+                        ultimaFila.scrollIntoView({ behavior: 'auto', block: 'end' });
+                    }
+                    scrollEl.scrollTop = scrollEl.scrollHeight;
+                }
+                requestAnimationFrame(function() {
+                    scrollAlUltimo();
+                    setTimeout(function() { scrollAlUltimo(); onScrollMovimientos(); }, 150);
+                });
             }
             if (esConsorcioUsuario) {
                 fetch('obtener_resumen_consorcio.php?id=' + id)
@@ -1609,14 +1620,28 @@ function aceptarCobroCaja() {
         return;
     }
     var items = [];
+    var saldoAFecha = saldoActualCuenta;
+    function extraerConcepto(c) {
+        var s = (c || "").trim();
+        if (s.toUpperCase().indexOf("COBRO DE:") === 0) return s.substring(9).trim();
+        return s;
+    }
+    function conceptoPagoParcialConItem(itemRef) {
+        var base = (dinero > saldoAFecha) ? "PAGO SALDO" : "PAGO A CUENTA";
+        if (dinero > saldoAFecha && itemRef) {
+            var nom = extraerConcepto(itemRef.concepto);
+            if (nom) return nom + " - " + base;
+        }
+        return base;
+    }
     if (dinero < totalItems) {
         if (!cobroCajaItem2) {
-            items.push({ concepto: "PAGO A CUENTA", monto: dinero });
+            items.push({ concepto: conceptoPagoParcialConItem(cobroCajaItem1), monto: dinero });
         } else {
             var m1 = cobroCajaItem1.monto;
             if (dinero >= m1) {
                 items.push({ concepto: cobroCajaItem1.concepto, monto: m1, periodo: cobroCajaItem1.periodo || "" });
-                items.push({ concepto: "PAGO A CUENTA", monto: dinero - m1 });
+                items.push({ concepto: conceptoPagoParcialConItem(cobroCajaItem2), monto: dinero - m1 });
             } else {
                 items.push({ concepto: cobroCajaItem1.concepto, monto: dinero, periodo: cobroCajaItem1.periodo || "" });
             }
@@ -1704,7 +1729,10 @@ function eliminarMovSeguro(movId) {
         fetch('eliminar_movimiento.php?mid=' + movId)
             .then(r => r.text())
             .then(res => {
-                if (res.trim() === "OK") cargarMovimientos(document.querySelector('.fila-seleccionada'), uSel);
+                if (res.trim() === "OK") {
+                    var fila = document.querySelector('#cuerpo tr.fila-seleccionada') || document.querySelector('#cuerpo tr[data-id="' + uSel + '"]');
+                    if (fila) cargarMovimientos(fila, uSel);
+                }
             });
         return;
     }
@@ -1723,7 +1751,10 @@ function eliminarMovSeguro(movId) {
             fetch('eliminar_movimiento.php?mid=' + movId)
                 .then(r2 => r2.text())
                 .then(function(res2) {
-                    if (res2.trim() === "OK") cargarMovimientos(document.querySelector('.fila-seleccionada'), uSel);
+                    if (res2.trim() === "OK") {
+                        var fila = document.querySelector('#cuerpo tr.fila-seleccionada') || document.querySelector('#cuerpo tr[data-id="' + uSel + '"]');
+                        if (fila) cargarMovimientos(fila, uSel);
+                    }
                 });
         });
 }
@@ -2067,6 +2098,11 @@ function fechaTextoAISO() {
 function guardar() {
     let m = parseMonto(document.getElementById("ins_monto").value);
     if(isNaN(m) || !uSel) return;
+    var montoAbs = Math.abs(m);
+    if (tipo === 'RETIRO' && montoAbs > saldoActualCuenta) {
+        var msg = 'El monto del retiro ($ ' + montoAbs.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ') es mayor que el saldo actual de la cuenta ($ ' + saldoActualCuenta.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '). ¿Desea continuar de todos modos?';
+        if (!confirm(msg)) return;
+    }
     var compro = (document.getElementById("ins_compro").value || "").toUpperCase();
     var grabaEnCaja = (compro === "BOLETA" || compro === "EFVO" || compro === "ALQUILER EFVO" || compro === "VARIOS");
     var grabarCaja = (uSel !== 1 && grabaEnCaja) ? 1 : 0;

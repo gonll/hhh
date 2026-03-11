@@ -38,7 +38,6 @@ if (!is_array($items) || count($items) === 0) {
     echo 'Error: No hay items para grabar.';
     exit;
 }
-
 $res_usuario = mysqli_query($conexion, "SELECT apellido FROM usuarios WHERE id = $usuario_id LIMIT 1");
 $row_usuario = mysqli_fetch_assoc($res_usuario);
 $nom_usuario = $row_usuario ? strtoupper($row_usuario['apellido']) : '';
@@ -85,7 +84,7 @@ foreach ($items as $item) {
     }
 
     // 3. Si es expensas e inquilino: grabar en consorcio y propietario (excluir PAGO A CUENTA, etc.)
-    $es_pago_cuenta = (stripos($concepto_orig, 'PAGO A CUENTA') !== false || stripos($concepto_orig, 'A CUENTA PROXIMO') !== false || stripos($concepto_orig, 'A ENTREGAR VUELTO') !== false);
+    $es_pago_cuenta = (stripos($concepto_orig, 'PAGO A CUENTA') !== false || stripos($concepto_orig, 'PAGO SALDO') !== false || stripos($concepto_orig, 'A CUENTA PROXIMO') !== false || stripos($concepto_orig, 'A ENTREGAR VUELTO') !== false);
     $es_expensa = !$es_pago_cuenta && (stripos($concepto_orig, 'EXPENSA') !== false || stripos($concepto_orig, 'LIQ EXP') !== false);
     if ($es_expensa && $propiedad_inquilino !== null) {
         $prop_consorcio = trim($propiedad_inquilino['consorcio'] ?? '');

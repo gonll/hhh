@@ -17,6 +17,8 @@ $fecha_raw = trim($_GET['fecha'] ?? '');
 $items_raw = $_GET['items'] ?? '';
 $total = (float)($_GET['total'] ?? 0);
 $periodo_cobrado = trim($_GET['periodo'] ?? '');
+$pago_saldo = isset($_GET['pago_saldo']) ? (float)$_GET['pago_saldo'] : 0;
+$dinero_efvo = isset($_GET['dinero_efvo']) ? (float)$_GET['dinero_efvo'] : 0;
 
 if ($usuario_id < 1 || $total <= 0) {
     die("Datos inválidos.");
@@ -129,6 +131,9 @@ header("Content-Disposition: attachment; filename=\"Recibo_Cobro_$nro_recibo.doc
             </tr>
         </tbody>
     </table>
+    <?php if ($pago_saldo > 0 && $dinero_efvo > 0): ?>
+    <div style="margin-top:4px; font-size:8pt; color:#555;">Pagado con: Efectivo $ <?= number_format($dinero_efvo, 2, ',', '.') ?> + Pago saldo anterior $ <?= number_format($pago_saldo, 2, ',', '.') ?></div>
+    <?php endif; ?>
     <div class="son">Son: $<?= $monto_numero ?>-</div>
     <div class="firma-container">
         <table style="width: 100%; border: 0;">
