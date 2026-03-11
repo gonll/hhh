@@ -75,8 +75,27 @@ if ($res_stock) {
         $filas_stock[] = $f;
     }
 }
+$pendiente_por_orden = [];
+$res_pend = mysqli_query($conexion, "SELECT orden, linea, MAX(cantidad) - SUM(IFNULL(cant_vta, 0)) AS pend FROM stock GROUP BY orden, linea");
+if ($res_pend) {
+    while ($p = mysqli_fetch_assoc($res_pend)) {
+        $key = (int)$p['orden'] . '_' . (int)$p['linea'];
+        $pendiente_por_orden[$key] = max(0, (int)$p['pend']);
+    }
+}
+$mostrar_link_orden = [];
+$res_multi = mysqli_query($conexion, "SELECT orden, linea, COUNT(*) AS n, SUM(IFNULL(cant_vta, 0)) AS tot_vta, MAX(cantidad) - SUM(IFNULL(cant_vta, 0)) AS pend FROM stock GROUP BY orden, linea");
+if ($res_multi) {
+    while ($m = mysqli_fetch_assoc($res_multi)) {
+        $key = (int)$m['orden'] . '_' . (int)$m['linea'];
+        $pend = max(0, (int)$m['pend']);
+        $totVta = (int)$m['tot_vta'];
+        $n = (int)$m['n'];
+        $mostrar_link_orden[$key] = ($pend > 0 && $totVta > 0) || ($n > 1);
+    }
+}
 
-$res_faltan = mysqli_query($conexion, "SELECT SUM(CASE WHEN (cantidad - IFNULL(cant_vta, 0)) > 0 THEN 1 ELSE 0 END) AS n, COALESCE(SUM(cantidad), 0) - COALESCE(SUM(IFNULL(cant_vta, 0)), 0) AS total FROM stock");
+$res_faltan = mysqli_query($conexion, "SELECT COALESCE(SUM(CASE WHEN pend > 0 THEN 1 ELSE 0 END), 0) AS n, COALESCE(SUM(pend), 0) AS total FROM (SELECT orden, linea, MAX(cantidad) AS tot_cant, SUM(IFNULL(cant_vta, 0)) AS tot_vta, MAX(cantidad) - SUM(IFNULL(cant_vta, 0)) AS pend FROM stock GROUP BY orden, linea HAVING pend > 0) AS agrupado");
 $faltan_vender = 0;
 $faltan_vender_cantidad = 0;
 if ($res_faltan && $r = mysqli_fetch_assoc($res_faltan)) {
@@ -120,6 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $operacion_input = trim($_POST['operacion'] ?? '');
         $fecha_pago = trim($_POST['fecha_pago'] ?? '');
         $es_edicion = isset($_POST['editar_venta_azucar']);
+        $es_venta_adicional = isset($_POST['venta_adicional']) && $_POST['venta_adicional'] === '1';
         if ($stock_id < 1 || $usuario_id < 1 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_vta) || $cant_vendida < 1) {
             $mensaje_stock = 'Faltan datos o son inválidos (stock, usuario, fecha, cantidad vendida).';
         } else {
@@ -214,6 +234,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     mysqli_query($conexion, $ins);
                     $mov_id = (int)mysqli_insert_id($conexion);
                     mysqli_query($conexion, "UPDATE stock SET fecha_vta = '$fecha_vta_esc', cant_vta = $cant_vendida, vendida_a_id = $usuario_id, operador_id = " . ($operador_id > 0 ? $operador_id : "NULL") . ", precio_vta = $precio_vta, operacion = $operacion, venta_movimiento_id = $mov_id $fecha_fact_sql WHERE id = $stock_id");
+                }
+            } elseif ($es_venta_adicional) {
+                $r_actual = mysqli_fetch_assoc(mysqli_query($conexion, "SELECT s.*, v.apellido AS vendida_a_apellido, op.apellido AS operador_apellido FROM stock s LEFT JOIN usuarios v ON v.id = s.vendida_a_id LEFT JOIN usuarios op ON op.id = s.operador_id WHERE s.id = $stock_id LIMIT 1"));
+                $res_pend_ord = mysqli_query($conexion, "SELECT MAX(cantidad) - SUM(IFNULL(cant_vta, 0)) AS pend FROM stock WHERE orden = $orden AND linea = $linea");
+                $pendiente = 0;
+                if ($res_pend_ord && $rp = mysqli_fetch_assoc($res_pend_ord)) {
+                    $pendiente = max(0, (int)$rp['pend']);
+                }
+                if ($cant_vendida > $pendiente || $pendiente <= 0) {
+                    $mensaje_stock = 'La cantidad vendida no puede superar las ' . $pendiente . ' unidades pendientes.';
+                } else {
+                    $operacion = siguienteOperacion($conexion, 0);
+                    $refer = "OP N° $operacion";
+                    $ins = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) VALUES ($usuario_id, '$fecha_vta_esc', '$concepto', '$compro', '$refer', $monto)";
+                    if (mysqli_query($conexion, $ins)) {
+                        $mov_id = (int)mysqli_insert_id($conexion);
+                        $deposito = mysqli_real_escape_string($conexion, $r_actual['deposito'] ?? '');
+                        $fecha_base = mysqli_real_escape_string($conexion, $r_actual['fecha'] ?? $fecha_vta_esc);
+                        $dep_sql = ($deposito === '') ? "NULL" : "'$deposito'";
+                        $ins_venta = "INSERT INTO stock (fecha, linea, articulo, orden, cantidad, deposito, fecha_vta, cant_vta, vendida_a_id, operador_id, precio_vta, operacion, venta_movimiento_id) VALUES ('$fecha_base', $linea, '$articulo', $orden, $pendiente, $dep_sql, '$fecha_vta_esc', $cant_vendida, $usuario_id, " . ($operador_id > 0 ? $operador_id : "NULL") . ", $precio_vta, $operacion, $mov_id)";
+                        mysqli_query($conexion, $ins_venta);
+                        $saldo = $pendiente - $cant_vendida;
+                        if ($saldo > 0) {
+                            $ins_saldo = "INSERT INTO stock (fecha, linea, articulo, orden, cantidad, deposito) VALUES ('$fecha_base', $linea, '$articulo', $orden, $saldo, $dep_sql)";
+                            mysqli_query($conexion, $ins_saldo);
+                        }
+                    } else {
+                        $mensaje_stock = 'Error al grabar la venta adicional.';
+                        $operacion = null;
+                    }
                 }
             } else {
                 $fecha_fact_sql = '';
@@ -315,12 +365,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $fechaRaw = !empty($r_nuevo['fecha']) && $r_nuevo['fecha'] !== '0000-00-00' ? $r_nuevo['fecha'] : '';
                             $cant_nuevo = (int)$r_nuevo['cantidad'];
                             $cantvta_nuevo = (int)($r_nuevo['cant_vta'] ?? 0);
-                            $clase_cant_diff = ($cantvta_nuevo !== 0 && $cant_nuevo !== $cantvta_nuevo) ? 'fila-cant-diferente' : '';
+                            $res_pend_nuevo = mysqli_query($conexion, "SELECT COUNT(*) AS n, SUM(IFNULL(cant_vta, 0)) AS tot_vta, MAX(cantidad) - SUM(IFNULL(cant_vta, 0)) AS pend FROM stock WHERE orden = " . (int)$r_nuevo['orden'] . " AND linea = " . (int)$r_nuevo['linea']);
+                            $pend_nuevo = 0;
+                            $mostrar_link_nuevo = false;
+                            if ($res_pend_nuevo && $rp = mysqli_fetch_assoc($res_pend_nuevo)) {
+                                $pend_nuevo = max(0, (int)$rp['pend']);
+                                $tot_vta_nuevo = (int)$rp['tot_vta'];
+                                $n_nuevo = (int)$rp['n'];
+                                $mostrar_link_nuevo = ($pend_nuevo > 0 && $tot_vta_nuevo > 0) || ($n_nuevo > 1);
+                            }
+                            $clase_cant_diff = ($cantvta_nuevo > 0 && $pend_nuevo > 0) ? 'fila-cant-diferente' : '';
                             $fila_html = '<tr' . ($clase_cant_diff ? ' class="' . $clase_cant_diff . '"' : '') . ' data-id="' . (int)$r_nuevo['id'] . '"'
                                 . ' data-fecha="' . htmlspecialchars($fechaRaw, ENT_QUOTES) . '"'
                                 . ' data-linea="' . (int)$r_nuevo['linea'] . '"'
                                 . ' data-articulo="' . htmlspecialchars($r_nuevo['articulo'] ?? '', ENT_QUOTES) . '"'
                                 . ' data-orden="' . (int)$r_nuevo['orden'] . '"'
+                                . ' data-linea="' . (int)$r_nuevo['linea'] . '"'
+                                . ' data-orden-pendiente="' . (int)$pend_nuevo . '"'
                                 . ' data-cantidad="' . (int)$r_nuevo['cantidad'] . '"'
                                 . ' data-deposito="' . htmlspecialchars($r_nuevo['deposito'] ?? '', ENT_QUOTES) . '"'
                                 . ' data-vendida-a-id="' . (int)($r_nuevo['vendida_a_id'] ?? 0) . '"'
@@ -339,7 +400,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 . '<td class="col-fecha">' . htmlspecialchars(fmtFecha($r_nuevo['fecha'])) . '</td>'
                                 . '<td class="col-l">' . (int)$r_nuevo['linea'] . '</td>'
                                 . '<td class="col-articulo">' . htmlspecialchars($r_nuevo['articulo']) . '</td>'
-                                . '<td class="col-orden">' . (int)$r_nuevo['orden'] . '</td>'
+                                . '<td class="col-orden">' . ($mostrar_link_nuevo ? '<a href="#" class="link-orden" data-orden="' . (int)$r_nuevo['orden'] . '" data-linea="' . (int)$r_nuevo['linea'] . '" onclick="event.stopPropagation(); abrirModalMovimientosOrden(' . (int)$r_nuevo['orden'] . ', ' . (int)$r_nuevo['linea'] . '); return false;" style="text-decoration:underline; color:inherit;">' . (int)$r_nuevo['orden'] . '</a>' : (int)$r_nuevo['orden']) . '</td>'
                                 . '<td class="col-cantidad">' . (int)$r_nuevo['cantidad'] . '</td>'
                                 . '<td class="col-deposito">' . htmlspecialchars($r_nuevo['deposito'] ?? '') . '</td>'
                                 . '<td class="col-operacion">' . ((int)($r_nuevo['operacion'] ?? 0) ?: '') . '</td>'
@@ -631,7 +692,7 @@ function fmtNum($n) {
         .modal-alta #alta_cantidad { -moz-appearance: textfield; appearance: textfield; }
     </style>
 </head>
-<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
+<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
         <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
 
@@ -704,7 +765,10 @@ function fmtNum($n) {
                         $fechaRaw = !empty($r['fecha']) && $r['fecha'] !== '0000-00-00' ? $r['fecha'] : '';
                         $cantidad = (int)$r['cantidad'];
                         $cantVta = (int)($r['cant_vta'] ?? 0);
-                        $esCantDiferente = ($cantVta !== 0 && $cantidad !== $cantVta);
+                        $keyOrden = (int)$r['orden'] . '_' . (int)$r['linea'];
+                        $pendOrden = $pendiente_por_orden[$keyOrden] ?? 0;
+                        $esCantDiferente = ($pendOrden > 0 && $cantVta > 0);
+                        $mostrarLinkOrden = !empty($mostrar_link_orden[$keyOrden]);
                         $clasesFila = ($i === 0 ? 'fila-seleccionada' : '') . ($esCantDiferente ? ' fila-cant-diferente' : '');
                         ?>
                         <tr class="<?= trim($clasesFila) ?>" data-id="<?= (int)$r['id'] ?>"
@@ -712,6 +776,8 @@ function fmtNum($n) {
                             data-linea="<?= (int)$r['linea'] ?>"
                             data-articulo="<?= htmlspecialchars($r['articulo'] ?? '') ?>"
                             data-orden="<?= (int)$r['orden'] ?>"
+                            data-linea="<?= (int)$r['linea'] ?>"
+                            data-orden-pendiente="<?= (int)($pendiente_por_orden[$keyOrden] ?? 0) ?>"
                             data-cantidad="<?= (int)$r['cantidad'] ?>"
                             data-deposito="<?= htmlspecialchars($r['deposito'] ?? '') ?>"
                             data-vendida-a-id="<?= (int)($r['vendida_a_id'] ?? 0) ?>"
@@ -732,7 +798,7 @@ function fmtNum($n) {
                             <td class="col-fecha"><?= htmlspecialchars(fmtFecha($r['fecha'])) ?></td>
                             <td class="col-l"><?= (int)$r['linea'] ?></td>
                             <td class="col-articulo"><?= htmlspecialchars($r['articulo']) ?></td>
-                            <td class="col-orden"><?= (int)$r['orden'] ?></td>
+                            <td class="col-orden"><?php if ($mostrarLinkOrden): ?><a href="#" class="link-orden" data-orden="<?= (int)$r['orden'] ?>" data-linea="<?= (int)$r['linea'] ?>" onclick="event.stopPropagation(); abrirModalMovimientosOrden(<?= (int)$r['orden'] ?>, <?= (int)$r['linea'] ?>); return false;" style="text-decoration:underline; color:inherit;"><?= (int)$r['orden'] ?></a><?php else: ?><?= (int)$r['orden'] ?><?php endif; ?></td>
                             <td class="col-cantidad"><?= (int)$r['cantidad'] ?></td>
                             <td class="col-deposito"><?= htmlspecialchars($r['deposito'] ?? '') ?></td>
                             <td class="col-operacion"><?= (int)($r['operacion'] ?? 0) ?: '' ?></td>
@@ -830,6 +896,7 @@ function fmtNum($n) {
                 <h3 id="modalVentaTitulo">Registrar venta (cuenta, no caja)</h3>
                 <form method="post" action="gestionar_azucares.php" id="formVenta">
                     <input type="hidden" name="guardar_venta_azucar" value="1">
+                    <input type="hidden" name="venta_adicional" id="venta_adicional" value="0">
                     <input type="hidden" name="stock_id" id="venta_stock_id" value="">
                     <input type="hidden" name="usuario_id" id="venta_usuario_id" value="">
                     <input type="hidden" name="operador_id" id="venta_operador_id" value="">
@@ -1009,6 +1076,34 @@ function fmtNum($n) {
             </div>
         </div>
 
+        <!-- Modal movimientos por orden -->
+        <div id="modalMovimientosOrden" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalMovimientosOrden()">
+            <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 90%; max-height: 90vh; overflow: auto;">
+                <h3 id="modalMovimientosOrdenTitulo">Movimientos de la orden N° <span id="modalOrdenNumero"></span></h3>
+                <div style="margin-bottom: 15px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #007bff; color: white;">
+                                <th class="al-cen" style="padding: 6px; border: 1px solid #0056b3;">Fecha</th>
+                                <th class="al-izq" style="padding: 6px; border: 1px solid #0056b3;">Concepto</th>
+                                <th class="al-cen" style="padding: 6px; border: 1px solid #0056b3;">Comprobante</th>
+                                <th class="al-cen" style="padding: 6px; border: 1px solid #0056b3;">Referencia</th>
+                                <th class="al-izq" style="padding: 6px; border: 1px solid #0056b3;">Usuario</th>
+                                <th class="al-der" style="padding: 6px; border: 1px solid #0056b3; width: 150px; min-width: 150px;">Monto</th>
+                                <th class="al-der" style="padding: 6px; border: 1px solid #0056b3; width: 150px; min-width: 150px;">Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaMovimientosOrden">
+                            <tr><td colspan="7" style="text-align:center; padding:30px; color:gray;">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="botones">
+                    <button type="button" class="btn-cerrar-venta" onclick="cerrarModalMovimientosOrden()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+
         <p class="volver">
             <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
         </p>
@@ -1128,16 +1223,24 @@ function fmtNum($n) {
         document.getElementById('venta_cantidad').textContent = tr.dataset.cantidad || '—';
         document.getElementById('venta_deposito').textContent = tr.dataset.deposito || '—';
         var cartelParcial = document.getElementById('venta_cartel_parcial');
+        var ventaAdicionalEl = document.getElementById('venta_adicional');
         var cantTotal = parseInt(tr.dataset.cantidad || 0, 10);
         var cantVendida = parseInt(tr.dataset.cantvta || 0, 10);
-        var restante = cantTotal - cantVendida;
-        if (!esEdicion && cantVendida > 0 && restante > 0) {
-            cartelParcial.textContent = 'Quedan ' + restante + ' unidades.';
+        var pendienteOrden = parseInt(tr.dataset.ordenPendiente || 0, 10);
+        var restante = (pendienteOrden > 0) ? pendienteOrden : (cantTotal - cantVendida);
+        var esVentaAdicional = !esEdicion && cantVendida > 0 && restante > 0;
+        if (ventaAdicionalEl) ventaAdicionalEl.value = esVentaAdicional ? '1' : '0';
+        var inpCantVendida = document.getElementById('venta_cant_vendida');
+        if (esVentaAdicional) {
+            cartelParcial.textContent = 'Venta adicional — Quedan ' + restante + ' unidades. Se grabará como nueva operación (mismo N° Orden).';
             cartelParcial.style.display = 'block';
-            document.getElementById('venta_cant_vendida').value = restante;
+            inpCantVendida.value = restante;
+            inpCantVendida.max = restante;
+            inpCantVendida.min = 1;
         } else {
             cartelParcial.style.display = 'none';
-            if (!esEdicion) document.getElementById('venta_cant_vendida').value = tr.dataset.cantidad || '1';
+            inpCantVendida.removeAttribute('max');
+            if (!esEdicion) inpCantVendida.value = tr.dataset.cantidad || '1';
         }
         if (esEdicion && tr.dataset.fechavta) {
             document.getElementById('modalVentaTitulo').textContent = 'Editar venta';
@@ -1161,15 +1264,15 @@ function fmtNum($n) {
             he.value = '1';
             form.insertBefore(he, form.firstChild);
         } else {
-            document.getElementById('modalVentaTitulo').textContent = 'Registrar venta (cuenta, no caja)';
+            document.getElementById('modalVentaTitulo').textContent = esVentaAdicional ? 'Venta adicional (mismo N° Orden)' : 'Registrar venta (cuenta, no caja)';
             document.getElementById('venta_btn_guardar').textContent = 'Guardar venta';
             document.getElementById('venta_fecha').value = '<?= date('Y-m-d') ?>';
             document.getElementById('venta_precio').value = '';
-            document.getElementById('venta_cant_vendida').value = (cantVendida > 0 && restante > 0) ? restante : (tr.dataset.cantidad || '1');
+            document.getElementById('venta_operacion').value = '';
+            document.getElementById('venta_operacion').placeholder = esVentaAdicional ? 'Auto (nueva op.)' : 'Auto';
             document.getElementById('venta_usuario_id').value = '';
             document.getElementById('venta_usuario_nombre').textContent = '—';
             document.getElementById('venta_buscar_usuario').value = '';
-            document.getElementById('venta_operacion').value = '';
             document.getElementById('venta_fecha_pago').value = '';
         }
         document.getElementById('modalVenta').classList.add('activo');
@@ -1673,6 +1776,35 @@ function fmtNum($n) {
         }
     }
 
+    function abrirModalMovimientosOrden(orden, linea) {
+        orden = parseInt(orden, 10) || 0;
+        linea = parseInt(linea, 10) || 1;
+        if (orden < 1) {
+            alert('Orden inválida.');
+            return;
+        }
+        document.getElementById('modalOrdenNumero').textContent = orden + (linea === 2 ? ' (Línea 2)' : '');
+        document.getElementById('modalMovimientosOrden').classList.add('activo');
+        var tbody = document.getElementById('tablaMovimientosOrden');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:gray;">Cargando...</td></tr>';
+        var url = 'obtener_movimientos_orden.php?orden=' + encodeURIComponent(orden) + '&linea=' + encodeURIComponent(linea);
+        fetch(url)
+            .then(function(response) {
+                if (!response.ok) throw new Error('Error al cargar movimientos');
+                return response.text();
+            })
+            .then(function(html) {
+                tbody.innerHTML = html;
+            })
+            .catch(function(error) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:red;">Error al cargar movimientos: ' + esc(error.message) + '</td></tr>';
+            });
+    }
+
+    function cerrarModalMovimientosOrden() {
+        document.getElementById('modalMovimientosOrden').classList.remove('activo');
+    }
+
     function abrirModalOperacionesOperador(operadorId, operadorNombre) {
         document.getElementById('modalOperadorNombre').textContent = operadorNombre || 'Operador';
         document.getElementById('modalOperacionesOperador').classList.add('activo');
@@ -1914,6 +2046,14 @@ function fmtNum($n) {
                         msgEl.textContent = 'Se cargaron ' + datos.length + ' registro(s) en la grilla.';
                         msgEl.className = 'msg-interpretar ok';
 
+                        var ordenLineaCount = {};
+                        datos.forEach(function(r) {
+                            var o = parseInt(r.orden, 10) || 0;
+                            var l = parseInt(r.linea, 10) || 1;
+                            var k = o + '_' + l;
+                            ordenLineaCount[k] = (ordenLineaCount[k] || 0) + 1;
+                        });
+
                         var tbody = document.querySelector('.tabla-azucar tbody');
                         tbody.innerHTML = '';
                         if (datos.length === 0) {
@@ -1923,11 +2063,21 @@ function fmtNum($n) {
                                 var tr = document.createElement('tr');
                                 tr.className = i === 0 ? 'fila-seleccionada' : '';
                                 var v = function(k, def) { return (r[k] != null && r[k] !== '') ? r[k] : (def || ''); };
+                                var ordenVal = parseInt(v('orden', '0'), 10) || 0;
+                                var lineaVal = parseInt(v('linea', '1'), 10) || 1;
+                                var cantVal = parseInt(v('cantidad', '0'), 10) || 0;
+                                var cantVtaVal = parseInt(v('cant_vta', '0'), 10) || 0;
+                                var parcial = cantVtaVal > 0 && cantVal !== cantVtaVal;
+                                var multiOp = (ordenLineaCount[ordenVal + '_' + lineaVal] || 0) > 1;
+                                var mostrarLinkOrd = parcial || multiOp;
+                                var tdOrden = mostrarLinkOrd
+                                    ? '<a href="#" class="link-orden" data-orden="' + ordenVal + '" data-linea="' + lineaVal + '" onclick="event.stopPropagation(); abrirModalMovimientosOrden(' + ordenVal + ', ' + lineaVal + '); return false;" style="text-decoration:underline; color:inherit;">' + ordenVal + '</a>'
+                                    : String(ordenVal);
                                 tr.innerHTML =
                                     '<td class="col-fecha">' + esc(v('fecha')) + '</td>' +
                                     '<td class="col-l">' + esc(v('linea', '0')) + '</td>' +
                                     '<td class="col-articulo">' + esc(v('articulo')) + '</td>' +
-                                    '<td class="col-orden">' + esc(v('orden', '0')) + '</td>' +
+                                    '<td class="col-orden">' + tdOrden + '</td>' +
                                     '<td class="col-cantidad">' + (parseInt(v('cantidad'), 10) || 0) + '</td>' +
                                     '<td class="col-deposito">' + esc(v('deposito')) + '</td>' +
                                     '<td class="col-operacion">' + (parseInt(v('operacion'), 10) || '') + '</td>' +
