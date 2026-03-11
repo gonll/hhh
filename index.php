@@ -33,40 +33,7 @@ if ($nivelAcceso === 0) {
 // Usuarios para modal Ant/cel (nivel 3): todos excepto CAJA (id 1)
 $usuarios_anticipo = [];
 $consorcios_lista = [];
-$tutorial_urls = array_fill(1, 10, '');
-$tutorial_titulos = [
-    1 => 'Usuarios - Alta, Baja y modificaciones',
-    2 => 'Propiedades y alquileres',
-    3 => '(Próximamente)', 4 => '(Próximamente)', 5 => '(Próximamente)', 6 => '(Próximamente)',
-    7 => '(Próximamente)', 8 => '(Próximamente)', 9 => '(Próximamente)', 10 => '(Próximamente)'
-];
-$carpetas_buscar = [
-    ['dir' => __DIR__ . '/videos/descargas', 'url' => 'videos/descargas'],
-    ['dir' => __DIR__ . '/videos/capturas', 'url' => 'videos/capturas'],
-    ['dir' => __DIR__ . '/../videos/capturas', 'url' => '../videos/capturas'],
-    ['dir' => __DIR__ . '/../videos/descargas', 'url' => '../videos/descargas']
-];
-foreach ($carpetas_buscar as $item) {
-    $carpeta_tutoriales = $item['dir'];
-    $url_base = $item['url'];
-    if (!is_dir($carpeta_tutoriales)) continue;
-    $exts = ['mp4', 'webm', 'avi', 'mov', 'mkv'];
-    foreach (scandir($carpeta_tutoriales) ?: [] as $f) {
-        if ($f === '.' || $f === '..') continue;
-        $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
-        if (!in_array($ext, $exts)) continue;
-        $asignado = false;
-        for ($n = 1; $n <= 10; $n++) {
-            if (preg_match('/tutorial_0?' . $n . '[\\._\-]/i', $f) || preg_match('/tutorial\s*' . $n . '[\s,\._\-]/i', $f)) {
-                if (empty($tutorial_urls[$n])) { $tutorial_urls[$n] = $url_base . '/' . rawurlencode($f); $asignado = true; }
-                break;
-            }
-        }
-        if (!$asignado && empty($tutorial_urls[1]) && (preg_match('/tutorial.*1.*(abm|usuario)/i', $f) || preg_match('/totorial.*1.*(abm|usuario)/i', $f) || (stripos($f, 'abm') !== false && stripos($f, 'usuario') !== false && stripos($f, '1') !== false))) {
-            $tutorial_urls[1] = $url_base . '/' . rawurlencode($f);
-        }
-    }
-}
+require_once __DIR__ . '/config_tutoriales.php';
 if ($nivelAcceso === 3) {
     $r_ant = mysqli_query($conexion, "SELECT id, apellido FROM usuarios WHERE id != 1 ORDER BY apellido ASC");
     if ($r_ant) {
@@ -2316,7 +2283,7 @@ function guardar() {
     function reproducirTutorial(el) {
         var url = el && el.getAttribute('data-video');
         if (!url) {
-            alert('No hay video disponible. Copiá el archivo "Tutorial 1, abm usuarios.mp4" en la carpeta videos/descargas/ del proyecto.');
+            alert('No hay video disponible. Agregá la URL en config_tutoriales.php');
             return false;
         }
         var wrap = document.getElementById('tutorialVideoWrap');
