@@ -313,7 +313,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $fila_html = '';
                         if ($r_nuevo) {
                             $fechaRaw = !empty($r_nuevo['fecha']) && $r_nuevo['fecha'] !== '0000-00-00' ? $r_nuevo['fecha'] : '';
-                            $fila_html = '<tr data-id="' . (int)$r_nuevo['id'] . '"'
+                            $cant_nuevo = (int)$r_nuevo['cantidad'];
+                            $cantvta_nuevo = (int)($r_nuevo['cant_vta'] ?? 0);
+                            $clase_cant_diff = ($cantvta_nuevo !== 0 && $cant_nuevo !== $cantvta_nuevo) ? 'fila-cant-diferente' : '';
+                            $fila_html = '<tr' . ($clase_cant_diff ? ' class="' . $clase_cant_diff . '"' : '') . ' data-id="' . (int)$r_nuevo['id'] . '"'
                                 . ' data-fecha="' . htmlspecialchars($fechaRaw, ENT_QUOTES) . '"'
                                 . ' data-linea="' . (int)$r_nuevo['linea'] . '"'
                                 . ' data-articulo="' . htmlspecialchars($r_nuevo['articulo'] ?? '', ENT_QUOTES) . '"'
@@ -512,6 +515,17 @@ function fmtNum($n) {
         .tabla-azucar .col-nfact, .tabla-azucar .col-nremt { width: 70px; }
         .tabla-azucar .sin-dato { color: #999; }
         .tabla-azucar .col-articulo, .tabla-azucar .col-deposito { text-transform: uppercase; }
+        /* Cantidad distinta de Cant Vta y Cant Vta #0: resaltar Articulo, Orden, Cantidad, Deposito, Op en rojo */
+        .tabla-azucar tbody tr.fila-cant-diferente .col-articulo,
+        .tabla-azucar tbody tr.fila-cant-diferente .col-orden,
+        .tabla-azucar tbody tr.fila-cant-diferente .col-cantidad,
+        .tabla-azucar tbody tr.fila-cant-diferente .col-deposito,
+        .tabla-azucar tbody tr.fila-cant-diferente .col-operacion { color: #dc3545 !important; }
+        .tabla-azucar tbody tr.fila-cant-diferente.fila-seleccionada .col-articulo,
+        .tabla-azucar tbody tr.fila-cant-diferente.fila-seleccionada .col-orden,
+        .tabla-azucar tbody tr.fila-cant-diferente.fila-seleccionada .col-cantidad,
+        .tabla-azucar tbody tr.fila-cant-diferente.fila-seleccionada .col-deposito,
+        .tabla-azucar tbody tr.fila-cant-diferente.fila-seleccionada .col-operacion { color: #ffb3b3 !important; }
         .caja-interpretar { margin-bottom: 15px; padding: 12px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; }
         .caja-interpretar label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px; }
         .caja-interpretar textarea { width: 100%; min-height: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box; resize: vertical; }
@@ -688,8 +702,12 @@ function fmtNum($n) {
                         <?php foreach ($filas_stock as $i => $r): ?>
                         <?php
                         $fechaRaw = !empty($r['fecha']) && $r['fecha'] !== '0000-00-00' ? $r['fecha'] : '';
+                        $cantidad = (int)$r['cantidad'];
+                        $cantVta = (int)($r['cant_vta'] ?? 0);
+                        $esCantDiferente = ($cantVta !== 0 && $cantidad !== $cantVta);
+                        $clasesFila = ($i === 0 ? 'fila-seleccionada' : '') . ($esCantDiferente ? ' fila-cant-diferente' : '');
                         ?>
-                        <tr class="<?= $i === 0 ? 'fila-seleccionada' : '' ?>" data-id="<?= (int)$r['id'] ?>"
+                        <tr class="<?= trim($clasesFila) ?>" data-id="<?= (int)$r['id'] ?>"
                             data-fecha="<?= htmlspecialchars($fechaRaw) ?>"
                             data-linea="<?= (int)$r['linea'] ?>"
                             data-articulo="<?= htmlspecialchars($r['articulo'] ?? '') ?>"
