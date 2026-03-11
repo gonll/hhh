@@ -44,23 +44,31 @@ $saldo = $suma_antes;
     <meta charset="UTF-8">
     <title>Movimientos - <?= htmlspecialchars($nombre) ?></title>
     <style>
-        @page { size: A4; margin: 12mm; }
-        body { font-family: 'Segoe UI', sans-serif; padding: 15px; font-size: 10px; margin: 0; }
-        h1 { font-size: 13px; margin: 0 0 6px; color: #333; }
-        .subtitulo { font-size: 9px; color: #666; margin-bottom: 8px; }
-        .contenido-impresion { page-break-inside: avoid; }
+        @page { size: A4; margin: 5mm; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 8px; font-size: 8px; }
+        h1 { font-size: 10px; margin: 0 0 2px; color: #333; line-height: 1.1; }
+        .subtitulo { font-size: 7px; color: #666; margin-bottom: 2px; line-height: 1.1; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #333; padding: 3px 5px; text-align: left; font-size: 10px; }
+        th, td { border: 1px solid #333; padding: 1px 3px; text-align: left; font-size: 7px; line-height: 1.1; }
         th { background: #007bff; color: white; font-weight: bold; }
         .al-cen { text-align: center; }
         .al-der { text-align: right; }
         .monto-pos { color: #28a745; }
         .monto-neg { color: #dc3545; }
-        .no-print { margin-top: 15px; }
+        .no-print { margin-top: 10px; }
         @media print {
+            @page { size: A4; margin: 5mm; }
+            html, body { margin: 0 !important; padding: 0 !important; }
             .no-print { display: none !important; }
-            body { padding: 0; }
-            .contenido-impresion { page-break-after: avoid; }
+            .contenido-impresion {
+                transform: scale(0.82);
+                transform-origin: top left;
+                width: 122%;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
         }
     </style>
 </head>
