@@ -8,7 +8,7 @@ if (!isset($_GET['id'], $_GET['limit'])) {
 
 $id = (int)$_GET['id'];
 $limit = (int)$_GET['limit'];
-if ($limit < 1) $limit = 10;
+if ($limit < 1) $limit = 20;
 if ($limit > 500) $limit = 500;
 
 $res_u = mysqli_query($conexion, "SELECT apellido FROM usuarios WHERE id = $id LIMIT 1");
@@ -44,21 +44,28 @@ $saldo = $suma_antes;
     <meta charset="UTF-8">
     <title>Movimientos - <?= htmlspecialchars($nombre) ?></title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 15px; font-size: 11px; }
-        h1 { font-size: 14px; margin: 0 0 10px; color: #333; }
-        .subtitulo { font-size: 10px; color: #666; margin-bottom: 12px; }
+        @page { size: A4; margin: 12mm; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 15px; font-size: 10px; margin: 0; }
+        h1 { font-size: 13px; margin: 0 0 6px; color: #333; }
+        .subtitulo { font-size: 9px; color: #666; margin-bottom: 8px; }
+        .contenido-impresion { page-break-inside: avoid; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #333; padding: 4px 6px; text-align: left; }
+        th, td { border: 1px solid #333; padding: 3px 5px; text-align: left; font-size: 10px; }
         th { background: #007bff; color: white; font-weight: bold; }
         .al-cen { text-align: center; }
         .al-der { text-align: right; }
         .monto-pos { color: #28a745; }
         .monto-neg { color: #dc3545; }
         .no-print { margin-top: 15px; }
-        @media print { .no-print { display: none !important; } }
+        @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; }
+            .contenido-impresion { page-break-after: avoid; }
+        }
     </style>
 </head>
 <body>
+<div class="contenido-impresion">
 <h1>DETALLE DE CUENTA - <?= htmlspecialchars(strtoupper($nombre)) ?></h1>
 <p class="subtitulo">Últimos <?= $limit ?> movimientos — Impreso: <?= date('d/m/Y H:i') ?></p>
 <table>
@@ -93,6 +100,7 @@ foreach ($filas as $m) {
 <?php if (count($filas) === 0): ?>
 <p style="padding:20px; text-align:center; color:gray;">No hay movimientos.</p>
 <?php endif; ?>
+</div>
 <div class="no-print">
     <button onclick="window.print()" style="background:#007bff; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold;">Imprimir</button>
     <a href="descargar_movimientos_excel.php?id=<?= (int)$id ?>" style="background:#28a745; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold; text-decoration:none; margin-left:8px; display:inline-block;">Descargar Excel</a>
