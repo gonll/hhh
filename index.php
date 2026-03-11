@@ -33,6 +33,40 @@ if ($nivelAcceso === 0) {
 // Usuarios para modal Ant/cel (nivel 3): todos excepto CAJA (id 1)
 $usuarios_anticipo = [];
 $consorcios_lista = [];
+$tutorial_urls = array_fill(1, 10, '');
+$tutorial_titulos = [
+    1 => 'Usuarios - Alta, Baja y modificaciones',
+    2 => 'Propiedades y alquileres',
+    3 => '(Próximamente)', 4 => '(Próximamente)', 5 => '(Próximamente)', 6 => '(Próximamente)',
+    7 => '(Próximamente)', 8 => '(Próximamente)', 9 => '(Próximamente)', 10 => '(Próximamente)'
+];
+$carpetas_buscar = [
+    ['dir' => __DIR__ . '/videos/descargas', 'url' => 'videos/descargas'],
+    ['dir' => __DIR__ . '/videos/capturas', 'url' => 'videos/capturas'],
+    ['dir' => __DIR__ . '/../videos/capturas', 'url' => '../videos/capturas'],
+    ['dir' => __DIR__ . '/../videos/descargas', 'url' => '../videos/descargas']
+];
+foreach ($carpetas_buscar as $item) {
+    $carpeta_tutoriales = $item['dir'];
+    $url_base = $item['url'];
+    if (!is_dir($carpeta_tutoriales)) continue;
+    $exts = ['mp4', 'webm', 'avi', 'mov', 'mkv'];
+    foreach (scandir($carpeta_tutoriales) ?: [] as $f) {
+        if ($f === '.' || $f === '..') continue;
+        $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
+        if (!in_array($ext, $exts)) continue;
+        $asignado = false;
+        for ($n = 1; $n <= 10; $n++) {
+            if (preg_match('/tutorial_0?' . $n . '[\\._\-]/i', $f) || preg_match('/tutorial\s*' . $n . '[\s,\._\-]/i', $f)) {
+                if (empty($tutorial_urls[$n])) { $tutorial_urls[$n] = $url_base . '/' . rawurlencode($f); $asignado = true; }
+                break;
+            }
+        }
+        if (!$asignado && empty($tutorial_urls[1]) && (preg_match('/tutorial.*1.*(abm|usuario)/i', $f) || preg_match('/totorial.*1.*(abm|usuario)/i', $f) || (stripos($f, 'abm') !== false && stripos($f, 'usuario') !== false && stripos($f, '1') !== false))) {
+            $tutorial_urls[1] = $url_base . '/' . rawurlencode($f);
+        }
+    }
+}
 if ($nivelAcceso === 3) {
     $r_ant = mysqli_query($conexion, "SELECT id, apellido FROM usuarios WHERE id != 1 ORDER BY apellido ASC");
     if ($r_ant) {
@@ -101,6 +135,8 @@ if ($nivelAcceso === 3) {
         .btn-contrato { background: #007bff; } 
         .btn-recibos-porteros { background: #6f42c1; }
         .btn-indice { background: #f39c12; }
+        .btn-tutoriales { background: #17a2b8; color: white !important; }
+        .link-tutorial:hover { background: #e7f3ff !important; border-color: #007bff !important; color: #007bff !important; }
         .btn-finca { background: #28a745; }
         .btn-arriendos { background: #0047AB; }
         .btn-cosecha { background: #6f42c1; }
@@ -300,9 +336,10 @@ if ($nivelAcceso === 3) {
                 <a href="propiedades.php" class="btn-abm-prop btn-admin-prop" style="flex: 1;">⚙️ Admin. Propiedades</a>
                 <a href="contrato_alquiler.php" class="btn-abm-prop btn-contrato" style="flex: 1;">📜 Contrato de Alquiler</a>
             </div>
-            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <a href="recibos_porteros.php" class="btn-abm-prop btn-recibos-porteros" style="flex: 1;">🪪 Recibos Porteros</a>
-                <a href="abm_indices.php" class="btn-abm-prop btn-indice" style="flex: 1;">📈 ABM INDICE IPC</a>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                <a href="recibos_porteros.php" class="btn-abm-prop btn-recibos-porteros" style="flex: 0 1 auto; min-width: 90px;">🪪 Recibos Porteros</a>
+                <a href="abm_indices.php" class="btn-abm-prop btn-indice" style="flex: 0 1 auto; min-width: 90px;">📈 ABM INDICE IPC</a>
+                <button type="button" class="btn-abm-prop btn-tutoriales" style="flex: 0 1 auto; min-width: 90px; border: none; cursor: pointer;" onclick="abrirModalTutoriales()">🎬 Tutoriales</button>
             </div>
         <?php endif; ?>
 
@@ -672,6 +709,30 @@ if ($nivelAcceso === 3) {
             </div>
             <div class="btns">
                 <button type="button" class="btn-cerrar" onclick="cerrarModalMovimientosOperacion()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tutoriales -->
+    <div id="modalTutoriales" class="modal-overlay" onclick="if(event.target===this) cerrarModalTutoriales()">
+        <div class="modal-cobro" onclick="event.stopPropagation()" style="max-width: 900px; width: 95%; max-height: 90vh; overflow: auto; display: flex; flex-direction: column;">
+            <div id="tutorialHeaderWrap">
+                <h3 style="margin: 0 0 15px 0; color: #007bff;">Tutoriales</h3>
+                <p style="margin: 0 0 10px 0;"><a href="#" onclick="cerrarModalTutoriales(); return false;" style="text-decoration: underline; color: #007bff;">← Volver al principal</a></p>
+                <p style="font-size: 11px; color: #666; margin-bottom: 12px;">Presione ESC para cerrar</p>
+            </div>
+            <div id="tutorialVideoWrap" style="display: none; margin-bottom: 15px; background: #000; border-radius: 4px; overflow: hidden; min-height: 360px;">
+                <video id="tutorialVideo" controls playsinline style="width: 100%; min-height: 360px; max-height: 85vh; object-fit: contain; display: block;" preload="auto"></video>
+                <p id="tutorialVideoAviso" style="display: none; margin: 8px; font-size: 11px; color: #ffc107;">Si escuchás audio pero no ves imagen, el video usa un codec no soportado por el navegador (ej. HEVC). Convertilo a H.264 con <a href="https://handbrake.fr/" target="_blank" rel="noopener">HandBrake</a> o VLC (Medio → Convertir/Guardar).</p>
+                <p style="margin: 8px; font-size: 11px;"><a href="#" id="tutorialAbrirEnlace" target="_blank" rel="noopener" style="color: #17a2b8;">Abrir video en nueva pestaña</a> &nbsp;|&nbsp; <a href="#" onclick="volverListaTutoriales(); return false;" style="color: #17a2b8;">← Volver a la lista</a> &nbsp;|&nbsp; <a href="#" onclick="cerrarModalTutoriales(); return false;" style="color: #17a2b8;">Cerrar</a></p>
+            </div>
+            <div id="tutorialListaWrap" style="display: flex; flex-direction: column; gap: 8px;">
+                <?php for ($i = 1; $i <= 10; $i++): $url = $tutorial_urls[$i] ?? ''; $tit = $tutorial_titulos[$i] ?? '(Próximamente)'; $estilo = 'display: block; padding: 10px 12px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; text-decoration: none; color: #333; font-weight: 500;'; ?>
+                <a href="#" class="link-tutorial" data-video="<?= htmlspecialchars($url) ?>" onclick="return reproducirTutorial(this);" style="<?= $estilo ?>"><?= $i ?>. <?= htmlspecialchars($tit) ?></a>
+                <?php endfor; ?>
+            </div>
+            <div id="tutorialBtnsWrap" class="btns" style="margin-top: 15px;">
+                <button type="button" class="btn-cerrar" onclick="cerrarModalTutoriales()">Cerrar</button>
             </div>
         </div>
     </div>
@@ -1837,6 +1898,11 @@ document.addEventListener('keydown', function(e) {
             cerrarModalAntCel();
             return;
         }
+        var modalTut = document.getElementById('modalTutoriales');
+        if (modalTut && modalTut.classList.contains('visible')) {
+            cerrarModalTutoriales();
+            return;
+        }
     }
     if (e.key !== 'Enter') return;
     const filaCarga = document.getElementById("filaCarga");
@@ -2231,6 +2297,63 @@ function guardar() {
     }
     function cerrarModalMovimientosOperacion() {
         document.getElementById('modalMovimientosOperacion').classList.remove('visible');
+    }
+    function abrirModalTutoriales() {
+        document.getElementById('modalTutoriales').classList.add('visible');
+        document.getElementById('tutorialVideoWrap').style.display = 'none';
+        var lista = document.getElementById('tutorialListaWrap');
+        if (lista) lista.style.display = 'flex';
+        var header = document.getElementById('tutorialHeaderWrap');
+        if (header) header.style.display = 'block';
+        var btns = document.getElementById('tutorialBtnsWrap');
+        if (btns) btns.style.display = 'block';
+    }
+    function cerrarModalTutoriales() {
+        var v = document.getElementById('tutorialVideo');
+        if (v) { v.pause(); v.src = ''; }
+        document.getElementById('modalTutoriales').classList.remove('visible');
+    }
+    function reproducirTutorial(el) {
+        var url = el && el.getAttribute('data-video');
+        if (!url) {
+            alert('No hay video disponible. Copiá el archivo "Tutorial 1, abm usuarios.mp4" en la carpeta videos/descargas/ del proyecto.');
+            return false;
+        }
+        var wrap = document.getElementById('tutorialVideoWrap');
+        var v = document.getElementById('tutorialVideo');
+        var aviso = document.getElementById('tutorialVideoAviso');
+        var abrirLink = document.getElementById('tutorialAbrirEnlace');
+        if (wrap && v) {
+            var lista = document.getElementById('tutorialListaWrap');
+            if (lista) lista.style.display = 'none';
+            var header = document.getElementById('tutorialHeaderWrap');
+            if (header) header.style.display = 'none';
+            var btns = document.getElementById('tutorialBtnsWrap');
+            if (btns) btns.style.display = 'none';
+            v.src = url;
+            wrap.style.display = 'block';
+            if (aviso) aviso.style.display = 'none';
+            if (abrirLink) { abrirLink.href = url; abrirLink.style.display = 'inline'; }
+            v.play().catch(function() {});
+            v.addEventListener('loadedmetadata', function checkVideo() {
+                v.removeEventListener('loadedmetadata', checkVideo);
+                if (v.videoWidth === 0 && v.duration > 0 && aviso) {
+                    aviso.style.display = 'block';
+                }
+            }, { once: true });
+        }
+        return false;
+    }
+    function volverListaTutoriales() {
+        var v = document.getElementById('tutorialVideo');
+        if (v) { v.pause(); v.src = ''; }
+        document.getElementById('tutorialVideoWrap').style.display = 'none';
+        var lista = document.getElementById('tutorialListaWrap');
+        if (lista) lista.style.display = 'flex';
+        var header = document.getElementById('tutorialHeaderWrap');
+        if (header) header.style.display = 'block';
+        var btns = document.getElementById('tutorialBtnsWrap');
+        if (btns) btns.style.display = 'block';
     }
     var divScroll = document.getElementById('scrollMovimientos');
     if (divScroll) {

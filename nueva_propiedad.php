@@ -41,6 +41,8 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
         .btn-detalle:hover { background: #138496; }
         .carga-rapida { margin-bottom: 6px; }
         .buscador-contenedor { position: relative; }
+        .buscador-contenedor input[type="text"] { padding-right: 36px; }
+        .buscador-contenedor .ico-lupa { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #6c757d; font-size: 1rem; }
         .sugerencias { position: absolute; width: 100%; background: white; border: 1px solid #ddd; z-index: 100; max-height: 120px; overflow-y: auto; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
         .sugerencia-item { padding: 6px; cursor: pointer; font-size: 11px; border-bottom: 1px solid #eee; text-transform: uppercase; }
         .sugerencia-item:hover { background: #e7f3ff; }
@@ -69,7 +71,10 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
 
         <div class="buscador-contenedor">
             <label>Propietario *</label>
-            <input type="text" id="bus_propietario" placeholder="BUSCAR USUARIO..." onkeyup="buscarPropietario(this.value)" autocomplete="off" value="<?= $ultimo_propietario_nombre ?>">
+            <div style="position: relative; display: block;">
+                <input type="text" id="bus_propietario" placeholder="Buscar y elegir propietario..." onkeyup="buscarPropietario(this.value)" onfocus="buscarPropietario(this.value)" autocomplete="off" value="<?= $ultimo_propietario_nombre ?>">
+                <span class="ico-lupa" aria-hidden="true" title="Buscar">🔍</span>
+            </div>
             <input type="hidden" name="propietario_id" id="propietario_id" value="<?= $ultimo_propietario_id ?>">
             <div id="sug_propietario" class="sugerencias"></div>
         </div>
