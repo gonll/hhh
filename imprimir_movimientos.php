@@ -8,7 +8,7 @@ if (!isset($_GET['id'], $_GET['limit'])) {
 
 $id = (int)$_GET['id'];
 $limit = (int)$_GET['limit'];
-if ($limit < 1) $limit = 20;
+if ($limit < 1) $limit = 10;
 if ($limit > 500) $limit = 500;
 
 $res_u = mysqli_query($conexion, "SELECT apellido FROM usuarios WHERE id = $id LIMIT 1");
@@ -44,36 +44,21 @@ $saldo = $suma_antes;
     <meta charset="UTF-8">
     <title>Movimientos - <?= htmlspecialchars($nombre) ?></title>
     <style>
-        @page { size: A4; margin: 5mm; }
-        * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 8px; font-size: 8px; }
-        h1 { font-size: 10px; margin: 0 0 2px; color: #333; line-height: 1.1; }
-        .subtitulo { font-size: 7px; color: #666; margin-bottom: 2px; line-height: 1.1; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 15px; font-size: 11px; }
+        h1 { font-size: 14px; margin: 0 0 10px; color: #333; }
+        .subtitulo { font-size: 10px; color: #666; margin-bottom: 12px; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #333; padding: 1px 3px; text-align: left; font-size: 7px; line-height: 1.1; }
+        th, td { border: 1px solid #333; padding: 4px 6px; text-align: left; }
         th { background: #007bff; color: white; font-weight: bold; }
         .al-cen { text-align: center; }
         .al-der { text-align: right; }
         .monto-pos { color: #28a745; }
         .monto-neg { color: #dc3545; }
-        .no-print { margin-top: 10px; }
-        @media print {
-            @page { size: A4; margin: 5mm; }
-            html, body { margin: 0 !important; padding: 0 !important; }
-            .no-print { display: none !important; }
-            .contenido-impresion {
-                transform: scale(0.82);
-                transform-origin: top left;
-                width: 122%;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-            }
-        }
+        .no-print { margin-top: 15px; }
+        @media print { .no-print { display: none !important; } }
     </style>
 </head>
 <body>
-<div class="contenido-impresion">
 <h1>DETALLE DE CUENTA - <?= htmlspecialchars(strtoupper($nombre)) ?></h1>
 <p class="subtitulo">Últimos <?= $limit ?> movimientos — Impreso: <?= date('d/m/Y H:i') ?></p>
 <table>
@@ -108,7 +93,6 @@ foreach ($filas as $m) {
 <?php if (count($filas) === 0): ?>
 <p style="padding:20px; text-align:center; color:gray;">No hay movimientos.</p>
 <?php endif; ?>
-</div>
 <div class="no-print">
     <button onclick="window.print()" style="background:#007bff; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold;">Imprimir</button>
     <a href="descargar_movimientos_excel.php?id=<?= (int)$id ?>" style="background:#28a745; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold; text-decoration:none; margin-left:8px; display:inline-block;">Descargar Excel</a>

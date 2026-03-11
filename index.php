@@ -1250,7 +1250,7 @@ function imprimirEstadoCuenta() {
         alert('Seleccioná un usuario primero.');
         return;
     }
-    window.open('imprimir_movimientos.php?id=' + uSel + '&limit=20', '_blank', 'width=900,height=700');
+    window.open('imprimir_movimientos.php?id=' + uSel + '&limit=15', '_blank', 'width=900,height=700');
 }
 
 function abrirModalAntCel() {
