@@ -339,7 +339,7 @@ if ($nivelAcceso === 3) {
         
         <div class="scroll-grid" id="divScroll">
             <table class="tabla-datos tabla-header">
-                <colgroup>
+                <colgroup id="colgroupHeader">
                     <col style="width:12%"><col style="width:36%"><col style="width:14%"><col style="width:10%"><col style="width:13%"><col style="width:13%"><col style="width:40px">
                 </colgroup>
                 <thead>
@@ -357,7 +357,7 @@ if ($nivelAcceso === 3) {
             <div class="scroll-movimientos" id="scrollMovimientos">
                 <div id="btnCargarAnteriores" style="display:none; padding:6px 12px; background:#e7f3ff; border-bottom:1px solid #007bff; text-align:center; cursor:pointer; font-size:11px; font-weight:bold; color:#007bff;" onclick="cargarMasAnteriores()">↑ Cargar más movimientos anteriores</div>
                 <table class="tabla-datos tabla-body">
-                <colgroup>
+                <colgroup id="colgroupBody">
                     <col style="width:12%"><col style="width:36%"><col style="width:14%"><col style="width:10%"><col style="width:13%"><col style="width:13%"><col style="width:40px">
                 </colgroup>
                     <tbody id="tablaMovimientos">
@@ -860,7 +860,8 @@ function cargarMovimientos(fila, id) {
     }
 
     movScrollData = { first_fecha: '', first_id: 0, last_fecha: '', last_id: 0, has_more_older: false, has_more_newer: false, loading: false };
-    fetch('obtener_movimientos.php?id=' + id)
+    var urlMov = 'obtener_movimientos.php?id=' + id;
+    fetch(urlMov)
         .then(r => r.json())
         .then(function(data) {
             document.getElementById("tablaMovimientos").innerHTML = data.html;
