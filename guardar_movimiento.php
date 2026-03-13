@@ -1,6 +1,7 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+include 'crear_tabla_arriendos.php';
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('HTTP/1.0 403 Forbidden');
     echo 'Sin permiso';
@@ -35,9 +36,18 @@ if (isset($_POST['id'])) {
     // Aseguramos que el monto sea un número decimal
     $monto      = (float)$_POST['monto'];
 
-    // 2. Insertar en la cuenta del usuario (como siempre)
+    // Arriendos: si el usuario es apoderado y el comprobante es PGO ARRIENDO, grabar en cuenta del propietario
+    $cuenta_usuario_id = $usuario_id;
+    if ($compro === 'PGO ARRIENDO' || (stripos($concepto, 'PAGO DE') !== false && stripos($concepto, 'PRECIO REF') !== false)) {
+        $r_apod = mysqli_query($conexion, "SELECT propietario_id FROM arriendos WHERE apoderado_id = $usuario_id ORDER BY id DESC LIMIT 1");
+        if ($r_apod && $row_apod = mysqli_fetch_assoc($r_apod)) {
+            $cuenta_usuario_id = (int)$row_apod['propietario_id'];
+        }
+    }
+
+    // 2. Insertar en la cuenta del usuario (propietario si es arriendo con apoderado)
     $sql = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-            VALUES ($usuario_id, '$fecha', '$concepto', '$compro', '$refer', $monto)";
+            VALUES ($cuenta_usuario_id, '$fecha', '$concepto', '$compro', '$refer', $monto)";
 
     if (!mysqli_query($conexion, $sql)) {
         echo "Error en SQL: " . mysqli_error($conexion);
@@ -48,8 +58,8 @@ if (isset($_POST['id'])) {
     $grabado_en_caja = false;
     $grabar_caja_param = isset($_POST['grabar_caja']) ? (int)$_POST['grabar_caja'] : -1;
     
-    if ($usuario_id != ID_CAJA) {
-        $res_usuario = mysqli_query($conexion, "SELECT apellido FROM usuarios WHERE id = $usuario_id LIMIT 1");
+    if ($cuenta_usuario_id != ID_CAJA) {
+        $res_usuario = mysqli_query($conexion, "SELECT apellido FROM usuarios WHERE id = $cuenta_usuario_id LIMIT 1");
         $row_usuario = mysqli_fetch_assoc($res_usuario);
         $nom_usuario = $row_usuario ? strtoupper($row_usuario['apellido']) : '';
         $es_consorcio = ($nom_usuario && stripos($nom_usuario, 'CONSORCIO') === 0);
@@ -68,6 +78,9 @@ if (isset($_POST['id'])) {
             // Lógica anterior (compatibilidad)
             $debe_grabar = (!$compro_es_sueldo && !$compro_es_transferencia && !$compro_es_anticipo && !$concepto_es_cobro && (!$es_consorcio || $compro_es_efvo_boleta));
         }
+        // Arriendos: ingreso y retiro NO impactan en caja
+        $es_arriendo = ($compro === 'PGO ARRIENDO' || $compro === 'PRECIO DE LA BOLSA' || $compro === 'PRECIO AZUCAR' || (stripos($concepto, 'PAGO') !== false && (stripos($concepto, 'ARRIENDO') !== false || stripos($concepto, 'PRECIO REF') !== false)));
+        if ($es_arriendo) $debe_grabar = false;
 
         if ($debe_grabar) {
             $concepto_caja = $nom_usuario ? ($nom_usuario . ' - ' . $concepto) : $concepto;
