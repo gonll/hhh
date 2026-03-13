@@ -159,8 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($mismo_comprador) {
                     if ($operacion_input !== '') {
                         $op_val = (int)$operacion_input;
-                        $existe = mysqli_fetch_row(mysqli_query($conexion, "SELECT 1 FROM stock WHERE operacion = $op_val AND id != $stock_id LIMIT 1"));
-                        $operacion = ($op_val > 0 && !$existe) ? $op_val : $old_operacion;
+                        $operacion = ($op_val > 0) ? $op_val : $old_operacion;
                     } else {
                         $operacion = $old_operacion > 0 ? $old_operacion : siguienteOperacion($conexion, $stock_id);
                     }
@@ -171,12 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $operacion = null;
                 if ($operacion_input !== '') {
                     $op_val = (int)$operacion_input;
-                    if ($op_val > 0) {
-                        $existe = mysqli_fetch_row(mysqli_query($conexion, "SELECT 1 FROM stock WHERE operacion = $op_val AND id != $stock_id LIMIT 1"));
-                        $operacion = $existe ? siguienteOperacion($conexion, $stock_id) : $op_val;
-                    } else {
-                        $operacion = siguienteOperacion($conexion, $stock_id);
-                    }
+                    $operacion = ($op_val > 0) ? $op_val : siguienteOperacion($conexion, $stock_id);
                 } else {
                     $operacion = siguienteOperacion($conexion, $stock_id);
                 }

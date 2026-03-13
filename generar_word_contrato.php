@@ -113,18 +113,19 @@ ob_start();
 <!--[if gte mso 9]>
 <xml>
 <w:WordDocument>
-<w:View>Print</w:View>
+<w:View>Normal</w:View>
 <w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
 </w:WordDocument>
 </xml>
 <![endif]-->
 <style>
 @page { size: 21cm 29.7cm; margin: 2cm; }
-body { font-family: Arial, sans-serif; font-size: 10pt; text-align: justify; line-height: 1.5; margin: 0; }
-p { margin: 0 0 12pt; }
-.clausula { font-weight: bold; text-transform: uppercase; }
-.titulo-contrato { text-align: center; font-weight: bold; font-size: 9pt; margin-bottom: 12pt; }
-.subtitulo-contrato { text-align: center; font-weight: bold; font-size: 9pt; margin-bottom: 24pt; }
+body, p, div { font-family: Arial, sans-serif; font-size: 10pt; text-align: justify; line-height: 1.5; margin: 0; }
+p { margin: 0 0 12pt; line-height: 1.5; }
+.clausula { font-weight: bold; text-transform: uppercase; line-height: 1.5; }
+.titulo-contrato { text-align: center; font-weight: bold; font-size: 9pt; margin-bottom: 12pt; line-height: 1.5; }
+.subtitulo-contrato { text-align: center; font-weight: bold; font-size: 9pt; margin-bottom: 24pt; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -185,8 +186,8 @@ if (is_dir($docs) && is_writable($docs)) {
     $guardado_ok = (file_put_contents($ruta_completa, "\xEF\xBB\xBF" . $html) !== false);
 }
 
-// Encabezados para descarga como Word
-header("Content-Type: application/vnd.ms-word; charset=UTF-8");
+// Encabezados para descarga directa como Word (permite guardar en formato Word)
+header("Content-Type: application/msword; charset=UTF-8");
 header("Content-Disposition: attachment; filename=\"" . $nombre_archivo . "\"");
 header("Pragma: no-cache");
 header("Expires: 0");

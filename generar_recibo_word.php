@@ -448,7 +448,8 @@ header("Content-Disposition: attachment; filename=\"Recibo_$nro_recibo.doc\"");
 </w:WordDocument>
 </xml>
 <style>
-    body {
+    @page { size: 14.8cm 21cm; margin: 1.5cm; }
+    body, p, div {
         font-family: Arial, sans-serif;
         font-size: 12pt;
         margin: 1cm;
@@ -479,6 +480,9 @@ header("Content-Disposition: attachment; filename=\"Recibo_$nro_recibo.doc\"");
     }
     .firma-container {
         margin-top: 18px;
+        line-height: 1.5;
+    }
+    table, td {
         line-height: 1.5;
     }
 </style>
