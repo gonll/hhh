@@ -34,7 +34,7 @@ while ($ar = mysqli_fetch_assoc($arriendos)) {
         $fecha_cobro = sprintf('%04d-%02d-%02d', $anio_actual, $parts['month'], $parts['day']);
 
         $kilos = (float)$datos['kilos'];
-        $concepto = "ARRIENDO FINCA - $finca - $kilos KILOS DTOS PACTADOS - IVA " . number_format($iva, 0) . "% - DTO " . number_format($dto, 0) . "%";
+        $concepto = "ARRIENDO FINCA - $finca - $kilos KILOS. DTOS PACTADOS - IVA " . number_format($iva, 0) . "% - DTO " . number_format($dto, 0) . "%";
         $concepto = mysqli_real_escape_string($conexion, strtoupper($concepto));
 
         /* No crear si ya existe (pendiente PRECIO AZUCAR o ya liquidado PRECIO DE LA BOLSA) */

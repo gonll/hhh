@@ -1756,7 +1756,7 @@ function seleccionarFila(el, movimientoId, fecha, concepto, compro, ref, monto) 
     }
     if (tipo === 'RETIRO' && esArrendadorUsuario && concepto) {
         document.getElementById("filaCarga").style.display = "table-footer-group";
-        var conceptoFormateado = (concepto || '').replace(/\bKILOS\b(?!\s*DTOS PACTADOS)/i, "KILOS DTOS PACTADOS: ");
+        var conceptoFormateado = (concepto || '').replace(/KILOS\s+DTOS PACTADOS/g, "KILOS. DTOS PACTADOS").replace(/\bKILOS\b(?!\.?\s*DTOS PACTADOS)/i, "KILOS. DTOS PACTADOS: ");
         var precioRef = (ref || '').trim();
         document.getElementById("ins_concepto").value = "Pago de : " + conceptoFormateado.trim() + " precio Ref $" + (precioRef || '');
         document.getElementById("ins_compro").value = "PGO ARRIENDO";
@@ -2094,7 +2094,7 @@ function preparar(t) {
     document.getElementById("ins_fecha").value = "";
     ponerFechaActual();
     if (t === 'RETIRO' && esArrendadorUsuario && movSel && movSel.concepto) {
-        var conceptoVal = (movSel.concepto || '').replace(/\bKILOS\b(?!\s*DTOS PACTADOS)/i, "KILOS DTOS PACTADOS: ").trim();
+        var conceptoVal = (movSel.concepto || '').replace(/KILOS\s+DTOS PACTADOS/g, "KILOS. DTOS PACTADOS").replace(/\bKILOS\b(?!\.?\s*DTOS PACTADOS)/i, "KILOS. DTOS PACTADOS: ").trim();
         var precioRef = (movSel.ref || '').trim();
         document.getElementById("ins_concepto").value = "Pago de : " + conceptoVal + " precio Ref $" + (precioRef || '');
         document.getElementById("ins_compro").value = "PGO ARRIENDO";

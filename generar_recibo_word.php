@@ -1,5 +1,6 @@
 <?php
 include 'db.php';
+include 'crear_tabla_cuentas_arriendo.php';
 include 'verificar_sesion.php';
 include 'helpers_contrato.php';
 
@@ -11,6 +12,7 @@ $movimiento_id = (int)$_GET['id'];
 
 // Obtener datos del movimiento
 $sql_mov = "SELECT c.movimiento_id, c.usuario_id, c.fecha, c.concepto, c.comprobante, c.referencia, c.monto,
+                   c.arriendo_id,
                    u.apellido AS usuario_nombre
             FROM cuentas c
             INNER JOIN usuarios u ON u.id = c.usuario_id
@@ -21,8 +23,46 @@ if (!$res_mov || mysqli_num_rows($res_mov) == 0) {
 }
 $mov = mysqli_fetch_assoc($res_mov);
 
-// Usuario inquilino (el que pagó)
-$usuario_inquilino = strtoupper(trim($mov['usuario_nombre']));
+// Quien pagó ("Recibí de"): en arriendos es el arrendatario; en alquileres/otros es el usuario de la cuenta
+$recibi_de = strtoupper(trim($mov['usuario_nombre']));
+$arriendo_id = isset($mov['arriendo_id']) ? (int)$mov['arriendo_id'] : 0;
+$comprobante = strtoupper(trim($mov['comprobante'] ?? ''));
+if ($arriendo_id > 0) {
+    $r_ar = mysqli_query($conexion, "SELECT ar.apellido AS arrendatario_nombre
+        FROM arriendos a
+        INNER JOIN usuarios ar ON ar.id = a.arrendatario_id
+        WHERE a.id = $arriendo_id LIMIT 1");
+    if ($r_ar && $row_ar = mysqli_fetch_assoc($r_ar)) {
+        $recibi_de = strtoupper(trim($row_ar['arrendatario_nombre']));
+    }
+} elseif ($comprobante === 'PGO ARRIENDO') {
+    // Movimiento sin arriendo_id: buscar arriendo por propietario y coincidencia en concepto
+    $usuario_id_tmp = (int)$mov['usuario_id'];
+    $concepto_buscar = strtoupper($mov['concepto'] ?? '');
+    $r_ar = mysqli_query($conexion, "SELECT a.id, a.descripcion_finca, a.padron, ar.apellido AS arrendatario_nombre
+        FROM arriendos a
+        INNER JOIN usuarios ar ON ar.id = a.arrendatario_id
+        WHERE a.propietario_id = $usuario_id_tmp");
+    $candidato = null;
+    $mejor_match = null;
+    while ($r_ar && $row_ar = mysqli_fetch_assoc($r_ar)) {
+        $txt = strtoupper(($row_ar['descripcion_finca'] ?? '') . ' ' . ($row_ar['padron'] ?? ''));
+        $coincidencias = 0;
+        if (preg_match_all('/\b(\d{2,}\.?\d*)\b/', $concepto_buscar, $m)) {
+            foreach ($m[1] as $num) { if (stripos($txt, $num) !== false) $coincidencias++; }
+        }
+        $palabras = preg_split('/[\s,]+/', $txt, -1, PREG_SPLIT_NO_EMPTY);
+        foreach ($palabras as $p) {
+            if (strlen($p) > 4 && stripos($concepto_buscar, $p) !== false) $coincidencias++;
+        }
+        if ($coincidencias > 0 && ($mejor_match === null || $coincidencias > ($mejor_match['n'] ?? 0))) {
+            $mejor_match = ['nombre' => $row_ar['arrendatario_nombre'], 'n' => $coincidencias];
+        }
+        if ($candidato === null) $candidato = $row_ar['arrendatario_nombre'];
+    }
+    if ($mejor_match) $recibi_de = strtoupper(trim($mejor_match['nombre']));
+    elseif ($candidato) $recibi_de = strtoupper(trim($candidato));
+}
 $usuario_id = (int)$mov['usuario_id'];
 $monto = abs((float)$mov['monto']);
 $concepto = strtoupper(trim($mov['concepto']));
@@ -130,7 +170,7 @@ header("Content-Disposition: attachment; filename=\"Recibo_$nro_recibo.doc\"");
     <div class="titulo">R&nbsp;E&nbsp;C&nbsp;I&nbsp;B&nbsp;O&nbsp;&nbsp;&nbsp;Nº&nbsp;<?= $nro_recibo ?></div>
     <p>&nbsp;</p>
     <div class="fecha"><?= $fecha_formateada ?></div>
-    <div class="texto">Recibí de <?= $usuario_inquilino ?> la cantidad de pesos <?= $monto_letras ?> . ($<?= $monto_numero ?>-) en concepto de <?= $concepto ?><?= $referencia !== '' ? ' — Período cobrado: ' . htmlspecialchars($referencia) : '' ?>.</div>
+    <div class="texto">Recibí de <?= $recibi_de ?> la cantidad de pesos <?= $monto_letras ?> . ($<?= $monto_numero ?>-) en concepto de <?= $concepto ?><?= $referencia !== '' ? ' — Período cobrado: ' . htmlspecialchars($referencia) : '' ?>.</div>
     <div class="son"><strong>Son:$<?= $monto_numero ?>-</strong></div>
     <div class="firma-container">
         <table style="width: 100%; border-collapse: collapse; border: 0;">
