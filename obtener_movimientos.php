@@ -29,6 +29,10 @@ if ($r_u && mysqli_num_rows($r_u) > 0) {
 $res_total = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id = $id");
 $total_cuenta = ($r = mysqli_fetch_assoc($res_total)) ? (float)$r['total'] : 0;
 
+$es_arrendador = false;
+$r_arrend = mysqli_query($conexion, "SELECT 1 FROM arriendos WHERE propietario_id = $id LIMIT 1");
+if ($r_arrend && mysqli_num_rows($r_arrend) > 0) $es_arrendador = true;
+
 $filas = [];
 $load_older = ($before_fecha !== '' && $before_id > 0);
 $load_newer = ($after_fecha !== '' && $after_id > 0);
@@ -164,6 +168,7 @@ if (count($filas) > 0) {
 header('Content-Type: application/json; charset=utf-8');
 echo json_encode([
     'html' => $html,
+    'es_arrendador' => $es_arrendador,
     'has_more_older' => $has_more_older,
     'has_more_newer' => $has_more_newer,
     'first_fecha' => $first_fecha,

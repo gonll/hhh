@@ -56,7 +56,7 @@ if ($iva != 0) {
     $precio_kilo = $precio_kilo / (1 + $iva / 100);
 }
 $precio_kilo = $precio_kilo * (1 - $dto / 100);
-$monto = -($precio_kilo * $kilos);
+$monto = $precio_kilo * $kilos;  /* Ingreso para el arrendador (propietario) */
 
 $comprobante = 'PRECIO DE LA BOLSA';
 $referencia = number_format($precio_bolsa, 2, ',', '.');

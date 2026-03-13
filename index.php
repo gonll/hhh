@@ -389,6 +389,7 @@ if ($nivelAcceso === 3) {
                             <select id="ins_compro" style="width:95%" onchange="actualizarCheckGrabarCaja(); avisarComprobanteCaja();">
                                 <option value="ALQUILER EFVO">ALQUILER EFVO</option>
                                 <option value="ALQUILER TRANSF">ALQUILER TRANSF</option>
+                                <option value="PGO ARRIENDO">PGO ARRIENDO</option>
                                 <option value="VARIOS">VARIOS</option>
                                 <option value="DEBITO AUTOMATICO">DEBITO AUTOMATICO</option>
                                 <option value="TARJETA">TARJETA</option>
@@ -710,6 +711,7 @@ let tipo = '';
 let movSel = null;
 let esConsorcioUsuario = false;
 let esPropietarioOInquilino = false;
+let esArrendadorUsuario = false;
 let movScrollData = null;
 let saldoActualCuenta = 0;
 
@@ -865,6 +867,7 @@ function cargarMovimientos(fila, id) {
         .then(r => r.json())
         .then(function(data) {
             document.getElementById("tablaMovimientos").innerHTML = data.html;
+            esArrendadorUsuario = !!data.es_arrendador;
             movScrollData.first_fecha = data.first_fecha || '';
             movScrollData.first_id = data.first_id || 0;
             movScrollData.last_fecha = data.last_fecha || '';
@@ -918,6 +921,7 @@ function cargarMovimientos(fila, id) {
         .catch(function() {
             document.getElementById("tablaMovimientos").innerHTML = "<tr><td colspan='7' style='text-align:center; padding:30px; color:red;'>Error al cargar movimientos</td></tr>";
             movScrollData = null;
+            esArrendadorUsuario = false;
             saldoActualCuenta = 0;
             actualizarSaldoCobroPanel();
             actualizarBtnCargarAnteriores();
@@ -1750,6 +1754,16 @@ function seleccionarFila(el, movimientoId, fecha, concepto, compro, ref, monto) 
         document.getElementById("ins_concepto").value = "Cobro de: " + concepto;
         ponerFechaActual();
     }
+    if (tipo === 'RETIRO' && esArrendadorUsuario && concepto) {
+        document.getElementById("filaCarga").style.display = "table-footer-group";
+        var conceptoFormateado = (concepto || '').replace(/\bKILOS\b(?!\s*DTOS PACTADOS)/i, "KILOS DTOS PACTADOS: ");
+        var precioRef = (ref || '').trim();
+        document.getElementById("ins_concepto").value = "Pago de : " + conceptoFormateado.trim() + " precio Ref $" + (precioRef || '');
+        document.getElementById("ins_compro").value = "PGO ARRIENDO";
+        document.getElementById("ins_refer").value = String(new Date().getFullYear());
+        actualizarCheckGrabarCaja();
+        ponerFechaActual();
+    }
 }
 
 function eliminarMovSeguro(movId) {
@@ -2079,8 +2093,13 @@ function preparar(t) {
     document.getElementById("filaCarga").style.display = "table-footer-group";
     document.getElementById("ins_fecha").value = "";
     ponerFechaActual();
-    // Si es INGRESO y hay un movimiento seleccionado de VENTA DE AZUCAR, llenar concepto con "COBRO VTA AZUCAR" y comprobante "CHEQUE/ECHEQ"
-    if (t === 'INGRESO' && movSel && movSel.concepto) {
+    if (t === 'RETIRO' && esArrendadorUsuario && movSel && movSel.concepto) {
+        var conceptoVal = (movSel.concepto || '').replace(/\bKILOS\b(?!\s*DTOS PACTADOS)/i, "KILOS DTOS PACTADOS: ").trim();
+        var precioRef = (movSel.ref || '').trim();
+        document.getElementById("ins_concepto").value = "Pago de : " + conceptoVal + " precio Ref $" + (precioRef || '');
+        document.getElementById("ins_compro").value = "PGO ARRIENDO";
+        document.getElementById("ins_refer").value = String(new Date().getFullYear());
+    } else if (t === 'INGRESO' && movSel && movSel.concepto) {
         var conceptoUpper = (movSel.concepto || '').toUpperCase();
         // Verificar si empieza con "VENTA DE AZUCAR" o "VENTA AZUCAR" (puede tener espacios o guiones)
         if (conceptoUpper.indexOf('VENTA DE AZUCAR') === 0 || conceptoUpper.indexOf('VENTA AZUCAR') === 0 || conceptoUpper.indexOf('VENTA DE AZÚCAR') === 0 || conceptoUpper.indexOf('VENTA AZÚCAR') === 0) {
@@ -2139,7 +2158,7 @@ function guardar() {
     }
     var compro = (document.getElementById("ins_compro").value || "").toUpperCase();
     var grabaEnCaja = (compro === "BOLETA" || compro === "EFVO" || compro === "ALQUILER EFVO" || compro === "VARIOS");
-    var grabarCaja = (uSel !== 1 && grabaEnCaja) ? 1 : 0;
+    var grabarCaja = (uSel !== 1 && grabaEnCaja && compro !== "PGO ARRIENDO") ? 1 : 0;  /* PGO ARRIENDO nunca graba en Caja */
     let p = new URLSearchParams({ 
         id: uSel, 
         fecha: fechaTextoAISO(), 
