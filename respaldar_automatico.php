@@ -51,6 +51,14 @@ function hacerRespaldoAutomatico() {
     exec($comando . " 2>&1", $salida, $codigo_error);
     
     if ($codigo_error === 0 && file_exists($ruta_completa) && filesize($ruta_completa) > 0) {
+        // Normalizar collations para importar en MariaDB/MySQL antiguo (evitar utf8mb4_0900_ai_ci)
+        $contenido = file_get_contents($ruta_completa);
+        $contenido = str_replace('utf8mb4_0900_ai_ci', 'utf8mb4_general_ci', $contenido);
+        $contenido = str_replace('utf8mb4_0900_as_cs', 'utf8mb4_general_ci', $contenido);
+        $contenido = str_replace('utf8mb3_0900_ai_ci', 'utf8_general_ci', $contenido);
+        $contenido = str_replace('utf8_0900_ai_ci', 'utf8_general_ci', $contenido);
+        file_put_contents($ruta_completa, $contenido);
+
         // Respaldar exitoso - guardar fecha del último respaldo
         file_put_contents($archivo_ultimo_respaldo, $fecha_hoy);
         

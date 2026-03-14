@@ -59,6 +59,14 @@ if ($code !== 0 || !is_readable($tmp)) {
     exit;
 }
 
+// Normalizar collations MySQL 8 -> compatibles con MariaDB/MySQL antiguo (evitar utf8mb4_0900_ai_ci)
+$contenido = file_get_contents($tmp);
+$contenido = str_replace('utf8mb4_0900_ai_ci', 'utf8mb4_general_ci', $contenido);
+$contenido = str_replace('utf8mb4_0900_as_cs', 'utf8mb4_general_ci', $contenido);
+$contenido = str_replace('utf8mb3_0900_ai_ci', 'utf8_general_ci', $contenido);
+$contenido = str_replace('utf8_0900_ai_ci', 'utf8_general_ci', $contenido);
+file_put_contents($tmp, $contenido);
+
 $nombre = 'respaldo_servidor_' . date('Y-m-d_H-i-s') . '.sql';
 header('Content-Type: application/sql; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $nombre . '"');

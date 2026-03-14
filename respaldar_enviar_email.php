@@ -36,6 +36,12 @@ function respaldarYEnviarPorEmail($conexion, $contexto = 'ingreso') {
     }
     $out .= "SET FOREIGN_KEY_CHECKS=1;\n";
 
+    // Normalizar collations MySQL 8 -> compatibles con MariaDB/MySQL antiguo
+    $out = str_replace('utf8mb4_0900_ai_ci', 'utf8mb4_general_ci', $out);
+    $out = str_replace('utf8mb4_0900_as_cs', 'utf8mb4_general_ci', $out);
+    $out = str_replace('utf8mb3_0900_ai_ci', 'utf8_general_ci', $out);
+    $out = str_replace('utf8_0900_ai_ci', 'utf8_general_ci', $out);
+
     $fecha = date('Y-m-d_H-i-s');
     $nombre_archivo = "respaldo_sistemahhh26_{$fecha}.sql";
     $es_windows = (DIRECTORY_SEPARATOR === '\\');

@@ -3,6 +3,24 @@ include 'verificar_sesion.php';
 include 'db.php';
 
 /**
+ * Reemplaza collations de MySQL 8 (utf8mb4_0900_ai_ci) por compatibles con MariaDB/MySQL antiguo.
+ */
+function normalizarCollationDump($ruta_archivo) {
+    if (!is_readable($ruta_archivo)) return false;
+    $contenido = file_get_contents($ruta_archivo);
+    $reemplazos = [
+        'utf8mb4_0900_ai_ci' => 'utf8mb4_general_ci',
+        'utf8mb4_0900_as_cs' => 'utf8mb4_general_ci',
+        'utf8mb3_0900_ai_ci' => 'utf8_general_ci',
+        'utf8_0900_ai_ci' => 'utf8_general_ci',
+    ];
+    foreach ($reemplazos as $orig => $dest) {
+        $contenido = str_replace($orig, $dest, $contenido);
+    }
+    return file_put_contents($ruta_archivo, $contenido) !== false;
+}
+
+/**
  * Respaldo de BD usando solo PHP/mysqli (sin mysqldump). Útil cuando mysqldump no está disponible.
  */
 function respaldoBDPorPHP($conn, $ruta_destino) {
@@ -114,6 +132,9 @@ if ($usar_php_directo) {
 }
 
 if (file_exists($ruta_completa) && filesize($ruta_completa) > 0) {
+    // Normalizar collations para importar en MariaDB/MySQL antiguo (evitar utf8mb4_0900_ai_ci)
+    normalizarCollationDump($ruta_completa);
+
     // Enviar respaldo por mail a hyllback@gmail.com
     require_once __DIR__ . '/smtp_enviar.php';
     $asunto_mail = 'Respaldo BD sistemahhh26 - ' . date('d/m/Y H:i');
