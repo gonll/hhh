@@ -56,8 +56,9 @@ header('Expires: 0');
 echo "\xEF\xBB\xBF";
 
 $sep = ';';
+$strUpper = function_exists('mb_strtoupper') ? function($s) { return mb_strtoupper((string)$s, 'UTF-8'); } : 'strtoupper';
 
-echo escaparCsv('DETALLE DE CUENTA - ' . strtoupper($nombre)) . "\n";
+echo escaparCsv('DETALLE DE CUENTA - ' . $strUpper($nombre)) . "\n";
 echo escaparCsv('Exportado: ' . date('d/m/Y H:i:s')) . "\n";
 echo "\n";
 
@@ -66,9 +67,9 @@ echo escaparCsv('FECHA') . $sep . escaparCsv('CONCEPTO') . $sep . escaparCsv('CO
 foreach ($filas as $m) {
     $saldo += $m['monto'];
     $fechaFormateada = date('d/m/Y', strtotime($m['fecha']));
-    $concepto = strtoupper($m['concepto'] ?? '');
-    $comprob = strtoupper($m['comprobante'] ?? '');
-    $ref = strtoupper($m['referencia'] ?? '');
+    $concepto = $strUpper($m['concepto'] ?? '');
+    $comprob = $strUpper($m['comprobante'] ?? '');
+    $ref = $strUpper($m['referencia'] ?? '');
     $montoStr = number_format($m['monto'], 2, ',', '.');
     $saldoStr = number_format($saldo, 2, ',', '.');
     echo escaparCsv($fechaFormateada) . $sep . escaparCsv($concepto) . $sep . escaparCsv($comprob) . $sep . escaparCsv($ref) . $sep . escaparCsv($montoStr) . $sep . escaparCsv($saldoStr) . "\n";

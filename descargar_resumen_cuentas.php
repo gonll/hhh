@@ -86,6 +86,7 @@ echo "\xEF\xBB\xBF";
 $sep = ';';
 
 function escaparCsv($texto) {
+    $texto = (string)$texto;
     $texto = str_replace('"', '""', $texto);
     if (strpos($texto, ';') !== false || strpos($texto, ',') !== false || strpos($texto, '"') !== false || strpos($texto, "\n") !== false) {
         return '"' . $texto . '"';

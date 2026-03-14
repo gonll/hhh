@@ -30,11 +30,12 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
     $nombre = 'cosecha_zafra_' . $anio_zafra . '.xls';
     header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $nombre . '"');
+    header('Cache-Control: no-cache, must-revalidate');
     echo "\xEF\xBB\xBF"; // UTF-8 BOM
     echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table border="1" style="border-collapse:collapse;">';
     echo '<tr style="background:#6f42c1;color:white;">';
     foreach (['Fecha', 'Hora', 'Tickets', 'Remito', 'Viaje', 'Camion', 'Finca', 'Variedad'] as $h) {
-        echo '<th style="text-align:center;padding:6px;">' . htmlspecialchars($h) . '</th>';
+        echo '<th style="text-align:center;padding:6px;">' . htmlspecialchars($h, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</th>';
     }
     echo '</tr>';
     if ($r_export) {
@@ -42,7 +43,7 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
             $hora = $row['hora'] ? substr($row['hora'], 0, 5) : '-';
             echo '<tr>';
             foreach ([$row['fecha'], $hora, $row['tickets'] ?? '-', $row['remito'] ?? '-', $row['viaje'] ?? '-', $row['camion'] ?? '-', $row['finca'] ?? '-', $row['variedad'] ?? '-'] as $cel) {
-                echo '<td style="text-align:center;padding:6px;">' . htmlspecialchars($cel) . '</td>';
+                echo '<td style="text-align:center;padding:6px;">' . htmlspecialchars((string)$cel, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</td>';
             }
             echo '</tr>';
         }
