@@ -41,12 +41,21 @@ $fecha = date('Y-m-d');
 $propiedades_a_cobrar = [];
 if ($consorcio_param !== '') {
     $consorcio_esc = mysqli_real_escape_string($conexion, $consorcio_param);
-    $res_props = mysqli_query($conexion, "SELECT DISTINCT p.propiedad_id, p.propiedad, p.consorcio, p.propietario_id
+    $upper_consorcio = mb_strtoupper(trim($consorcio_esc), 'UTF-8');
+    $sql_props = "SELECT DISTINCT p.propiedad_id, p.propiedad, p.consorcio, p.propietario_id
         FROM propiedades p
         LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
-        WHERE (p.propietario_id = $usuario_id OR a.inquilino1_id = $usuario_id OR a.inquilino2_id = $usuario_id)
-        AND UPPER(TRIM(COALESCE(p.consorcio,''))) = UPPER('$consorcio_esc')
-        ORDER BY p.propiedad ASC");
+        WHERE (p.propietario_id = ? OR a.inquilino1_id = ? OR a.inquilino2_id = ?)
+        AND UPPER(TRIM(COALESCE(p.consorcio,''))) = ?
+        ORDER BY p.propiedad ASC";
+    $stmt_props = mysqli_prepare($conexion, $sql_props);
+    if (!$stmt_props) {
+        echo "Error: No se pudieron obtener propiedades para este usuario en el consorcio.";
+        exit;
+    }
+    mysqli_stmt_bind_param($stmt_props, 'iiis', $usuario_id, $usuario_id, $usuario_id, $upper_consorcio);
+    mysqli_stmt_execute($stmt_props);
+    $res_props = mysqli_stmt_get_result($stmt_props);
     if (!$res_props || mysqli_num_rows($res_props) == 0) {
         echo "Error: No se encontraron propiedades para este usuario en el consorcio.";
         exit;
@@ -55,9 +64,15 @@ if ($consorcio_param !== '') {
         $propiedades_a_cobrar[] = $row;
     }
 } else {
-    $res_prop = mysqli_query($conexion, "SELECT propiedad_id, propiedad, consorcio, propietario_id FROM propiedades WHERE propiedad_id = $propiedad_id LIMIT 1");
-    if ($res_prop && $row = mysqli_fetch_assoc($res_prop)) {
-        $propiedades_a_cobrar[] = $row;
+    $stmt_prop = mysqli_prepare($conexion, "SELECT propiedad_id, propiedad, consorcio, propietario_id FROM propiedades WHERE propiedad_id = ? LIMIT 1");
+    if ($stmt_prop) {
+        mysqli_stmt_bind_param($stmt_prop, 'i', $propiedad_id);
+        mysqli_stmt_execute($stmt_prop);
+        $res_prop = mysqli_stmt_get_result($stmt_prop);
+        if ($res_prop && $row = mysqli_fetch_assoc($res_prop)) {
+            $propiedades_a_cobrar[] = $row;
+        }
+        mysqli_stmt_close($stmt_prop);
     }
 }
 if (empty($propiedades_a_cobrar)) {
@@ -66,8 +81,16 @@ if (empty($propiedades_a_cobrar)) {
 }
 
 // Obtener nombre del usuario
-$res_usu = mysqli_query($conexion, "SELECT apellido FROM usuarios WHERE id = $usuario_id LIMIT 1");
-$row_usu = mysqli_fetch_assoc($res_usu);
+$stmt_usu = mysqli_prepare($conexion, "SELECT apellido FROM usuarios WHERE id = ? LIMIT 1");
+if ($stmt_usu) {
+    mysqli_stmt_bind_param($stmt_usu, 'i', $usuario_id);
+    mysqli_stmt_execute($stmt_usu);
+    $res_usu = mysqli_stmt_get_result($stmt_usu);
+    $row_usu = mysqli_fetch_assoc($res_usu);
+    mysqli_stmt_close($stmt_usu);
+} else {
+    $row_usu = null;
+}
 $nombre_usu = $row_usu ? mysqli_real_escape_string($conexion, strtoupper($row_usu['apellido'])) : '';
 
 $grabar_caja = isset($_POST['efvo']) && ($_POST['efvo'] === '1' || $_POST['efvo'] === 'true');
@@ -87,52 +110,75 @@ if ($consorcio_param !== '') {
     $prop_consorcio = trim($row_primera['consorcio'] ?? '');
     $prop_consorcio_esc = mysqli_real_escape_string($conexion, $prop_consorcio);
 
-    $consorcio_id = null;
-    if ($prop_consorcio !== '') {
-        $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
-            WHERE UPPER(apellido) LIKE 'CONSORCIO%' 
-            AND UPPER(TRIM(COALESCE(consorcio,''))) = UPPER('$prop_consorcio_esc')
-            LIMIT 1");
-        if ($res_con && $row = mysqli_fetch_assoc($res_con)) {
-            $consorcio_id = (int)$row['id'];
-        }
+    // Cache simple por request de IDs de consorcio para evitar consultas repetidas
+    if (!isset($GLOBALS['HHH_CONSORCIO_ID_CACHE'])) {
+        $GLOBALS['HHH_CONSORCIO_ID_CACHE'] = [];
     }
+    $cacheKey = $prop_consorcio !== '' ? strtoupper(trim($prop_consorcio)) : '__DEFAULT__';
+    $consorcio_id = $GLOBALS['HHH_CONSORCIO_ID_CACHE'][$cacheKey] ?? null;
     if ($consorcio_id === null) {
-        $res_con = mysqli_query($conexion, "SELECT id FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
-        $row_con = mysqli_fetch_assoc($res_con);
-        if (!$row_con) {
-            echo "Error: No se encontró usuario Consorcio en el sistema.";
-            exit;
+        if ($prop_consorcio !== '') {
+            $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
+                WHERE UPPER(apellido) LIKE 'CONSORCIO%' 
+                AND UPPER(TRIM(COALESCE(consorcio,''))) = UPPER('$prop_consorcio_esc')
+                LIMIT 1");
+            if ($res_con && $row = mysqli_fetch_assoc($res_con)) {
+                $consorcio_id = (int)$row['id'];
+            }
         }
-        $consorcio_id = (int)$row_con['id'];
+        if ($consorcio_id === null) {
+            $res_con = mysqli_query($conexion, "SELECT id FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
+            $row_con = mysqli_fetch_assoc($res_con);
+            if (!$row_con) {
+                echo "Error: No se encontró usuario Consorcio en el sistema.";
+                exit;
+            }
+            $consorcio_id = (int)$row_con['id'];
+        }
+        $GLOBALS['HHH_CONSORCIO_ID_CACHE'][$cacheKey] = $consorcio_id;
     }
 
     $consorcio_nom = mysqli_real_escape_string($conexion, strtoupper($consorcio_param));
     $concepto_consorcio = mysqli_real_escape_string($conexion, "COBRO EXPENSA VARIAS PROPIEDADES Recibo N° $nro_recibo - PAGÓ $nombre_usu");
     $concepto_usu = mysqli_real_escape_string($conexion, "Pago expensas Recibo N° $nro_recibo - Consorcio $consorcio_nom");
 
-    $sql1 = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-             VALUES ($consorcio_id, '$fecha', '$concepto_consorcio', '$comprobante', '$refer_periodo', $monto)";
-    if (!mysqli_query($conexion, $sql1)) {
+    $stmt_cta = mysqli_prepare($conexion, "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+             VALUES (?, ?, ?, ?, ?, ?)");
+    if (!$stmt_cta) {
         echo "Error al grabar en Consorcio: " . mysqli_error($conexion);
         exit;
     }
-
-    $sql2 = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-             VALUES ($usuario_id, '$fecha', '$concepto_usu', '$comprobante', '$refer_periodo', $monto)";
-    if (!mysqli_query($conexion, $sql2)) {
-        echo "Error al grabar en usuario: " . mysqli_error($conexion);
+    mysqli_stmt_bind_param($stmt_cta, 'issssd', $consorcio_id, $fecha, $concepto_consorcio, $comprobante, $refer_periodo, $monto);
+    if (!mysqli_stmt_execute($stmt_cta)) {
+        echo "Error al grabar en Consorcio: " . mysqli_error($conexion);
+        mysqli_stmt_close($stmt_cta);
         exit;
     }
 
+    mysqli_stmt_bind_param($stmt_cta, 'issssd', $usuario_id, $fecha, $concepto_usu, $comprobante, $refer_periodo, $monto);
+    if (!mysqli_stmt_execute($stmt_cta)) {
+        echo "Error al grabar en usuario: " . mysqli_error($conexion);
+        mysqli_stmt_close($stmt_cta);
+        exit;
+    }
+    mysqli_stmt_close($stmt_cta);
+
     if ($grabar_caja) {
         $concepto_caja = mysqli_real_escape_string($conexion, "$nombre_usu - Pago expensas Recibo N° $nro_recibo");
-        $sql_caja = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-                     VALUES (" . ID_CAJA . ", '$fecha', '$concepto_caja', '$comprobante', '$refer_periodo', $monto)";
-        if (!mysqli_query($conexion, $sql_caja)) {
+        $stmt_caja = mysqli_prepare($conexion, "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+                     VALUES (?, ?, ?, ?, ?, ?)");
+        if (!$stmt_caja) {
             echo "Error al grabar en Caja: " . mysqli_error($conexion);
             exit;
         }
+        $id_caja = ID_CAJA;
+        mysqli_stmt_bind_param($stmt_caja, 'issssd', $id_caja, $fecha, $concepto_caja, $comprobante, $refer_periodo, $monto);
+        if (!mysqli_stmt_execute($stmt_caja)) {
+            echo "Error al grabar en Caja: " . mysqli_error($conexion);
+            mysqli_stmt_close($stmt_caja);
+            exit;
+        }
+        mysqli_stmt_close($stmt_caja);
     }
 } else {
     // Una sola propiedad: lógica original
@@ -143,67 +189,101 @@ if ($consorcio_param !== '') {
     $prop_consorcio_esc = mysqli_real_escape_string($conexion, $prop_consorcio);
     $propietario_id = (int)($row_prop['propietario_id'] ?? 0);
 
-    $consorcio_id = null;
-    if ($prop_consorcio !== '') {
-        $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
-            WHERE UPPER(apellido) LIKE 'CONSORCIO%' 
-            AND UPPER(TRIM(COALESCE(consorcio,''))) = UPPER('$prop_consorcio_esc')
-            LIMIT 1");
-        if ($res_con && $row = mysqli_fetch_assoc($res_con)) {
-            $consorcio_id = (int)$row['id'];
-        }
+    if (!isset($GLOBALS['HHH_CONSORCIO_ID_CACHE'])) {
+        $GLOBALS['HHH_CONSORCIO_ID_CACHE'] = [];
     }
+    $cacheKey = $prop_consorcio !== '' ? strtoupper(trim($prop_consorcio)) : '__DEFAULT__';
+    $consorcio_id = $GLOBALS['HHH_CONSORCIO_ID_CACHE'][$cacheKey] ?? null;
     if ($consorcio_id === null) {
-        $res_con = mysqli_query($conexion, "SELECT id FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
-        $row_con = mysqli_fetch_assoc($res_con);
-        if (!$row_con) {
-            echo "Error: No se encontró usuario Consorcio en el sistema.";
-            exit;
+        if ($prop_consorcio !== '') {
+            $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
+                WHERE UPPER(apellido) LIKE 'CONSORCIO%' 
+                AND UPPER(TRIM(COALESCE(consorcio,''))) = UPPER('$prop_consorcio_esc')
+                LIMIT 1");
+            if ($res_con && $row = mysqli_fetch_assoc($res_con)) {
+                $consorcio_id = (int)$row['id'];
+            }
         }
-        $consorcio_id = (int)$row_con['id'];
+        if ($consorcio_id === null) {
+            $res_con = mysqli_query($conexion, "SELECT id FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
+            $row_con = mysqli_fetch_assoc($res_con);
+            if (!$row_con) {
+                echo "Error: No se encontró usuario Consorcio en el sistema.";
+                exit;
+            }
+            $consorcio_id = (int)$row_con['id'];
+        }
+        $GLOBALS['HHH_CONSORCIO_ID_CACHE'][$cacheKey] = $consorcio_id;
     }
 
     $concepto_consorcio = mysqli_real_escape_string($conexion, "COBRO EXPENSA $nombre_prop $periodo - PAGÓ $nombre_usu");
     $concepto_usu = mysqli_real_escape_string($conexion, "EXPENSAS $nombre_prop");
 
-    $sql1 = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-             VALUES ($consorcio_id, '$fecha', '$concepto_consorcio', '$comprobante', '$refer_periodo', $monto)";
-    if (!mysqli_query($conexion, $sql1)) {
+    $stmt_cta2 = mysqli_prepare($conexion, "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+             VALUES (?, ?, ?, ?, ?, ?)");
+    if (!$stmt_cta2) {
         echo "Error al grabar en Consorcio: " . mysqli_error($conexion);
         exit;
     }
+    mysqli_stmt_bind_param($stmt_cta2, 'issssd', $consorcio_id, $fecha, $concepto_consorcio, $comprobante, $refer_periodo, $monto);
+    if (!mysqli_stmt_execute($stmt_cta2)) {
+        echo "Error al grabar en Consorcio: " . mysqli_error($conexion);
+        mysqli_stmt_close($stmt_cta2);
+        exit;
+    }
 
-    $sql2 = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-             VALUES ($usuario_id, '$fecha', '$concepto_usu', '$comprobante', '$refer_periodo', $monto)";
-    if (!mysqli_query($conexion, $sql2)) {
+    mysqli_stmt_bind_param($stmt_cta2, 'issssd', $usuario_id, $fecha, $concepto_usu, $comprobante, $refer_periodo, $monto);
+    if (!mysqli_stmt_execute($stmt_cta2)) {
         echo "Error al grabar en usuario: " . mysqli_error($conexion);
+        mysqli_stmt_close($stmt_cta2);
         exit;
     }
 
     $es_inquilino = false;
-    $res_inq = mysqli_query($conexion, "SELECT 1 FROM alquileres 
-        WHERE propiedad_id = $propiedad_id_act AND estado = 'VIGENTE' AND inquilino1_id = $usuario_id LIMIT 1");
-    if ($res_inq && mysqli_num_rows($res_inq) > 0) {
-        $es_inquilino = true;
+    $stmt_inq = mysqli_prepare($conexion, "SELECT 1 FROM alquileres 
+        WHERE propiedad_id = ? AND estado = 'VIGENTE' AND inquilino1_id = ? LIMIT 1");
+    if ($stmt_inq) {
+        mysqli_stmt_bind_param($stmt_inq, 'ii', $propiedad_id_act, $usuario_id);
+        mysqli_stmt_execute($stmt_inq);
+        $res_inq = mysqli_stmt_get_result($stmt_inq);
+        if ($res_inq && mysqli_num_rows($res_inq) > 0) {
+            $es_inquilino = true;
+        }
+        mysqli_stmt_close($stmt_inq);
     }
     if ($es_inquilino && $propietario_id > 0 && $propietario_id != $usuario_id) {
         $concepto_prop = mysqli_real_escape_string($conexion, "COBRO EXPENSA $nombre_prop $periodo - PAGÓ $nombre_usu");
-        $sql3 = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-                 VALUES ($propietario_id, '$fecha', '$concepto_prop', '$comprobante', '$refer_periodo', $monto)";
-        if (!mysqli_query($conexion, $sql3)) {
+        $stmt_prop_cta = mysqli_prepare($conexion, "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+                 VALUES (?, ?, ?, ?, ?, ?)");
+        if (!$stmt_prop_cta) {
             echo "Error al grabar en propietario: " . mysqli_error($conexion);
             exit;
         }
+        mysqli_stmt_bind_param($stmt_prop_cta, 'issssd', $propietario_id, $fecha, $concepto_prop, $comprobante, $refer_periodo, $monto);
+        if (!mysqli_stmt_execute($stmt_prop_cta)) {
+            echo "Error al grabar en propietario: " . mysqli_error($conexion);
+            mysqli_stmt_close($stmt_prop_cta);
+            exit;
+        }
+        mysqli_stmt_close($stmt_prop_cta);
     }
 
     if ($grabar_caja) {
         $concepto_caja = mysqli_real_escape_string($conexion, "$nombre_usu - COBRO EXPENSA $nombre_prop $periodo");
-        $sql_caja = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-                     VALUES (" . ID_CAJA . ", '$fecha', '$concepto_caja', '$comprobante', '$refer_periodo', $monto)";
-        if (!mysqli_query($conexion, $sql_caja)) {
+        $stmt_caja2 = mysqli_prepare($conexion, "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
+                     VALUES (?, ?, ?, ?, ?, ?)");
+        if (!$stmt_caja2) {
             echo "Error al grabar en Caja: " . mysqli_error($conexion);
             exit;
         }
+        $id_caja2 = ID_CAJA;
+        mysqli_stmt_bind_param($stmt_caja2, 'issssd', $id_caja2, $fecha, $concepto_caja, $comprobante, $refer_periodo, $monto);
+        if (!mysqli_stmt_execute($stmt_caja2)) {
+            echo "Error al grabar en Caja: " . mysqli_error($conexion);
+            mysqli_stmt_close($stmt_caja2);
+            exit;
+        }
+        mysqli_stmt_close($stmt_caja2);
     }
 }
 
