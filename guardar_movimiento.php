@@ -39,28 +39,47 @@ if (isset($_POST['id'])) {
     // Arriendos: si el usuario es apoderado y el comprobante es PGO ARRIENDO, grabar en cuenta del propietario
     $cuenta_usuario_id = $usuario_id;
     if ($compro === 'PGO ARRIENDO' || (stripos($concepto, 'PAGO DE') !== false && stripos($concepto, 'PRECIO REF') !== false)) {
-        $r_apod = mysqli_query($conexion, "SELECT propietario_id FROM arriendos WHERE apoderado_id = $usuario_id ORDER BY id DESC LIMIT 1");
-        if ($r_apod && $row_apod = mysqli_fetch_assoc($r_apod)) {
-            $cuenta_usuario_id = (int)$row_apod['propietario_id'];
+        $stmt_apod = mysqli_prepare($conexion, "SELECT propietario_id FROM arriendos WHERE apoderado_id = ? ORDER BY id DESC LIMIT 1");
+        if ($stmt_apod) {
+            mysqli_stmt_bind_param($stmt_apod, 'i', $usuario_id);
+            mysqli_stmt_execute($stmt_apod);
+            $r_apod = mysqli_stmt_get_result($stmt_apod);
+            if ($r_apod && $row_apod = mysqli_fetch_assoc($r_apod)) {
+                $cuenta_usuario_id = (int)$row_apod['propietario_id'];
+            }
+            mysqli_stmt_close($stmt_apod);
         }
     }
 
     // 2. Insertar en la cuenta del usuario (propietario si es arriendo con apoderado)
-    $sql = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-            VALUES ($cuenta_usuario_id, '$fecha', '$concepto', '$compro', '$refer', $monto)";
-
-    if (!mysqli_query($conexion, $sql)) {
+    $stmt_cta = mysqli_prepare($conexion, "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) VALUES (?, ?, ?, ?, ?, ?)");
+    if (!$stmt_cta) {
         echo "Error en SQL: " . mysqli_error($conexion);
         exit;
     }
+    mysqli_stmt_bind_param($stmt_cta, 'issssd', $cuenta_usuario_id, $fecha, $concepto, $compro, $refer, $monto);
+    if (!mysqli_stmt_execute($stmt_cta)) {
+        echo "Error en SQL: " . mysqli_error($conexion);
+        mysqli_stmt_close($stmt_cta);
+        exit;
+    }
+    mysqli_stmt_close($stmt_cta);
 
     // 3. Grabar en Caja: según checkbox "Grabar en Caja" (si se envía); si no, lógica anterior
     $grabado_en_caja = false;
     $grabar_caja_param = isset($_POST['grabar_caja']) ? (int)$_POST['grabar_caja'] : -1;
     
     if ($cuenta_usuario_id != ID_CAJA) {
-        $res_usuario = mysqli_query($conexion, "SELECT apellido FROM usuarios WHERE id = $cuenta_usuario_id LIMIT 1");
-        $row_usuario = mysqli_fetch_assoc($res_usuario);
+        $stmt_usuario = mysqli_prepare($conexion, "SELECT apellido FROM usuarios WHERE id = ? LIMIT 1");
+        if ($stmt_usuario) {
+            mysqli_stmt_bind_param($stmt_usuario, 'i', $cuenta_usuario_id);
+            mysqli_stmt_execute($stmt_usuario);
+            $res_usuario = mysqli_stmt_get_result($stmt_usuario);
+            $row_usuario = mysqli_fetch_assoc($res_usuario);
+            mysqli_stmt_close($stmt_usuario);
+        } else {
+            $row_usuario = null;
+        }
         $nom_usuario = $row_usuario ? strtoupper($row_usuario['apellido']) : '';
         $es_consorcio = ($nom_usuario && stripos($nom_usuario, 'CONSORCIO') === 0);
         $compro_es_efvo_boleta = ($compro === 'BOLETA' || $compro === 'EFVO');
@@ -85,12 +104,19 @@ if (isset($_POST['id'])) {
         if ($debe_grabar) {
             $concepto_caja = $nom_usuario ? ($nom_usuario . ' - ' . $concepto) : $concepto;
             $concepto_caja = mysqli_real_escape_string($conexion, $concepto_caja);
-            $sql_caja = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-                         VALUES (" . ID_CAJA . ", '$fecha', '$concepto_caja', '$compro', '$refer', $monto)";
-            if (!mysqli_query($conexion, $sql_caja)) {
+            $stmt_caja = mysqli_prepare($conexion, "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) VALUES (?, ?, ?, ?, ?, ?)");
+            if (!$stmt_caja) {
                 echo "Error al grabar en Caja: " . mysqli_error($conexion);
                 exit;
             }
+            $id_caja = ID_CAJA;
+            mysqli_stmt_bind_param($stmt_caja, 'issssd', $id_caja, $fecha, $concepto_caja, $compro, $refer, $monto);
+            if (!mysqli_stmt_execute($stmt_caja)) {
+                echo "Error al grabar en Caja: " . mysqli_error($conexion);
+                mysqli_stmt_close($stmt_caja);
+                exit;
+            }
+            mysqli_stmt_close($stmt_caja);
             $grabado_en_caja = true;
         }
     }

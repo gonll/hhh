@@ -32,8 +32,15 @@ if (strlen($usuario) > 80 || strlen($clave) > 255) {
     exit;
 }
 
-$usuario_esc = mysqli_real_escape_string($conexion, $usuario);
-$res = mysqli_query($conexion, "SELECT id, clave, nivel_acceso FROM accesos WHERE usuario = '$usuario_esc' LIMIT 1");
+$stmt = mysqli_prepare($conexion, "SELECT id, clave, nivel_acceso FROM accesos WHERE usuario = ? LIMIT 1");
+if (!$stmt) {
+    login_registrar_fallo();
+    header('Location: login.php?error=1');
+    exit;
+}
+mysqli_stmt_bind_param($stmt, 's', $usuario);
+mysqli_stmt_execute($stmt);
+$res = mysqli_stmt_get_result($stmt);
 
 if (!$res || mysqli_num_rows($res) === 0) {
     login_registrar_fallo();
@@ -42,6 +49,7 @@ if (!$res || mysqli_num_rows($res) === 0) {
 }
 
 $row = mysqli_fetch_assoc($res);
+mysqli_stmt_close($stmt);
 if (!password_verify($clave, $row['clave'])) {
     login_registrar_fallo();
     header('Location: login.php?error=1');
