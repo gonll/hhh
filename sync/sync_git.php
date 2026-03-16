@@ -46,4 +46,19 @@ if ($code !== 0) {
     exit;
 }
 
-echo json_encode(['ok' => true, 'output' => implode("\n", $output)]);
+// Aplicar correcciones de datos en la base (tras pull de código)
+$correcciones = [];
+$dbHost = $env['DB_HOST'] ?? 'localhost';
+$dbUser = $env['DB_USER'] ?? '';
+$dbPass = $env['DB_PASS'] ?? '';
+$dbName = $env['DB_NAME'] ?? '';
+$conn = @mysqli_connect($dbHost, $dbUser, $dbPass, $dbName);
+if ($conn) {
+    mysqli_set_charset($conn, 'utf8mb4');
+    require_once __DIR__ . '/correcciones_post_deploy.php';
+    $res = ejecutar_correcciones_deploy($conn);
+    $correcciones = $res['aplicadas'];
+    mysqli_close($conn);
+}
+
+echo json_encode(['ok' => true, 'output' => implode("\n", $output), 'correcciones' => $correcciones]);

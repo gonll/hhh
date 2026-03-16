@@ -84,5 +84,11 @@ if (mysqli_errno($conn)) {
     exit;
 }
 
+// Aplicar correcciones de datos tras importar el dump
+$correcciones = [];
+require_once __DIR__ . '/correcciones_post_deploy.php';
+$res = ejecutar_correcciones_deploy($conn);
+$correcciones = $res['aplicadas'];
+
 mysqli_close($conn);
-echo json_encode(['ok' => true]);
+echo json_encode(['ok' => true, 'correcciones' => $correcciones]);
