@@ -62,28 +62,83 @@ $k2 = $kilos_fecha_2 === 'NULL' ? 'NULL' : $kilos_fecha_2;
 
 if ($id > 0) {
     $sql = "UPDATE arriendos SET
-        propietario_id = $propietario_id,
-        apoderado_id = $apoderado_id,
-        arrendatario_id = $arrendatario_id,
-        padron = '$padron',
-        descripcion_finca = '$descripcion_finca',
-        fecha_cobro_1 = $f1,
-        fecha_cobro_2 = $f2,
-        kilos_fecha_1 = $k1,
-        kilos_fecha_2 = $k2,
-        iva_porcentaje = $iva_porcentaje,
-        paga_comunal = $paga_comunal,
-        paga_provincial = $paga_provincial,
-        porcentaje_otros = " . ($porcentaje_otros === 'NULL' ? 'NULL' : $porcentaje_otros) . ",
-        fecha_vencimiento_contrato = $fvenc
-        WHERE id = $id";
+        propietario_id = ?,
+        apoderado_id = ?,
+        arrendatario_id = ?,
+        padron = ?,
+        descripcion_finca = ?,
+        fecha_cobro_1 = ?,
+        fecha_cobro_2 = ?,
+        kilos_fecha_1 = ?,
+        kilos_fecha_2 = ?,
+        iva_porcentaje = ?,
+        paga_comunal = ?,
+        paga_provincial = ?,
+        porcentaje_otros = ?,
+        fecha_vencimiento_contrato = ?
+        WHERE id = ?";
+    $stmt = mysqli_prepare($conexion, $sql);
+    if ($stmt) {
+        $f1_param = ($fecha_cobro_1 === 'NULL') ? null : $fecha_cobro_1;
+        $f2_param = ($fecha_cobro_2 === 'NULL') ? null : $fecha_cobro_2;
+        $fv_param = ($fecha_vencimiento_contrato === 'NULL') ? null : $fecha_vencimiento_contrato;
+        $k1_param = ($kilos_fecha_1 === 'NULL') ? null : (int)$kilos_fecha_1;
+        $k2_param = ($kilos_fecha_2 === 'NULL') ? null : (int)$kilos_fecha_2;
+        $pct_param = ($porcentaje_otros === 'NULL') ? null : (float)$porcentaje_otros;
+        mysqli_stmt_bind_param(
+            $stmt,
+            'iiisssiiidididi',
+            $propietario_id,
+            $apoderado_id,
+            $arrendatario_id,
+            $padron,
+            $descripcion_finca,
+            $f1_param,
+            $f2_param,
+            $k1_param,
+            $k2_param,
+            $iva_porcentaje,
+            $paga_comunal,
+            $paga_provincial,
+            $pct_param,
+            $fv_param,
+            $id
+        );
+    }
 } else {
-    $pct_otros = $porcentaje_otros === 'NULL' ? 'NULL' : $porcentaje_otros;
     $sql = "INSERT INTO arriendos (propietario_id, apoderado_id, arrendatario_id, padron, descripcion_finca, fecha_cobro_1, fecha_cobro_2, kilos_fecha_1, kilos_fecha_2, iva_porcentaje, paga_comunal, paga_provincial, porcentaje_otros, fecha_vencimiento_contrato)
-        VALUES ($propietario_id, $apoderado_id, $arrendatario_id, '$padron', '$descripcion_finca', $f1, $f2, $k1, $k2, $iva_porcentaje, $paga_comunal, $paga_provincial, $pct_otros, $fvenc)";
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt = mysqli_prepare($conexion, $sql);
+    if ($stmt) {
+        $f1_param = ($fecha_cobro_1 === 'NULL') ? null : $fecha_cobro_1;
+        $f2_param = ($fecha_cobro_2 === 'NULL') ? null : $fecha_cobro_2;
+        $fv_param = ($fecha_vencimiento_contrato === 'NULL') ? null : $fecha_vencimiento_contrato;
+        $k1_param = ($kilos_fecha_1 === 'NULL') ? null : (int)$kilos_fecha_1;
+        $k2_param = ($kilos_fecha_2 === 'NULL') ? null : (int)$kilos_fecha_2;
+        $pct_param = ($porcentaje_otros === 'NULL') ? null : (float)$porcentaje_otros;
+        mysqli_stmt_bind_param(
+            $stmt,
+            'iiisssiiididid',
+            $propietario_id,
+            $apoderado_id,
+            $arrendatario_id,
+            $padron,
+            $descripcion_finca,
+            $f1_param,
+            $f2_param,
+            $k1_param,
+            $k2_param,
+            $iva_porcentaje,
+            $paga_comunal,
+            $paga_provincial,
+            $pct_param,
+            $fv_param
+        );
+    }
 }
 
-if (mysqli_query($conexion, $sql)) {
+if ($stmt && mysqli_stmt_execute($stmt)) {
+    mysqli_stmt_close($stmt);
     header('Location: arriendos.php');
     exit;
 } else {
