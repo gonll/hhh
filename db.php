@@ -1,5 +1,11 @@
 <?php
-$env = parse_ini_file(__DIR__ . '/.env');
+// Cache simple en proceso para evitar parsear .env múltiples veces por request
+if (!isset($GLOBALS['HHH_ENV_CACHE']) || !is_array($GLOBALS['HHH_ENV_CACHE'])) {
+    $env = @parse_ini_file(__DIR__ . '/.env') ?: [];
+    $GLOBALS['HHH_ENV_CACHE'] = $env;
+} else {
+    $env = $GLOBALS['HHH_ENV_CACHE'];
+}
 
 if (!defined('ENVIRONMENT')) {
     define('ENVIRONMENT', $env['ENVIRONMENT'] ?? 'production');

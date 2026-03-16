@@ -112,10 +112,17 @@ if ($liq_ordinarias !== null && $liq_extraordinarias !== null) {
 $cond_consorcio = $nombre_consorcio === ''
     ? "AND (p.consorcio IS NULL OR TRIM(p.consorcio) = '')"
     : "AND UPPER(TRIM(p.consorcio)) = UPPER('$consorcio_esc')";
-$sql_prop = "SELECT p.propiedad_id, p.propietario_id, p.porcentaje, p.propiedad,
-                    u.apellido AS propietario_nombre
+$sql_prop = "SELECT 
+                p.propiedad_id,
+                p.propietario_id,
+                p.porcentaje,
+                p.propiedad,
+                u.apellido AS propietario_nombre,
+                inq.apellido AS inquilino_nombre
              FROM propiedades p
              INNER JOIN usuarios u ON u.id = p.propietario_id
+             LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
+             LEFT JOIN usuarios inq ON inq.id = a.inquilino1_id
              WHERE p.porcentaje IS NOT NULL AND p.porcentaje > 0 $cond_consorcio
              ORDER BY p.propiedad ASC";
 $res_prop = mysqli_query($conexion, $sql_prop);
@@ -126,16 +133,11 @@ while ($prop = mysqli_fetch_assoc($res_prop)) {
     $propietario_id = (int)$prop['propietario_id'];
     $porcentaje = (float)$prop['porcentaje'];
     $monto_expensa = round($total_expensas * ($porcentaje / 100), 2);
-    
-    // Obtener inquilino si existe
+
+    // Obtener inquilino si existe (ya viene en la consulta principal)
     $inquilino_nombre = '';
-    $res_inq = mysqli_query($conexion, "SELECT u.apellido 
-                                        FROM alquileres a
-                                        INNER JOIN usuarios u ON u.id = a.inquilino1_id
-                                        WHERE a.propiedad_id = $propiedad_id AND a.estado = 'VIGENTE' 
-                                        LIMIT 1");
-    if ($res_inq && $row_inq = mysqli_fetch_assoc($res_inq)) {
-        $inquilino_nombre = strtoupper(trim($row_inq['apellido']));
+    if (!empty($prop['inquilino_nombre'])) {
+        $inquilino_nombre = strtoupper(trim($prop['inquilino_nombre']));
     }
     
     $expensas[] = [

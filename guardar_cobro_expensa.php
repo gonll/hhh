@@ -87,24 +87,32 @@ if ($consorcio_param !== '') {
     $prop_consorcio = trim($row_primera['consorcio'] ?? '');
     $prop_consorcio_esc = mysqli_real_escape_string($conexion, $prop_consorcio);
 
-    $consorcio_id = null;
-    if ($prop_consorcio !== '') {
-        $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
-            WHERE UPPER(apellido) LIKE 'CONSORCIO%' 
-            AND UPPER(TRIM(COALESCE(consorcio,''))) = UPPER('$prop_consorcio_esc')
-            LIMIT 1");
-        if ($res_con && $row = mysqli_fetch_assoc($res_con)) {
-            $consorcio_id = (int)$row['id'];
-        }
+    // Cache simple por request de IDs de consorcio para evitar consultas repetidas
+    if (!isset($GLOBALS['HHH_CONSORCIO_ID_CACHE'])) {
+        $GLOBALS['HHH_CONSORCIO_ID_CACHE'] = [];
     }
+    $cacheKey = $prop_consorcio !== '' ? strtoupper(trim($prop_consorcio)) : '__DEFAULT__';
+    $consorcio_id = $GLOBALS['HHH_CONSORCIO_ID_CACHE'][$cacheKey] ?? null;
     if ($consorcio_id === null) {
-        $res_con = mysqli_query($conexion, "SELECT id FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
-        $row_con = mysqli_fetch_assoc($res_con);
-        if (!$row_con) {
-            echo "Error: No se encontró usuario Consorcio en el sistema.";
-            exit;
+        if ($prop_consorcio !== '') {
+            $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
+                WHERE UPPER(apellido) LIKE 'CONSORCIO%' 
+                AND UPPER(TRIM(COALESCE(consorcio,''))) = UPPER('$prop_consorcio_esc')
+                LIMIT 1");
+            if ($res_con && $row = mysqli_fetch_assoc($res_con)) {
+                $consorcio_id = (int)$row['id'];
+            }
         }
-        $consorcio_id = (int)$row_con['id'];
+        if ($consorcio_id === null) {
+            $res_con = mysqli_query($conexion, "SELECT id FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
+            $row_con = mysqli_fetch_assoc($res_con);
+            if (!$row_con) {
+                echo "Error: No se encontró usuario Consorcio en el sistema.";
+                exit;
+            }
+            $consorcio_id = (int)$row_con['id'];
+        }
+        $GLOBALS['HHH_CONSORCIO_ID_CACHE'][$cacheKey] = $consorcio_id;
     }
 
     $consorcio_nom = mysqli_real_escape_string($conexion, strtoupper($consorcio_param));
@@ -143,24 +151,31 @@ if ($consorcio_param !== '') {
     $prop_consorcio_esc = mysqli_real_escape_string($conexion, $prop_consorcio);
     $propietario_id = (int)($row_prop['propietario_id'] ?? 0);
 
-    $consorcio_id = null;
-    if ($prop_consorcio !== '') {
-        $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
-            WHERE UPPER(apellido) LIKE 'CONSORCIO%' 
-            AND UPPER(TRIM(COALESCE(consorcio,''))) = UPPER('$prop_consorcio_esc')
-            LIMIT 1");
-        if ($res_con && $row = mysqli_fetch_assoc($res_con)) {
-            $consorcio_id = (int)$row['id'];
-        }
+    if (!isset($GLOBALS['HHH_CONSORCIO_ID_CACHE'])) {
+        $GLOBALS['HHH_CONSORCIO_ID_CACHE'] = [];
     }
+    $cacheKey = $prop_consorcio !== '' ? strtoupper(trim($prop_consorcio)) : '__DEFAULT__';
+    $consorcio_id = $GLOBALS['HHH_CONSORCIO_ID_CACHE'][$cacheKey] ?? null;
     if ($consorcio_id === null) {
-        $res_con = mysqli_query($conexion, "SELECT id FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
-        $row_con = mysqli_fetch_assoc($res_con);
-        if (!$row_con) {
-            echo "Error: No se encontró usuario Consorcio en el sistema.";
-            exit;
+        if ($prop_consorcio !== '') {
+            $res_con = mysqli_query($conexion, "SELECT id FROM usuarios 
+                WHERE UPPER(apellido) LIKE 'CONSORCIO%' 
+                AND UPPER(TRIM(COALESCE(consorcio,''))) = UPPER('$prop_consorcio_esc')
+                LIMIT 1");
+            if ($res_con && $row = mysqli_fetch_assoc($res_con)) {
+                $consorcio_id = (int)$row['id'];
+            }
         }
-        $consorcio_id = (int)$row_con['id'];
+        if ($consorcio_id === null) {
+            $res_con = mysqli_query($conexion, "SELECT id FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' LIMIT 1");
+            $row_con = mysqli_fetch_assoc($res_con);
+            if (!$row_con) {
+                echo "Error: No se encontró usuario Consorcio en el sistema.";
+                exit;
+            }
+            $consorcio_id = (int)$row_con['id'];
+        }
+        $GLOBALS['HHH_CONSORCIO_ID_CACHE'][$cacheKey] = $consorcio_id;
     }
 
     $concepto_consorcio = mysqli_real_escape_string($conexion, "COBRO EXPENSA $nombre_prop $periodo - PAGÓ $nombre_usu");

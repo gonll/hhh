@@ -64,11 +64,26 @@ $_SESSION['acceso_id']     = (int)$row['id'];
 $_SESSION['acceso_usuario'] = $usuario;
 $_SESSION['acceso_nivel']   = (int)$row['nivel_acceso'];
 
-// Respaldo y envío por correo al ingresar (nivel 1 a 3)
+// Respaldo y envío por correo al ingresar (nivel 1 a 3), con guarda de frecuencia
 $nivel = (int)$row['nivel_acceso'];
 if ($nivel >= 1 && $nivel <= 3) {
-    require_once __DIR__ . '/respaldar_enviar_email.php';
-    @respaldarYEnviarPorEmail($conexion);
+    // Solo generar respaldo si pasó suficiente tiempo desde el último
+    $minutos_entre_respaldos = 240; // 4 horas
+    $archivo_marca = __DIR__ . DIRECTORY_SEPARATOR . 'ultimo_respaldo_login.txt';
+    $ahora = time();
+    $debe_respaldar = true;
+    if (is_file($archivo_marca)) {
+        $ts_ultimo = (int)@file_get_contents($archivo_marca);
+        if ($ts_ultimo > 0 && ($ahora - $ts_ultimo) < ($minutos_entre_respaldos * 60)) {
+            $debe_respaldar = false;
+        }
+    }
+    if ($debe_respaldar) {
+        require_once __DIR__ . '/respaldar_enviar_email.php';
+        if (@respaldarYEnviarPorEmail($conexion)) {
+            @file_put_contents($archivo_marca, (string)$ahora);
+        }
+    }
 }
 
 // Nivel 0 con usuario zafra → ir directo a Cosecha
