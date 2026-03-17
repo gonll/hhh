@@ -412,7 +412,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 . '<td class="col-facturada ' . (empty($r_nuevo['facturada_a_apellido']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['facturada_a_apellido'] ?? '') . '</td>'
                                 . '<td class="col-preciofac">' . fmtNum($r_nuevo['precio_fac']) . '</td>'
                                 . '<td class="col-nfact ' . (empty($r_nuevo['n_fact']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['n_fact'] ?? '') . '</td>'
-                                . '<td class="col-nremt ' . (empty($r_nuevo['n_remt']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['n_remt'] ?? '') . '</td>'
+                                . '<td class="col-nremt ' . (empty($r_nuevo['n_remt']) ? 'sin-dato' : '') . '">'
+                                . (($r_nuevo['n_remt'] ?? '') !== ''
+                                    ? '<a href="imprimir_remito.php?id=' . (int)$r_nuevo['id'] . '" target="_blank" class="link-remito" onclick="event.stopPropagation();" style="color:#0066cc;text-decoration:underline;">' . htmlspecialchars($r_nuevo['n_remt'] ?? '') . '</a>'
+                                    : htmlspecialchars($r_nuevo['n_remt'] ?? ''))
+                                . '</td>'
                                 . '</tr>';
                         }
                         header('Content-Type: application/json; charset=utf-8');
@@ -568,6 +572,10 @@ function fmtNum($n) {
         .tabla-azucar tbody tr.fila-seleccionada .col-operador .link-operador:hover { color: #e7f3ff; }
         .tabla-azucar .col-preciovta, .tabla-azucar .col-preciofac { width: 75px; }
         .tabla-azucar .col-nfact, .tabla-azucar .col-nremt { width: 70px; }
+        .tabla-azucar .col-nremt .link-remito { color: #0066cc !important; text-decoration: underline !important; cursor: pointer; }
+        .tabla-azucar .col-nremt .link-remito:hover { color: #004499 !important; }
+        .tabla-azucar tbody tr.fila-seleccionada .col-nremt .link-remito { color: #aaddff !important; }
+        .tabla-azucar tbody tr.fila-seleccionada .col-nremt .link-remito:hover { color: #fff !important; }
         .tabla-azucar .sin-dato { color: #999; }
         .tabla-azucar .col-articulo, .tabla-azucar .col-deposito { text-transform: uppercase; }
         /* Cantidad distinta de Cant Vta y Cant Vta #0: resaltar Articulo, Orden, Cantidad, Deposito, Op en rojo */
@@ -822,7 +830,14 @@ function fmtNum($n) {
                             <td class="col-facturada <?= empty($r['facturada_a_apellido']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['facturada_a_apellido'] ?? '') ?></td>
                             <td class="col-preciofac"><?= fmtNum($r['precio_fac']) ?></td>
                             <td class="col-nfact <?= empty($r['n_fact']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['n_fact'] ?? '') ?></td>
-                            <td class="col-nremt <?= empty($r['n_remt']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['n_remt'] ?? '') ?></td>
+                            <td class="col-nremt <?= empty($r['n_remt']) ? 'sin-dato' : '' ?>"><?php
+                                $nremt = $r['n_remt'] ?? '';
+                                if ($nremt !== '') {
+                                    echo '<a href="imprimir_remito.php?id=' . (int)$r['id'] . '" target="_blank" class="link-remito" onclick="event.stopPropagation();" style="color:#0066cc;text-decoration:underline;">' . htmlspecialchars($nremt) . '</a>';
+                                } else {
+                                    echo htmlspecialchars($nremt);
+                                }
+                            ?></td>
                         </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -2085,7 +2100,7 @@ function fmtNum($n) {
                                     '<td class="col-facturada ' + (v('facturada_a') ? '' : 'sin-dato') + '">' + esc(v('facturada_a')) + '</td>' +
                                     '<td class="col-preciofac">' + fmtNum(v('precio_fac')) + '</td>' +
                                     '<td class="col-nfact ' + (v('n_fact') ? '' : 'sin-dato') + '">' + esc(v('n_fact')) + '</td>' +
-                                    '<td class="col-nremt ' + (v('n_remt') ? '' : 'sin-dato') + '">' + esc(v('n_remt')) + '</td>';
+                                    '<td class="col-nremt ' + (v('n_remt') ? '' : 'sin-dato') + '">' + (v('n_remt') && r.id ? '<a href="imprimir_remito.php?id=' + r.id + '" target="_blank" class="link-remito" onclick="event.stopPropagation();" style="color:#0066cc;text-decoration:underline;">' + esc(v('n_remt')) + '</a>' : esc(v('n_remt'))) + '</td>';
                                 tbody.appendChild(tr);
                             });
                             document.querySelectorAll('.tabla-azucar tbody tr').forEach(function(tr) {
