@@ -153,10 +153,10 @@ if ($r_consorcios) {
                     <?php if (!$soloLectura): ?>
                     <div class="flex-acciones" onclick="event.stopPropagation()">
                         <?php if($alquilada): ?>
-                            <button onclick="finalizarContrato(<?= $f['propiedad_id'] ?>)" class="btn btn-fin w-grande">FIN CONTRATO</button>
+                            <button type="button" class="btn btn-fin w-grande" data-inquilino="<?= htmlspecialchars($f['nombre_inquilino'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-propiedad="<?= htmlspecialchars($f['propiedad'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-id="<?= (int)$f['propiedad_id'] ?>">FIN CONTRATO</button>
                             <button onclick="imprimirContrato(<?= $f['propiedad_id'] ?>)" class="btn btn-print w-chico">IMPRIMIR CONTRATO</button>
                         <?php else: ?>
-                            <button onclick="eliminarPropiedad(<?= $f['propiedad_id'] ?>)" class="btn btn-baja w-grande">BAJA PROP.</button>
+                            <button type="button" class="btn btn-baja w-grande" data-propiedad="<?= htmlspecialchars($f['propiedad'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-id="<?= (int)$f['propiedad_id'] ?>">BAJA PROP.</button>
                             <div style="width: 45px;"></div> 
                         <?php endif; ?>
                     </div>
@@ -208,7 +208,11 @@ function filtrarPropiedades() {
     filas.forEach(f => f.style.display = f.innerText.toUpperCase().includes(filtro) ? "" : "none");
 }
 
-function eliminarPropiedad(id) {
+function eliminarPropiedad(btn) {
+    var id = parseInt(btn.getAttribute('data-id'), 10);
+    var propiedad = btn.getAttribute('data-propiedad') || '';
+    var msg = "¿Confirmar baja de propiedad?\n\nPropiedad: " + propiedad;
+    if (!confirm(msg)) return;
     if (!esNivel3) {
         var clave = prompt("CLAVE DE SEGURIDAD PARA ELIMINAR PROPIEDAD:");
         if (clave === null) return;
@@ -217,24 +221,26 @@ function eliminarPropiedad(id) {
             return;
         }
     }
-    if(confirm("¿Eliminar propiedad definitivamente?")) {
-        fetch('eliminar_propiedad.php?id='+id)
-            .then(function(r) { return r.text(); })
-            .then(function(res) {
-                if(res.trim()==="OK") {
-                    location.reload();
-                } else {
-                    alert("Error al eliminar: " + res);
-                }
-            })
-            .catch(function(error) {
-                alert("Error de conexión: " + error);
-            });
-    }
+    fetch('eliminar_propiedad.php?id='+id)
+        .then(function(r) { return r.text(); })
+        .then(function(res) {
+            if(res.trim()==="OK") {
+                location.reload();
+            } else {
+                alert("Error al eliminar: " + res);
+            }
+        })
+        .catch(function(error) {
+            alert("Error de conexión: " + error);
+        });
 }
 
-function finalizarContrato(idProp) {
-    if(!confirm("¿Finalizar contrato vigente?")) return;
+function finalizarContrato(btn) {
+    var idProp = parseInt(btn.getAttribute('data-id'), 10);
+    var inquilino = btn.getAttribute('data-inquilino') || '';
+    var propiedad = btn.getAttribute('data-propiedad') || '';
+    var msg = "¿Confirmar fin de contrato?\n\nInquilino: " + inquilino + "\nPropiedad: " + propiedad;
+    if(!confirm(msg)) return;
     var url = 'finalizar_contrato.php?id=' + encodeURIComponent(idProp);
     fetch(url, { credentials: 'same-origin' })
         .then(function(r) {
@@ -261,6 +267,12 @@ function finalizarContrato(idProp) {
 function imprimirContrato(idProp) {
     window.open('generar_word_contrato.php?id=' + idProp, '_blank');
 }
+document.getElementById('cuerpoTabla').addEventListener('click', function(e) {
+    var btn = e.target.closest('.btn-fin');
+    if (btn) { e.stopPropagation(); e.preventDefault(); finalizarContrato(btn); return; }
+    btn = e.target.closest('.btn-baja');
+    if (btn) { e.stopPropagation(); e.preventDefault(); eliminarPropiedad(btn); return; }
+}, true);
 function volverPrincipal() {
     window.location.href = 'index.php';
 }
