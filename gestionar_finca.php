@@ -879,10 +879,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         <div style="margin-top: 24px; padding-top: 8px; position: relative; z-index: 2; clear: both; width: 100%; border-top: 1px solid #eee;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
                 <h3 style="margin: 0;">Listado de PDTs</h3>
-                <?php if ($mostrar_vista_completa && count($lista_pdt) > 0): ?>
-                <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;" onsubmit="return confirm('¿Eliminar los partes NO cargados en CC?<?= $desde_cel ? ' Solo se eliminarán los de los últimos 2 días.' : '' ?> Esta acción no se puede deshacer.');">
+                <?php if ($mostrar_vista_completa && count($lista_pdt) > 0 && !$desde_cel): ?>
+                <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display: inline;" onsubmit="return confirm('¿Eliminar los partes NO cargados en CC? Esta acción no se puede deshacer.');">
                     <input type="hidden" name="eliminar_todos" value="1">
-                    <button type="submit" class="btn btn-danger" style="font-size: 10px; padding: 4px 10px;">Eliminar partes no cargados en CC<?= $desde_cel ? ' (últ. 2 días)' : '' ?></button>
+                    <button type="submit" class="btn btn-danger" style="font-size: 10px; padding: 4px 10px;">Eliminar partes no cargados en CC</button>
                 </form>
                 <?php endif; ?>
             </div>
@@ -935,6 +935,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         $tipo_show = (string)$tipo; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($tipo_show) > 15) { $tipo_show = mb_substr($tipo_show, 0, 15) . '…'; } elseif (strlen($tipo_show) > 15) { $tipo_show = substr($tipo_show, 0, 15) . '…'; }
                         $tractor_show = (string)$tractor; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($tractor_show) > 10) { $tractor_show = mb_substr($tractor_show, 0, 10) . '…'; } elseif (strlen($tractor_show) > 10) { $tractor_show = substr($tractor_show, 0, 10) . '…'; }
                         $obs_show = (string)$obs_raw; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($obs_show) > 30) { $obs_show = mb_substr($obs_show, 0, 30) . '…'; } elseif (strlen($obs_show) > 30) { $obs_show = substr($obs_show, 0, 30) . '…'; }
+                        $fecha_pdt = $fechaRaw ? substr($fechaRaw, 0, 10) : '';
+                        $hoy = date('Y-m-d');
+                        $ayer = date('Y-m-d', strtotime('-1 day'));
+                        $mostrar_mod_elim = !$desde_cel || ($fecha_pdt === $hoy || $fecha_pdt === $ayer);
                         ?>
                         <tr class="fila-pdt<?= $tiene_obs ? ' fila-con-observaciones' : '' ?>" data-usuario-id="<?= $uid ?>"<?= $tiene_obs ? ' title="Clic para ver observaciones"' : '' ?>>
                             <?php $horas_show = number_format($horas, 2, ',', '.'); if (strlen($horas_show) > 6) { $horas_show = substr($horas_show, 0, 6) . '…'; } ?>
@@ -947,6 +951,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                             <td class="col-acciones">
                                 <div style="display: flex; justify-content: flex-end; width: 100%;">
                                 <div class="acciones-botones">
+                                    <?php if ($mostrar_mod_elim): ?>
                                     <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
                                         <input type="hidden" name="pdt_id" value="<?= $pid ?>">
                                         <button type="submit" name="editar" class="btn btn-secondary">Modificar</button>
@@ -955,6 +960,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                                         <input type="hidden" name="pdt_id" value="<?= $pid ?>">
                                         <button type="submit" name="eliminar" class="btn btn-danger" onclick="return confirm('¿Eliminar este PDT?')">Eliminar</button>
                                     </form>
+                                    <?php endif; ?>
                                     <?php if ($encc == 0 && !$desde_cel): ?>
                                     <form method="POST" action="<?= htmlspecialchars($form_action_url) ?>" style="display:inline;">
                                         <input type="hidden" name="pdt_id" value="<?= $pid ?>">
@@ -988,7 +994,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             <?php if ($mostrar_vista_completa): ?>
             <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
             <?php endif; ?>
+            <?php if (!$desde_cel): ?>
             <a href="partes_desde_cel.php" class="btn btn-secondary">Partes desde cel</a>
+            <?php endif; ?>
         </div>
 
         <div id="modalObservaciones" aria-hidden="true">
