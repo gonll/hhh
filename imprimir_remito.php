@@ -159,15 +159,16 @@ function imprimirRemito(tipo) {
     var imp = document.querySelector('.impresion-datos');
     if (!imp) return;
     var iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;';
+    iframe.style.cssText = 'position:absolute;left:-9999px;top:0;width:193mm;height:300mm;border:0;';
     document.body.appendChild(iframe);
     var doc = iframe.contentWindow.document;
     var clase = tipo === 'central' ? 'imp-central' : (tipo === 'derecha' ? 'imp-derecha' : '');
     doc.open();
     doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-        '@page{size:19.3cm 30cm;margin:0}*{margin:0;padding:0}html,body{width:19.3cm!important;height:30cm!important;max-height:30cm!important;overflow:hidden!important;min-height:auto!important}' +
-        '.impresion-datos{position:relative;width:19.3cm;height:30cm;font-size:12px;font-weight:bold}' +
-        '.campo{position:absolute;color:#000;white-space:pre-wrap;word-wrap:break-word}' +
+        '@page{size:19.3cm 30cm;margin:0}*{margin:0!important;padding:0!important;box-sizing:border-box}' +
+        'html,body{width:19.3cm!important;height:30cm!important;max-height:30cm!important;overflow:hidden!important;margin:0!important;padding:0!important;page-break-after:avoid!important}' +
+        '.impresion-datos{position:relative;width:19.3cm;height:30cm!important;max-height:30cm!important;overflow:hidden!important;font-size:12px;font-weight:bold;page-break-after:avoid!important;page-break-inside:avoid!important}' +
+        '.campo{position:absolute;color:#000;white-space:pre-wrap;word-wrap:break-word}.campo-detalle{max-height:180mm!important;overflow:hidden!important}' +
         'body.imp-central .campo-fecha{left:160mm!important;top:31mm!important}' +
         'body.imp-central .campo-cantidad{left:28mm!important;top:103mm!important}' +
         'body.imp-central .campo-detalle{left:39mm!important}' +
@@ -182,8 +183,10 @@ function imprimirRemito(tipo) {
     doc.close();
     iframe.contentWindow.onload = function() {
         iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        document.body.removeChild(iframe);
+        setTimeout(function() {
+            iframe.contentWindow.print();
+            setTimeout(function() { document.body.removeChild(iframe); }, 500);
+        }, 100);
     };
 }
 window.onload = function() {
