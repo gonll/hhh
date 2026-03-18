@@ -158,16 +158,12 @@ $fecha_vto_cai = '';
 function imprimirRemito(tipo) {
     var imp = document.querySelector('.impresion-datos');
     if (!imp) return;
-    var iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:absolute;left:-9999px;top:0;width:193mm;height:300mm;border:0;';
-    document.body.appendChild(iframe);
-    var doc = iframe.contentWindow.document;
     var clase = tipo === 'central' ? 'imp-central' : (tipo === 'derecha' ? 'imp-derecha' : '');
-    doc.open();
-    doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-        '@page{size:19.3cm 30cm;margin:0}*{margin:0!important;padding:0!important;box-sizing:border-box}' +
-        'html,body{width:19.3cm!important;height:30cm!important;max-height:30cm!important;overflow:hidden!important;margin:0!important;padding:0!important;page-break-after:avoid!important}' +
-        '.impresion-datos{position:relative;width:19.3cm;height:30cm!important;max-height:30cm!important;overflow:hidden!important;font-size:12px;font-weight:bold;page-break-after:avoid!important;page-break-inside:avoid!important}' +
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
+        '@page{size:19.3cm 30cm;margin:0}@media print{html,body{height:30cm!important;max-height:30cm!important;overflow:hidden!important}.impresion-datos{position:fixed!important;top:0!important;left:0!important}}' +
+        '*{margin:0!important;padding:0!important;box-sizing:border-box}' +
+        'html{height:30cm;overflow:hidden}body{width:19.3cm;height:30cm;max-height:30cm;overflow:hidden!important;margin:0!important;padding:0!important}' +
+        '.impresion-datos{position:relative;width:19.3cm;height:30cm;overflow:hidden;font-size:12px;font-weight:bold}' +
         '.campo{position:absolute;color:#000;white-space:pre-wrap;word-wrap:break-word}.campo-detalle{max-height:180mm!important;overflow:hidden!important}' +
         'body.imp-central .campo-fecha{left:160mm!important;top:31mm!important}' +
         'body.imp-central .campo-cantidad{left:28mm!important;top:103mm!important}' +
@@ -179,15 +175,17 @@ function imprimirRemito(tipo) {
         'body.imp-central .campo-senores{left:35mm!important;top:52mm!important}' +
         'body.imp-central .campo-domicilio{left:37mm!important;top:60mm!important}' +
         'body.imp-derecha .impresion-datos{transform:translate(-10mm,9mm)}' +
-        '</style></head><body class="' + clase + '">' + imp.outerHTML + '</body></html>');
-    doc.close();
-    iframe.contentWindow.onload = function() {
-        iframe.contentWindow.focus();
-        setTimeout(function() {
-            iframe.contentWindow.print();
-            setTimeout(function() { document.body.removeChild(iframe); }, 500);
-        }, 100);
-    };
+        '</style></head><body class="' + clase + '">' + imp.outerHTML + '</body></html>';
+    var w = window.open('', '_blank', 'width=550,height=850,menubar=no,toolbar=no,location=no,status=no');
+    if (!w) { alert('Permite ventanas emergentes para imprimir.'); return; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(function() {
+        w.print();
+        w.onafterprint = function() { w.close(); };
+        setTimeout(function() { try { w.close(); } catch(e) {} }, 1500);
+    }, 200);
 }
 window.onload = function() {
     if (window.location.search.indexOf('auto=1') !== -1) {
