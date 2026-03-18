@@ -77,16 +77,19 @@ $fecha_vto_cai = '';
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 10px; }
         .no-print { margin: 10px; }
         @page { size: 19.3cm 30cm; margin: 0; }
-        .remito-page { width: 19.3cm; min-height: 30cm; position: relative; box-sizing: border-box; }
+        .remito-page { width: 19.3cm; height: 30cm; min-height: 30cm; max-height: 30cm; position: relative; box-sizing: border-box; }
         /* Siempre alinear con formulario: impresion-datos visible en pantalla */
         .impresion-datos { display: block; background: #f9f9f9; border: 1px solid #ccc; }
         @media print {
-            .no-print { display: none !important; visibility: hidden !important; position: absolute !important; left: -9999px !important; }
+            .no-print { display: none !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             body, html { margin: 0 !important; padding: 0 !important; background: transparent !important;
-                width: 19.3cm !important; height: 30cm !important; overflow: hidden !important; }
-            .remito-page, .impresion-datos { page-break-after: avoid !important; }
-            .impresion-datos { background: transparent !important; border: none !important; }
-            body.imp-central .impresion-datos { transform: translateX(7mm); }
+                width: 19.3cm !important; height: 30cm !important; min-height: 30cm !important; max-height: 30cm !important;
+                overflow: hidden !important; }
+            .remito-page { page-break-after: avoid !important; page-break-inside: avoid !important; }
+            .impresion-datos { background: transparent !important; border: none !important;
+                page-break-after: avoid !important; page-break-inside: avoid !important; }
+            body.imp-central .campo-cantidad { left: 19mm !important; }
             body.imp-derecha .impresion-datos { transform: translate(-10mm, 9mm); }
         }
         .impresion-datos {
@@ -138,21 +141,34 @@ $fecha_vto_cai = '';
         <span class="campo" style="left: 131mm; top: 72mm;"><?= $dest_cuit ?></span>
         <span class="campo" style="left: 25mm; top: 87mm;">X</span>
         <span class="campo" style="left: 123mm; top: 86mm;"><?= $n_fact ?></span>
-        <span class="campo" style="left: 12mm; top: 101mm;"><?= $cantidad ?></span>
+        <span class="campo campo-cantidad" style="left: 12mm; top: 101mm;"><?= $cantidad ?></span>
         <span class="campo" style="left: 36mm; top: 101mm; max-width: 135mm; line-height: 1.9;"><?= $cantidad_letras ? '(' . strtolower($cantidad_letras) . ') ' : '' ?><?= $detalle_texto ?></span>
     </div>
 </div>
 
 <script>
 function imprimirRemito(tipo) {
-    if (tipo === 'central') {
-        document.body.classList.add('imp-central');
-        window.onafterprint = function() { document.body.classList.remove('imp-central'); window.onafterprint = null; };
-    } else if (tipo === 'derecha') {
-        document.body.classList.add('imp-derecha');
-        window.onafterprint = function() { document.body.classList.remove('imp-derecha'); window.onafterprint = null; };
-    }
-    window.print();
+    var imp = document.querySelector('.impresion-datos');
+    if (!imp) return;
+    var iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;';
+    document.body.appendChild(iframe);
+    var doc = iframe.contentWindow.document;
+    var clase = tipo === 'central' ? 'imp-central' : (tipo === 'derecha' ? 'imp-derecha' : '');
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
+        '@page{size:19.3cm 30cm;margin:0}*{margin:0;padding:0}body{width:19.3cm;height:30cm;overflow:hidden}' +
+        '.impresion-datos{position:relative;width:19.3cm;height:30cm;font-size:12px;font-weight:bold}' +
+        '.campo{position:absolute;color:#000;white-space:pre-wrap;word-wrap:break-word}' +
+        'body.imp-central .campo-cantidad{left:19mm!important}' +
+        'body.imp-derecha .impresion-datos{transform:translate(-10mm,9mm)}' +
+        '</style></head><body class="' + clase + '">' + imp.outerHTML + '</body></html>');
+    doc.close();
+    iframe.contentWindow.onload = function() {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        document.body.removeChild(iframe);
+    };
 }
 window.onload = function() {
     if (window.location.search.indexOf('auto=1') !== -1) {
