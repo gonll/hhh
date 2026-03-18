@@ -6,6 +6,7 @@
  */
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_contrato.php';
 
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=sin_permiso');
@@ -57,6 +58,7 @@ $fecha_anio = isset($fecha_partes[0]) ? (int)$fecha_partes[0] : '';
 $fecha_imp = $fecha_dia && $fecha_mes && $fecha_anio ? sprintf('%d    %d    %d', $fecha_dia, $fecha_mes, $fecha_anio) : '';
 
 $cantidad = (int)($r['cant_fact'] ?? $r['cant_vta'] ?? $r['cantidad'] ?? 0);
+$cantidad_letras = $cantidad > 0 ? str_replace(['CIENTOS', 'CIENTO '], ['CIENTAS', 'CIENTA '], numerosALetras($cantidad)) : '';
 $articulo = htmlspecialchars($r['articulo'] ?? '');
 $orden = (int)($r['orden'] ?? 0);
 $n_fact = htmlspecialchars($r['n_fact'] ?? '');
@@ -79,9 +81,13 @@ $fecha_vto_cai = '';
         /* Siempre alinear con formulario: impresion-datos visible en pantalla */
         .impresion-datos { display: block; background: #f9f9f9; border: 1px solid #ccc; }
         @media print {
-            .no-print { display: none !important; }
-            body, html { margin: 0; padding: 0; background: transparent !important; }
+            .no-print { display: none !important; visibility: hidden !important; position: absolute !important; left: -9999px !important; }
+            body, html { margin: 0 !important; padding: 0 !important; background: transparent !important;
+                width: 19.3cm !important; height: 30cm !important; overflow: hidden !important; }
+            .remito-page, .impresion-datos { page-break-after: avoid !important; }
             .impresion-datos { background: transparent !important; border: none !important; }
+            body.imp-central .impresion-datos { transform: translateX(7mm); }
+            body.imp-derecha .impresion-datos { transform: translate(-10mm, 9mm); }
         }
         .impresion-datos {
             position: relative;
@@ -101,27 +107,53 @@ $fecha_vto_cai = '';
 </head>
 <body>
 <div class="no-print">
-    <button onclick="window.print()">Imprimir remito</button>
+    <button onclick="imprimirRemito('central')">Imprimir remito HP p 106 casa y recepción</button>
+    <button onclick="imprimirRemito('derecha')">Imprimir remito ImpDerecha Brother</button>
     <a href="gestionar_azucares.php">Volver a gestión de azúcar</a>
 </div>
 
 <?php $detalle_texto = $articulo . ($orden > 0 ? " correspondiente a la orden de maquila N° $orden" : '') . ", endosada y entregada en este acto"; ?>
+<?php
+/**
+ * CAMPOS IMPRESOS EN EL REMITO:
+ * 1. Fecha
+ * 2. Señor/es (dest_razon)
+ * 3. Domicilio
+ * 4. X Resp. Inscripto
+ * 5. CUIT destinatario
+ * 6. X Cuenta corriente
+ * 7. FACTURA N°
+ * 8. Cantidad
+ * 9. Cantidad en letras (entre paréntesis, antes de detalle)
+ * 10. Detalle
+ */
+?>
 <div class="remito-page">
     <!-- Siempre alinear con formulario -->
     <div class="impresion-datos">
-        <span class="campo" style="left: 154mm; top: 27mm; font-size: 14.4px;"><?= $fecha_imp ?></span>
-        <span class="campo" style="left: 22mm; top: 53mm; max-width: 155mm;"><?= $dest_razon ?></span>
-        <span class="campo" style="left: 24mm; top: 61mm; max-width: 155mm;"><?= strtoupper($dest_domicilio) ?></span>
-        <span class="campo" style="left: 29mm; top: 78.5mm;">X</span>
-        <span class="campo" style="left: 131mm; top: 75mm;"><?= $dest_cuit ?></span>
-        <span class="campo" style="left: 32mm; top: 90mm;">X</span>
-        <span class="campo" style="left: 123mm; top: 88mm;"><?= $n_fact ?></span>
-        <span class="campo" style="left: 20mm; top: 101mm;"><?= $cantidad ?></span>
-        <span class="campo" style="left: 36mm; top: 101mm; max-width: 135mm; line-height: 1.9;"><?= $detalle_texto ?></span>
+        <span class="campo" style="left: 154mm; top: 23mm; font-size: 14.4px;"><?= $fecha_imp ?></span>
+        <span class="campo" style="left: 22mm; top: 49mm; max-width: 155mm;"><?= $dest_razon ?></span>
+        <span class="campo" style="left: 24mm; top: 57mm; max-width: 155mm;"><?= strtoupper($dest_domicilio) ?></span>
+        <span class="campo" style="left: 22mm; top: 73.5mm;">X</span>
+        <span class="campo" style="left: 131mm; top: 72mm;"><?= $dest_cuit ?></span>
+        <span class="campo" style="left: 25mm; top: 87mm;">X</span>
+        <span class="campo" style="left: 123mm; top: 86mm;"><?= $n_fact ?></span>
+        <span class="campo" style="left: 12mm; top: 101mm;"><?= $cantidad ?></span>
+        <span class="campo" style="left: 36mm; top: 101mm; max-width: 135mm; line-height: 1.9;"><?= $cantidad_letras ? '(' . strtolower($cantidad_letras) . ') ' : '' ?><?= $detalle_texto ?></span>
     </div>
 </div>
 
 <script>
+function imprimirRemito(tipo) {
+    if (tipo === 'central') {
+        document.body.classList.add('imp-central');
+        window.onafterprint = function() { document.body.classList.remove('imp-central'); window.onafterprint = null; };
+    } else if (tipo === 'derecha') {
+        document.body.classList.add('imp-derecha');
+        window.onafterprint = function() { document.body.classList.remove('imp-derecha'); window.onafterprint = null; };
+    }
+    window.print();
+}
 window.onload = function() {
     if (window.location.search.indexOf('auto=1') !== -1) {
         window.print();
