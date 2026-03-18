@@ -165,12 +165,14 @@ function imprimirRemito(tipo) {
     var clase = tipo === 'central' ? 'imp-central' : (tipo === 'derecha' ? 'imp-derecha' : '');
     doc.open();
     doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-        '@page{size:19.3cm 30cm;margin:0}' +
-        '@media print{html,body{height:30cm!important;max-height:30cm!important;overflow:hidden!important;margin:0!important;padding:0!important}.impresion-datos{position:fixed!important;top:0!important;left:0!important;width:19.3cm!important;height:30cm!important}}' +
+        '@page{size:19.3cm 29.7cm;margin:0}' +
+        '@media print{html,body{height:29.7cm!important;max-height:29.7cm!important;overflow:hidden!important;margin:0!important;padding:0!important}' +
+        '.impresion-datos{position:fixed!important;top:0!important;left:0!important;width:19.3cm!important;height:30cm!important;transform:scale(0.99)!important;transform-origin:top left}' +
+        'body.imp-derecha .impresion-datos{transform:translate(-10mm,9mm)scale(0.99)!important}}' +
         '*{margin:0;padding:0;box-sizing:border-box}' +
-        'html,body{width:19.3cm;height:30cm;overflow:hidden;margin:0;padding:0}' +
-        '.impresion-datos{position:relative;width:19.3cm;height:30cm;overflow:hidden;font-size:12px;font-weight:bold}' +
-        '.campo{position:absolute;color:#000;white-space:pre-wrap;word-wrap:break-word}.campo-detalle{max-height:180mm;overflow:hidden}' +
+        'html,body{width:19.3cm;height:29.7cm;overflow:hidden;margin:0;padding:0}' +
+        '.impresion-datos{position:relative;width:19.3cm;height:29.7cm;overflow:hidden;font-size:12px;font-weight:bold}' +
+        '.campo{position:absolute;color:#000;white-space:pre-wrap;word-wrap:break-word}.campo-detalle{max-height:175mm;overflow:hidden}' +
         'body.imp-central .campo-fecha{left:160mm!important;top:31mm!important}' +
         'body.imp-central .campo-cantidad{left:28mm!important;top:103mm!important}' +
         'body.imp-central .campo-detalle{left:39mm!important}' +
