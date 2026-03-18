@@ -89,7 +89,8 @@ $fecha_vto_cai = '';
             .remito-page { page-break-after: avoid !important; page-break-inside: avoid !important; }
             .impresion-datos { background: transparent !important; border: none !important;
                 page-break-after: avoid !important; page-break-inside: avoid !important; }
-            body.imp-central .campo-cantidad { left: 22mm !important; }
+            body.imp-central .campo-fecha { left: 160mm !important; top: 31mm !important; }
+            body.imp-central .campo-cantidad { left: 28mm !important; top: 103mm !important; }
             body.imp-central .campo-detalle { left: 39mm !important; }
             body.imp-central .campo-x-cuenta { left: 38mm !important; top: 90mm !important; }
             body.imp-central .campo-x-resp { left: 35mm !important; top: 76.5mm !important; }
@@ -141,7 +142,7 @@ $fecha_vto_cai = '';
 <div class="remito-page">
     <!-- Siempre alinear con formulario -->
     <div class="impresion-datos">
-        <span class="campo" style="left: 154mm; top: 23mm; font-size: 14.4px;"><?= $fecha_imp ?></span>
+        <span class="campo campo-fecha" style="left: 154mm; top: 23mm; font-size: 14.4px;"><?= $fecha_imp ?></span>
         <span class="campo campo-senores" style="left: 22mm; top: 49mm; max-width: 155mm;"><?= $dest_razon ?></span>
         <span class="campo campo-domicilio" style="left: 24mm; top: 57mm; max-width: 155mm;"><?= strtoupper($dest_domicilio) ?></span>
         <span class="campo campo-x-resp" style="left: 22mm; top: 73.5mm;">X</span>
@@ -164,10 +165,11 @@ function imprimirRemito(tipo) {
     var clase = tipo === 'central' ? 'imp-central' : (tipo === 'derecha' ? 'imp-derecha' : '');
     doc.open();
     doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-        '@page{size:19.3cm 30cm;margin:0}*{margin:0;padding:0}body{width:19.3cm;height:30cm;overflow:hidden}' +
+        '@page{size:19.3cm 30cm;margin:0}*{margin:0;padding:0}html,body{width:19.3cm!important;height:30cm!important;max-height:30cm!important;overflow:hidden!important;min-height:auto!important}' +
         '.impresion-datos{position:relative;width:19.3cm;height:30cm;font-size:12px;font-weight:bold}' +
         '.campo{position:absolute;color:#000;white-space:pre-wrap;word-wrap:break-word}' +
-        'body.imp-central .campo-cantidad{left:22mm!important}' +
+        'body.imp-central .campo-fecha{left:160mm!important;top:31mm!important}' +
+        'body.imp-central .campo-cantidad{left:28mm!important;top:103mm!important}' +
         'body.imp-central .campo-detalle{left:39mm!important}' +
         'body.imp-central .campo-x-cuenta{left:38mm!important;top:90mm!important}' +
         'body.imp-central .campo-x-resp{left:35mm!important;top:76.5mm!important}' +
