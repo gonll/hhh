@@ -539,7 +539,6 @@ function fmtNum($n) {
         h2 { color: #007bff; margin-top: 0; margin-bottom: 12px; font-size: 18px; }
         .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; text-decoration: none; display: inline-block; }
         .btn-secondary { background: #6c757d; color: white; }
-        .volver { margin-top: 15px; }
         .contenedor-grilla-con-botones { overflow-x: hidden; margin-top: 10px; }
         .contenedor-grilla-con-botones .fila-botones-stock,
         .contenedor-grilla-con-botones #cartelSaldoOrden { min-width: 1410px; }
@@ -622,6 +621,10 @@ function fmtNum($n) {
         .btn-editar-fact:hover { background: #5a32a3; }
         .btn-eliminar-fact { background: #dc3545; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-eliminar-fact:hover { background: #c82333; }
+        .volver { margin-top: 15px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; min-width: 1410px; }
+        .volver .btn-cobro-wrap { margin-left: calc(573px - 2cm); }
+        .btn-cobro { background: #6610f2; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-cobro:hover { background: #5a0dd9; }
         .modal-venta-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 8px; box-sizing: border-box; overflow-y: auto; }
         .modal-venta-overlay.activo { display: flex; }
         .modal-venta { background: white; border-radius: 8px; padding: 12px 16px; max-width: 520px; width: 100%; max-height: calc(100vh - 20px); overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
@@ -1028,7 +1031,8 @@ function fmtNum($n) {
                         </div>
                         <div class="form-g">
                             <label for="cobro_concepto" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Concepto</label>
-                            <input type="text" id="cobro_concepto" value="COBRO VTA AZUCAR" required style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                            <input type="text" id="cobro_concepto" value="COBRO VTA AZUCAR: " required style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;" tabindex="1">
+                            <span class="hint-concepto-cobro" style="display: block; margin-top: 4px; font-size: 10px; color: #999;">pegar emisor cheq, N° echeq, y fecha cobro</span>
                         </div>
                         <div class="form-g">
                             <label for="cobro_comprobante" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Comprobante</label>
@@ -1045,10 +1049,10 @@ function fmtNum($n) {
                         </div>
                         <div class="form-g" style="grid-column: 1 / -1;">
                             <label for="cobro_monto" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Monto</label>
-                            <input type="number" id="cobro_monto" step="0.01" min="0" required placeholder="0,00" style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                            <input type="number" id="cobro_monto" step="0.01" min="0" required placeholder="0,00" style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;" tabindex="2">
                         </div>
                         <div class="form-g" style="grid-column: 1 / -1; display: flex; gap: 10px; margin-top: 5px;">
-                            <button type="button" class="btn-guardar-venta" id="btnGuardarCobroOperacion" style="flex: 1;">Guardar</button>
+                            <button type="button" class="btn-guardar-venta" id="btnGuardarCobroOperacion" style="flex: 1;" tabindex="3">Guardar</button>
                             <button type="button" class="btn-cerrar-venta" id="btnCancelarCobroOperacion" style="flex: 1;">Cancelar</button>
                         </div>
                     </form>
@@ -1113,9 +1117,10 @@ function fmtNum($n) {
             </div>
         </div>
 
-        <p class="volver">
+        <div class="volver">
             <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
-        </p>
+            <span class="btn-cobro-wrap"><button type="button" class="btn-cobro" id="btnCobro" title="Elegir operacion">Cobro - Elegir operacion</button></span>
+        </div>
     </div>
 
     <script>
@@ -1365,6 +1370,7 @@ function fmtNum($n) {
     }
     document.getElementById('btnFacturar').addEventListener('click', function() { abrirModalFactura(false); });
     document.getElementById('btnEditarFact').addEventListener('click', function() { abrirModalFactura(true); });
+    document.getElementById('btnCobro').addEventListener('click', function() { /* no hace nada */ });
     document.getElementById('btnEliminarFact').addEventListener('click', function() {
         var tr = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada[data-id]');
         if (!tr) { alert('Seleccioná un registro de la grilla.'); return; }
@@ -1757,14 +1763,18 @@ function fmtNum($n) {
                             document.getElementById('cobro_usuario_id').value = usuarioId;
                             document.getElementById('cobro_operacion').value = operacion;
                             document.getElementById('cobro_fecha').value = new Date().toISOString().split('T')[0];
-                            document.getElementById('cobro_concepto').value = 'COBRO VTA AZUCAR';
+                            document.getElementById('cobro_concepto').value = 'COBRO VTA AZUCAR: ';
                             document.getElementById('cobro_comprobante').value = 'CHEQUE/ECHEQ';
                             document.getElementById('cobro_referencia').value = 'OP N° ' + operacion;
                             document.getElementById('cobro_monto').value = '';
                             document.getElementById('msgCobroOperacion').style.display = 'none';
                             // Scroll al formulario
                             formCobro.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                            setTimeout(function() { document.getElementById('cobro_monto').focus(); }, 100);
+                            setTimeout(function() {
+                                var conceptoEl = document.getElementById('cobro_concepto');
+                                conceptoEl.focus();
+                                conceptoEl.setSelectionRange(conceptoEl.value.length, conceptoEl.value.length);
+                            }, 50);
                         }
                     };
                 } else if (btnNuevoCobro) {
@@ -1961,10 +1971,28 @@ function fmtNum($n) {
             });
         }
         
-        // Permitir guardar con Enter en el campo monto
+        // Flujo con Enter: concepto -> monto -> guardar
+        var campoConcepto = document.getElementById('cobro_concepto');
+        if (campoConcepto) {
+            campoConcepto.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('cobro_monto').focus();
+                }
+            });
+        }
         var campoMonto = document.getElementById('cobro_monto');
         if (campoMonto) {
             campoMonto.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('btnGuardarCobroOperacion').focus();
+                }
+            });
+        }
+        var btnGuardarCobro = document.getElementById('btnGuardarCobroOperacion');
+        if (btnGuardarCobro) {
+            btnGuardarCobro.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     if (formCobro && formCobro.checkValidity()) {
