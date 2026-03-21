@@ -1,0 +1,7 @@
+{
+    "name": "sistema/hhh",
+    "description": "Sistema HHH",
+    "require": {
+        "smalot/pdfparser": "^2.0"
+    }
+}

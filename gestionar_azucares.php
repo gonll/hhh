@@ -397,7 +397,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 . '<td class="col-orden">' . ($mostrar_link_nuevo ? '<a href="#" class="link-orden" data-orden="' . (int)$r_nuevo['orden'] . '" data-linea="' . (int)$r_nuevo['linea'] . '" onclick="event.stopPropagation(); abrirModalMovimientosOrden(' . (int)$r_nuevo['orden'] . ', ' . (int)$r_nuevo['linea'] . '); return false;" style="text-decoration:underline; color:inherit;">' . (int)$r_nuevo['orden'] . '</a>' : (int)$r_nuevo['orden']) . '</td>'
                                 . '<td class="col-cantidad">' . (int)$r_nuevo['cantidad'] . '</td>'
                                 . '<td class="col-deposito">' . htmlspecialchars($r_nuevo['deposito'] ?? '') . '</td>'
-                                . '<td class="col-operacion">' . ((int)($r_nuevo['operacion'] ?? 0) ?: '') . '</td>'
+                                . '<td class="col-operacion" data-operacion="' . (int)($r_nuevo['operacion'] ?? 0) . '">'
+                                . (($opNum = (int)($r_nuevo['operacion'] ?? 0)) > 0
+                                    ? $opNum . ' <button type="button" class="btn-mov-cobro btn btn-secondary" onclick="event.stopPropagation(); abrirModalMovimientosOperacion(\'' . $opNum . '\');" title="Movimientos de cobro">Mov-Cobro</button>'
+                                    : '')
+                                . '</td>'
                                 . '<td class="col-fechavta">' . htmlspecialchars(fmtFecha($r_nuevo['fecha_vta'])) . '</td>'
                                 . '<td class="col-cantvta">' . (int)$r_nuevo['cant_vta'] . '</td>'
                                 . '<td class="col-vendida ' . (empty($r_nuevo['vendida_a_apellido']) ? 'sin-dato' : '') . '">'
@@ -557,7 +561,8 @@ function fmtNum($n) {
         .tabla-azucar .col-orden { width: 55px; }
         .tabla-azucar .col-cantidad, .tabla-azucar .col-cantvta, .tabla-azucar .col-cantfact { width: 55px; }
         .tabla-azucar .col-deposito { width: 160px; }
-        .tabla-azucar .col-operacion { width: 45px; cursor: pointer; }
+        .tabla-azucar .col-operacion { width: 75px; min-width: 75px; cursor: pointer; }
+        .tabla-azucar .btn-mov-cobro { font-size: 8px; padding: 1px 3px; margin-left: 2px; vertical-align: middle; }
         .tabla-azucar .col-operacion:hover { text-decoration: underline; color: #007bff; }
         .tabla-azucar tbody tr .col-operacion:hover { background-color: #e7f3ff; }
         .tabla-azucar .col-vendida, .tabla-azucar .col-facturada, .tabla-azucar .col-operador { width: 140px; }
@@ -623,10 +628,7 @@ function fmtNum($n) {
         .btn-editar-fact:hover { background: #5a32a3; }
         .btn-eliminar-fact { background: #dc3545; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-eliminar-fact:hover { background: #c82333; }
-        .volver { margin-top: 15px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; min-width: 1410px; }
-        .volver .btn-cobro-wrap { margin-left: calc(573px - 2cm); }
-        .btn-cobro { background: #6610f2; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-cobro:hover { background: #5a0dd9; }
+        .volver { margin-top: 15px; }
         .modal-venta-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 8px; box-sizing: border-box; overflow-y: auto; }
         .modal-venta-overlay.activo { display: flex; }
         .modal-venta { background: white; border-radius: 8px; padding: 12px 16px; max-width: 520px; width: 100%; max-height: calc(100vh - 20px); overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
@@ -808,7 +810,14 @@ function fmtNum($n) {
                             <td class="col-orden"><?php if ($mostrarLinkOrden): ?><a href="#" class="link-orden" data-orden="<?= (int)$r['orden'] ?>" data-linea="<?= (int)$r['linea'] ?>" onclick="event.stopPropagation(); abrirModalMovimientosOrden(<?= (int)$r['orden'] ?>, <?= (int)$r['linea'] ?>); return false;" style="text-decoration:underline; color:inherit;"><?= (int)$r['orden'] ?></a><?php else: ?><?= (int)$r['orden'] ?><?php endif; ?></td>
                             <td class="col-cantidad"><?= (int)$r['cantidad'] ?></td>
                             <td class="col-deposito"><?= htmlspecialchars($r['deposito'] ?? '') ?></td>
-                            <td class="col-operacion"><?= (int)($r['operacion'] ?? 0) ?: '' ?></td>
+                            <td class="col-operacion" data-operacion="<?= (int)($r['operacion'] ?? 0) ?>"><?php
+                                $op = (int)($r['operacion'] ?? 0);
+                                if ($op > 0) {
+                                    echo $op . ' <button type="button" class="btn-mov-cobro btn btn-secondary" onclick="event.stopPropagation(); abrirModalMovimientosOperacion(\'' . $op . '\');" title="Movimientos de cobro">Mov-Cobro</button>';
+                                } else {
+                                    echo '';
+                                }
+                            ?></td>
                             <td class="col-fechavta"><?= htmlspecialchars(fmtFecha($r['fecha_vta'])) ?></td>
                             <td class="col-cantvta"><?= (int)$r['cant_vta'] ?></td>
                             <td class="col-vendida <?= empty($r['vendida_a_apellido']) ? 'sin-dato' : '' ?>"><?php
@@ -1062,6 +1071,8 @@ function fmtNum($n) {
                 </div>
                 <div class="botones">
                     <button type="button" class="btn-guardar-venta" id="btnNuevoCobroOperacion" style="display:none;">Nuevo cobro</button>
+                    <button type="button" class="btn-guardar-venta" id="btnLeerPdfEcheq" style="display:none;">Leer PDF ECheq</button>
+                    <input type="file" id="inputPdfEcheq" accept=".pdf,application/pdf" style="display:none;">
                     <button type="button" class="btn-cerrar-venta" onclick="cerrarModalMovimientosOperacion()">Cerrar</button>
                 </div>
             </div>
@@ -1120,10 +1131,9 @@ function fmtNum($n) {
             </div>
         </div>
 
-        <div class="volver">
+        <p class="volver">
             <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
-            <span class="btn-cobro-wrap"><button type="button" class="btn-cobro" id="btnCobro" title="Elegir operacion">Cobro - Elegir operacion</button></span>
-        </div>
+        </p>
     </div>
 
     <script>
@@ -1373,7 +1383,6 @@ function fmtNum($n) {
     }
     document.getElementById('btnFacturar').addEventListener('click', function() { abrirModalFactura(false); });
     document.getElementById('btnEditarFact').addEventListener('click', function() { abrirModalFactura(true); });
-    document.getElementById('btnCobro').addEventListener('click', function() { /* no hace nada */ });
     document.getElementById('btnEliminarFact').addEventListener('click', function() {
         var tr = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada[data-id]');
         if (!tr) { alert('Seleccioná un registro de la grilla.'); return; }
@@ -1753,9 +1762,11 @@ function fmtNum($n) {
                 var match = html.match(/<!-- DATA:usuario_id=(\d+) -->/);
                 var usuarioId = match ? parseInt(match[1]) : null;
                 var btnNuevoCobro = document.getElementById('btnNuevoCobroOperacion');
+                var btnLeerPdf = document.getElementById('btnLeerPdfEcheq');
                 var formCobro = document.getElementById('formNuevoCobroOperacion');
                 if (btnNuevoCobro && usuarioId) {
                     btnNuevoCobro.style.display = 'inline-block';
+                    if (btnLeerPdf) btnLeerPdf.style.display = 'inline-block';
                     // Guardar datos de la operación para usar en el formulario
                     btnNuevoCobro.dataset.usuarioId = usuarioId;
                     btnNuevoCobro.dataset.operacion = operacion;
@@ -1780,8 +1791,9 @@ function fmtNum($n) {
                             }, 50);
                         }
                     };
-                } else if (btnNuevoCobro) {
-                    btnNuevoCobro.style.display = 'none';
+                } else {
+                    if (btnNuevoCobro) btnNuevoCobro.style.display = 'none';
+                    if (btnLeerPdf) btnLeerPdf.style.display = 'none';
                 }
             })
             .catch(function(error) {
@@ -2006,6 +2018,62 @@ function fmtNum($n) {
                 }
             });
         }
+        // Botón Leer PDF ECheq
+        var btnLeerPdfEcheq = document.getElementById('btnLeerPdfEcheq');
+        var inputPdfEcheq = document.getElementById('inputPdfEcheq');
+        if (btnLeerPdfEcheq && inputPdfEcheq) {
+            btnLeerPdfEcheq.addEventListener('click', function() {
+                inputPdfEcheq.value = '';
+                inputPdfEcheq.click();
+            });
+            inputPdfEcheq.addEventListener('change', function() {
+                var file = this.files[0];
+                if (!file || file.type !== 'application/pdf') {
+                    alert('Seleccione un archivo PDF.');
+                    return;
+                }
+                var formData = new FormData();
+                formData.append('pdf', file);
+                btnLeerPdfEcheq.disabled = true;
+                btnLeerPdfEcheq.textContent = 'Leyendo...';
+                fetch('extraer_echeq_pdf.php', { method: 'POST', body: formData })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        btnLeerPdfEcheq.disabled = false;
+                        btnLeerPdfEcheq.textContent = 'Leer PDF ECheq';
+                        if (!data.ok) {
+                            alert(data.error || 'Error al leer el PDF');
+                            return;
+                        }
+                        var formCobroEl = document.getElementById('formNuevoCobroOperacion');
+                        var btnNuevo = document.getElementById('btnNuevoCobroOperacion');
+                        if (formCobroEl && btnNuevo && btnNuevo.dataset.usuarioId && btnNuevo.dataset.operacion) {
+                            formCobroEl.style.display = 'block';
+                            document.getElementById('cobro_usuario_id').value = btnNuevo.dataset.usuarioId;
+                            document.getElementById('cobro_operacion').value = btnNuevo.dataset.operacion;
+                            document.getElementById('cobro_fecha').value = data.fecha_pago || new Date().toISOString().split('T')[0];
+                            document.getElementById('cobro_concepto').value = data.concepto_sugerido || 'COBRO VTA AZUCAR: ';
+                            document.getElementById('cobro_comprobante').value = 'CHEQUE/ECHEQ';
+                            document.getElementById('cobro_referencia').value = 'OP N° ' + btnNuevo.dataset.operacion;
+                            document.getElementById('cobro_monto').value = data.monto || '';
+                            document.getElementById('msgCobroOperacion').style.display = 'none';
+                            formCobroEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            setTimeout(function() {
+                                var montoEl = document.getElementById('cobro_monto');
+                                if (data.monto) montoEl.focus();
+                                else document.getElementById('cobro_concepto').focus();
+                            }, 50);
+                        } else {
+                            alert('Abra primero una operación con movimientos.');
+                        }
+                    })
+                    .catch(function(err) {
+                        btnLeerPdfEcheq.disabled = false;
+                        btnLeerPdfEcheq.textContent = 'Leer PDF ECheq';
+                        alert('Error: ' + (err.message || 'No se pudo procesar el PDF'));
+                    });
+            });
+        }
     })();
 
     // Agregar event listeners a las celdas de operación (event delegation para funcionar con filas dinámicas)
@@ -2013,7 +2081,8 @@ function fmtNum($n) {
         function manejarClickOP(e) {
             var celdaOp = e.target.closest('.col-operacion');
             if (celdaOp) {
-                var operacion = celdaOp.textContent.trim();
+                var tr = celdaOp.closest('tr');
+                var operacion = (tr && tr.dataset.operacion) ? tr.dataset.operacion : celdaOp.textContent.replace(/Mov-Cobro/g, '').trim();
                 if (operacion && operacion !== '' && operacion !== '0') {
                     e.stopPropagation();
                     e.preventDefault();
@@ -2120,7 +2189,7 @@ function fmtNum($n) {
                                     '<td class="col-orden">' + tdOrden + '</td>' +
                                     '<td class="col-cantidad">' + (parseInt(v('cantidad'), 10) || 0) + '</td>' +
                                     '<td class="col-deposito">' + esc(v('deposito')) + '</td>' +
-                                    '<td class="col-operacion">' + (parseInt(v('operacion'), 10) || '') + '</td>' +
+                                    '<td class="col-operacion" data-operacion="' + (v('operacion') || '') + '">' + (function(){ var op = parseInt(v('operacion'), 10) || 0; return op ? op + ' <button type="button" class="btn-mov-cobro btn btn-secondary" onclick="event.stopPropagation(); abrirModalMovimientosOperacion(\'' + op + '\');" title="Movimientos de cobro">Mov-Cobro</button>' : ''; })() + '</td>' +
                                     '<td class="col-fechavta">' + esc(v('fecha_vta')) + '</td>' +
                                     '<td class="col-cantvta">' + (parseInt(v('cant_vta'), 10) || 0) + '</td>' +
                                     '<td class="col-vendida ' + (v('vendida_a') ? '' : 'sin-dato') + '">' + esc(v('vendida_a')) + '</td>' +
