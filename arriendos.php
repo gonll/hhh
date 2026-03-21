@@ -49,6 +49,7 @@ $resultado = mysqli_query($conexion, $sql);
         .btn-alta:hover { background: #218838; color: white; }
         .btn-editar { background: #007bff; color: white; }
         .btn-baja { background: #dc3545; color: white; }
+        .tabla-arriendos .btn-editar, .tabla-arriendos .btn-baja { padding: 2px 6px; font-size: 9px; }
         .btn-salir { background: #6c757d; color: white; border-radius: 4px; margin-top: 15px; }
         .btn-salir:hover { background: #5a6268; color: white; }
         .pie { margin-top: auto; padding-top: 15px; display: flex; justify-content: flex-end; }
