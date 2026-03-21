@@ -414,7 +414,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 . '<td class="col-nfact ' . (empty($r_nuevo['n_fact']) ? 'sin-dato' : '') . '">' . htmlspecialchars($r_nuevo['n_fact'] ?? '') . '</td>'
                                 . '<td class="col-nremt ' . (empty($r_nuevo['n_remt']) ? 'sin-dato' : '') . '">'
                                 . (($r_nuevo['n_remt'] ?? '') !== ''
-                                    ? '<a href="imprimir_remito.php?id=' . (int)$r_nuevo['id'] . '" target="_blank" class="link-remito" onclick="event.stopPropagation();" style="color:#0066cc;text-decoration:underline;">' . htmlspecialchars($r_nuevo['n_remt'] ?? '') . '</a>'
+                                    ? '<a href="imprimir_remito.php?id=' . (int)$r_nuevo['id'] . '" target="_blank" class="link-remito" onclick="event.stopPropagation();" style="color:#0066cc;text-decoration:underline;">' . htmlspecialchars($r_nuevo['n_remt'] ?? '') . '</a> <button type="button" class="btn-imprimir-remito btn btn-secondary" onclick="event.stopPropagation(); window.open(\'imprimir_remito.php?id=' . (int)$r_nuevo['id'] . '\', \'_blank\');" title="Imprimir remito">Imprimir</button>'
                                     : htmlspecialchars($r_nuevo['n_remt'] ?? ''))
                                 . '</td>'
                                 . '</tr>';
@@ -570,9 +570,11 @@ function fmtNum($n) {
         .tabla-azucar tbody tr.fila-seleccionada .col-operador .link-operador { color: white; }
         .tabla-azucar tbody tr.fila-seleccionada .col-operador .link-operador:hover { color: #e7f3ff; }
         .tabla-azucar .col-preciovta, .tabla-azucar .col-preciofac { width: 75px; }
-        .tabla-azucar .col-nfact, .tabla-azucar .col-nremt { width: 70px; }
+        .tabla-azucar .col-nfact { width: 70px; }
+        .tabla-azucar .col-nremt { width: 100px; }
         .tabla-azucar .col-nremt .link-remito { color: #0066cc !important; text-decoration: underline !important; cursor: pointer; }
         .tabla-azucar .col-nremt .link-remito:hover { color: #004499 !important; }
+        .tabla-azucar .col-nremt .btn-imprimir-remito { font-size: 9px; padding: 2px 4px; margin-left: 4px; vertical-align: middle; }
         .tabla-azucar tbody tr.fila-seleccionada .col-nremt .link-remito { color: #aaddff !important; }
         .tabla-azucar tbody tr.fila-seleccionada .col-nremt .link-remito:hover { color: #fff !important; }
         .tabla-azucar .sin-dato { color: #999; }
@@ -837,6 +839,7 @@ function fmtNum($n) {
                                 $nremt = $r['n_remt'] ?? '';
                                 if ($nremt !== '') {
                                     echo '<a href="imprimir_remito.php?id=' . (int)$r['id'] . '" target="_blank" class="link-remito" onclick="event.stopPropagation();" style="color:#0066cc;text-decoration:underline;">' . htmlspecialchars($nremt) . '</a>';
+                                    echo ' <button type="button" class="btn-imprimir-remito btn btn-secondary" onclick="event.stopPropagation(); window.open(\'imprimir_remito.php?id=' . (int)$r['id'] . '\', \'_blank\');" title="Imprimir remito">Imprimir</button>';
                                 } else {
                                     echo htmlspecialchars($nremt);
                                 }
@@ -2128,7 +2131,7 @@ function fmtNum($n) {
                                     '<td class="col-facturada ' + (v('facturada_a') ? '' : 'sin-dato') + '">' + esc(v('facturada_a')) + '</td>' +
                                     '<td class="col-preciofac">' + fmtNum(v('precio_fac')) + '</td>' +
                                     '<td class="col-nfact ' + (v('n_fact') ? '' : 'sin-dato') + '">' + esc(v('n_fact')) + '</td>' +
-                                    '<td class="col-nremt ' + (v('n_remt') ? '' : 'sin-dato') + '">' + (v('n_remt') && r.id ? '<a href="imprimir_remito.php?id=' + r.id + '" target="_blank" class="link-remito" onclick="event.stopPropagation();" style="color:#0066cc;text-decoration:underline;">' + esc(v('n_remt')) + '</a>' : esc(v('n_remt'))) + '</td>';
+                                    '<td class="col-nremt ' + (v('n_remt') ? '' : 'sin-dato') + '">' + (v('n_remt') && r.id ? '<a href="imprimir_remito.php?id=' + r.id + '" target="_blank" class="link-remito" onclick="event.stopPropagation();" style="color:#0066cc;text-decoration:underline;">' + esc(v('n_remt')) + '</a> <button type="button" class="btn-imprimir-remito btn btn-secondary" onclick="event.stopPropagation(); window.open(\'imprimir_remito.php?id=' + r.id + '\', \'_blank\');" title="Imprimir remito">Imprimir</button>' : esc(v('n_remt'))) + '</td>';
                                 tbody.appendChild(tr);
                             });
                             document.querySelectorAll('.tabla-azucar tbody tr').forEach(function(tr) {
