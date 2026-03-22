@@ -629,6 +629,7 @@ function fmtNum($n) {
         .btn-eliminar-fact { background: #dc3545; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-eliminar-fact:hover { background: #c82333; }
         .volver { margin-top: 15px; }
+        #btnFotoPago:disabled { opacity: 0.6; cursor: not-allowed; }
         .modal-venta-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 8px; box-sizing: border-box; overflow-y: auto; }
         .modal-venta-overlay.activo { display: flex; }
         .modal-venta { background: white; border-radius: 8px; padding: 12px 16px; max-width: 520px; width: 100%; max-height: calc(100vh - 20px); overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
@@ -1148,7 +1149,7 @@ function fmtNum($n) {
 
         <p class="volver">
             <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
-            <button type="button" class="btn btn-secondary" id="btnFotoPago" title="En celular abre la cámara para capturar comprobante">Foto Pago</button>
+            <button type="button" class="btn btn-secondary" id="btnFotoPago" disabled title="Inhabilitado">Foto Pago (Inhabilitado)</button>
             <input type="file" id="inputFotoPago" accept="image/*" capture="environment" style="display:none;">
         </p>
         <!-- Modal resultado foto -->
@@ -2124,6 +2125,7 @@ function fmtNum($n) {
             if (zonaPegarPago) { zonaPegarPago.innerHTML = 'Pegue aquí la imagen…'; zonaPegarPago.dataset.imageData = ''; }
             if (msgPegarPago) { msgPegarPago.style.display = 'none'; msgPegarPago.textContent = ''; }
         }
+        window.cerrarModalPegarPago = cerrarModalPegarPago;
         function aplicarDatosPagoACobro(data) {
             var formCobroEl = document.getElementById('formNuevoCobroOperacion');
             var btnNuevo = document.getElementById('btnNuevoCobroOperacion');
