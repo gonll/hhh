@@ -28,3 +28,7 @@ $r = @mysqli_query($conexion, "SHOW COLUMNS FROM cosecha_hojas_ruta LIKE 'lat'")
 if ($r && mysqli_num_rows($r) == 0) {
     @mysqli_query($conexion, "ALTER TABLE cosecha_hojas_ruta ADD COLUMN lat DECIMAL(10, 8) DEFAULT NULL, ADD COLUMN lng DECIMAL(11, 8) DEFAULT NULL");
 }
+$r_hs = @mysqli_query($conexion, "SHOW COLUMNS FROM cosecha_hojas_ruta LIKE 'hora_salida'");
+if ($r_hs && mysqli_num_rows($r_hs) == 0) {
+    @mysqli_query($conexion, "ALTER TABLE cosecha_hojas_ruta ADD COLUMN hora_salida TIME DEFAULT NULL AFTER hora");
+}

@@ -26,7 +26,7 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
         header('Location: cosecha.php?zafra=' . $anio_zafra . '&msg=sin_permiso');
         exit;
     }
-    $r_export = mysqli_query($conexion, "SELECT fecha, hora, tickets, remito, viaje, camion, finca, variedad FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
+    $r_export = mysqli_query($conexion, "SELECT fecha, hora, hora_salida, tickets, remito, viaje, camion, finca, variedad FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
     $nombre = 'cosecha_zafra_' . $anio_zafra . '.xls';
     header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $nombre . '"');
@@ -34,7 +34,7 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
     echo "\xEF\xBB\xBF"; // UTF-8 BOM
     echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table border="1" style="border-collapse:collapse;">';
     echo '<tr style="background:#6f42c1;color:white;">';
-    foreach (['Fecha', 'Hora', 'Tickets', 'Remito', 'Viaje', 'Camion', 'Finca', 'Variedad'] as $h) {
+    foreach (['Fecha', 'Hora', 'Tickets', 'Remito', 'Viaje', 'Camion', 'Finca', 'Variedad', 'Hora salida'] as $h) {
         echo '<th style="text-align:center;padding:6px;">' . htmlspecialchars($h, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</th>';
     }
     echo '</tr>';
@@ -42,7 +42,8 @@ if (isset($_GET['exportar']) && $_GET['exportar'] === 'excel') {
         while ($row = mysqli_fetch_assoc($r_export)) {
             $hora = $row['hora'] ? substr($row['hora'], 0, 5) : '-';
             echo '<tr>';
-            foreach ([$row['fecha'], $hora, $row['tickets'] ?? '-', $row['remito'] ?? '-', $row['viaje'] ?? '-', $row['camion'] ?? '-', $row['finca'] ?? '-', $row['variedad'] ?? '-'] as $cel) {
+            $hora_salida = ($row['hora_salida'] ?? $row['hora']) ? substr($row['hora_salida'] ?? $row['hora'], 0, 5) : '-';
+            foreach ([$row['fecha'], $hora, $row['tickets'] ?? '-', $row['remito'] ?? '-', $row['viaje'] ?? '-', $row['camion'] ?? '-', $row['finca'] ?? '-', $row['variedad'] ?? '-', $hora_salida] as $cel) {
                 echo '<td style="text-align:center;padding:6px;">' . htmlspecialchars((string)$cel, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '</td>';
             }
             echo '</tr>';
@@ -61,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['guardar'])) {
         $fecha = trim($_POST['fecha'] ?? '');
         $hora = trim($_POST['hora'] ?? '');
+        $hora_salida = trim($_POST['hora_salida'] ?? '');
         $tickets = trim($_POST['tickets'] ?? '');
         $remito = trim($_POST['remito'] ?? '');
         $viaje = trim($_POST['viaje'] ?? '');
@@ -98,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$puede_actualizar) {
                     $mensaje = 'Solo se puede modificar registros del día de la fecha o del día anterior.';
                 } else {
-                $sql = "UPDATE cosecha_hojas_ruta SET anio_zafra=$anio, fecha='$fecha_esc', hora=$hora_esc, tickets='$tickets_esc', remito='$remito_esc', viaje='$viaje_esc', camion='$camion_esc', finca='$finca_esc', variedad='$variedad_esc' WHERE id=$id";
+                $hora_salida_esc = $hora_salida !== '' ? "'" . mysqli_real_escape_string($conexion, $hora_salida) . "'" : "NULL";
+                $sql = "UPDATE cosecha_hojas_ruta SET anio_zafra=$anio, fecha='$fecha_esc', hora=$hora_esc, hora_salida=$hora_salida_esc, tickets='$tickets_esc', remito='$remito_esc', viaje='$viaje_esc', camion='$camion_esc', finca='$finca_esc', variedad='$variedad_esc' WHERE id=$id";
                 if (mysqli_query($conexion, $sql)) {
                     header('Location: cosecha.php?zafra=' . $anio . '&msg=ok');
                     exit;
@@ -107,7 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 }
             } else {
-                $sql = "INSERT INTO cosecha_hojas_ruta (anio_zafra, fecha, hora, tickets, remito, viaje, camion, finca, variedad) VALUES ($anio, '$fecha_esc', $hora_esc, '$tickets_esc', '$remito_esc', '$viaje_esc', '$camion_esc', '$finca_esc', '$variedad_esc')";
+                $hora_salida_esc = $hora_salida !== '' ? "'" . mysqli_real_escape_string($conexion, $hora_salida) . "'" : "NULL";
+                $sql = "INSERT INTO cosecha_hojas_ruta (anio_zafra, fecha, hora, hora_salida, tickets, remito, viaje, camion, finca, variedad) VALUES ($anio, '$fecha_esc', $hora_esc, $hora_salida_esc, '$tickets_esc', '$remito_esc', '$viaje_esc', '$camion_esc', '$finca_esc', '$variedad_esc')";
                 if (mysqli_query($conexion, $sql)) {
                     header('Location: cosecha.php?zafra=' . $anio . '&msg=ok');
                     exit;
@@ -152,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$lista = mysqli_query($conexion, "SELECT id, anio_zafra, fecha, hora, tickets, remito, viaje, camion, finca, variedad, fecha_creacion FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
+$lista = mysqli_query($conexion, "SELECT id, anio_zafra, fecha, hora, hora_salida, tickets, remito, viaje, camion, finca, variedad, fecha_creacion FROM cosecha_hojas_ruta WHERE anio_zafra = $anio_zafra ORDER BY fecha DESC, hora DESC, id DESC");
 $hoy = date('Y-m-d');
 $ayer = date('Y-m-d', strtotime('-1 day'));
 $puede_modificar_eliminar = function($fecha_reg) use ($nivelAcceso, $hoy, $ayer) {
@@ -304,7 +308,7 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
             </div>
             <div class="campo" style="flex:0 0 100px;">
                 <label>Hora</label>
-                <input type="time" name="hora" value="<?= $fila_edit ? substr($fila_edit['hora'] ?? '', 0, 5) : '' ?>">
+                <input type="time" name="hora" id="inputHora" value="<?= $fila_edit ? substr($fila_edit['hora'] ?? '', 0, 5) : '' ?>" <?= $editar_id ? 'oninput="document.getElementById(\'inputHoraSalida\').value=this.value;"' : '' ?>>
             </div>
             <div class="campo" style="flex:0 0 100px;">
                 <label>Tickets</label>
@@ -314,18 +318,18 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                 <label>Remito</label>
                 <input type="text" name="remito" value="<?= $fila_edit ? htmlspecialchars($fila_edit['remito'] ?? '') : htmlspecialchars($def_remito) ?>" placeholder="">
             </div>
-            <div class="campo" style="flex:0 0 80px;">
+            <div class="campo" style="flex:0 0 60px;">
                 <label>Viaje</label>
-                <input type="text" name="viaje" value="<?= $fila_edit ? htmlspecialchars($fila_edit['viaje'] ?? '') : htmlspecialchars($def_viaje) ?>" placeholder="">
+                <input type="text" name="viaje" value="<?= $fila_edit ? htmlspecialchars($fila_edit['viaje'] ?? '') : htmlspecialchars($def_viaje) ?>" placeholder="" style="max-width:75%;">
             </div>
-            <div class="campo" style="flex:0 0 120px;">
+            <div class="campo" style="flex:0 0 68px; margin-left:-1.1cm;">
                 <label>Camion</label>
-                <input type="text" name="camion" value="<?= $fila_edit ? htmlspecialchars($fila_edit['camion'] ?? '') : '' ?>" placeholder="">
+                <input type="text" name="camion" value="<?= $fila_edit ? htmlspecialchars($fila_edit['camion'] ?? '') : '' ?>" placeholder="" style="max-width:75%;">
             </div>
             <div class="finca-variedad">
-                <div class="campo">
+                <div class="campo" style="margin-left:-1cm;">
                     <label>Finca</label>
-                    <select name="finca_sel" id="selFinca" onchange="document.getElementById('fincaOtroWrap').style.display=(this.value==='__otro__')?'block':'none';">
+                    <select name="finca_sel" id="selFinca" onchange="document.getElementById('fincaOtroWrap').style.display=(this.value==='__otro__')?'block':'none';" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('selVariedad').focus();}">
                         <?php 
                         $finca_sel = $fila_edit ? ($fila_edit['finca'] ?? '') : $def_finca;
                         if ($finca_sel === '' && count($fincas_lista) > 0) $finca_sel = $fincas_lista[0];
@@ -335,7 +339,7 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                         <option value="__otro__">+ Nueva finca</option>
                     </select>
                     <div id="fincaOtroWrap" style="display:none; margin-top:4px;">
-                        <input type="text" name="finca_nueva" id="fincaNueva" placeholder="Escriba la nueva finca" value="">
+                        <input type="text" name="finca_nueva" id="fincaNueva" placeholder="Escriba la nueva finca" value="" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('selVariedad').focus();}">
                     </div>
                 </div>
                 <?php
@@ -344,10 +348,10 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                 $variedad_sel_val = $es_otra_variedad ? '__otro__' : $variedad_actual;
                 $variedad_nueva_val = $es_otra_variedad ? $variedad_actual : '';
                 ?>
-                <div class="campo campo-variedad">
+                <div class="campo campo-variedad" style="margin-left:0;">
                     <label>Variedad</label>
                     <div class="variedad-row">
-                        <select name="variedad_sel" id="selVariedad" onchange="var w=document.getElementById('variedadOtroWrap');w.classList.toggle('visible',this.value==='__otro__');">
+                        <select name="variedad_sel" id="selVariedad" onchange="var w=document.getElementById('variedadOtroWrap');w.classList.toggle('visible',this.value==='__otro__');" onkeydown="if(event.key==='Enter'){event.preventDefault();if(this.value==='__otro__')document.getElementById('variedadNueva').focus();else document.getElementById('<?= $editar_id ? "inputHoraSalida" : "btnGuardar" ?>').focus();}">
                             <option value="">--</option>
                             <?php foreach ($variedades_fijas as $vn): ?>
                             <option value="<?= htmlspecialchars($vn) ?>" <?= ($variedad_sel_val === $vn) ? 'selected' : '' ?>><?= htmlspecialchars($vn) ?></option>
@@ -355,14 +359,18 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                             <option value="__otro__" <?= ($variedad_sel_val === '__otro__') ? 'selected' : '' ?>>Otra variedad</option>
                         </select>
                         <div id="variedadOtroWrap" class="<?= $es_otra_variedad ? 'visible' : '' ?>" style="margin-top:0;">
-                            <input type="text" name="variedad_nueva" id="variedadNueva" placeholder="Escriba la variedad" value="<?= htmlspecialchars($variedad_nueva_val) ?>" style="min-width:100px;">
+                            <input type="text" name="variedad_nueva" id="variedadNueva" placeholder="Escriba la variedad" value="<?= htmlspecialchars($variedad_nueva_val) ?>" style="min-width:100px;" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('<?= $editar_id ? "inputHoraSalida" : "btnGuardar" ?>').focus();}">
                         </div>
                     </div>
                 </div>
             </div>
+            <div class="campo" style="min-width:80px; margin-left:1cm;">
+                <label>Hora salida</label>
+                <input type="time" name="hora_salida" id="inputHoraSalida" value="<?= $fila_edit ? substr(($fila_edit['hora_salida'] ?? $fila_edit['hora'] ?? ''), 0, 5) : '' ?>" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('btnGuardar').focus();}">
+            </div>
             <div class="campo" style="flex:0; align-self:flex-end;">
                 <label style="visibility:hidden;">.</label>
-                <button type="submit" name="guardar" class="btn btn-primary"><?= $editar_id ? 'Actualizar' : 'Guardar' ?></button>
+                <button type="submit" name="guardar" id="btnGuardar" class="btn btn-primary"><?= $editar_id ? 'Actualizar' : 'Guardar' ?></button>
                 <?php if ($editar_id): ?>
                     <a href="cosecha.php?zafra=<?= $anio_zafra ?>" class="btn btn-secondary">Cancelar</a>
                 <?php endif; ?>
@@ -383,6 +391,7 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                     <th>Camion</th>
                     <th>Finca</th>
                     <th>Variedad</th>
+                    <th>Hora salida</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -398,6 +407,7 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                             <td><?= htmlspecialchars($f['camion'] ?? '-') ?></td>
                             <td><?= htmlspecialchars($f['finca'] ?? '-') ?></td>
                             <td><?= htmlspecialchars($f['variedad'] ?? '-') ?></td>
+                            <td><?= ($f['hora_salida'] ?? $f['hora']) ? substr($f['hora_salida'] ?? $f['hora'], 0, 5) : '-' ?></td>
                             <td>
                                 <div class="acciones">
                                     <?php $puede = $puede_modificar_eliminar($f['fecha'] ?? ''); ?>
@@ -421,7 +431,7 @@ $variedades_fijas = ['03/12', '02/22', '06/7'];
                     <?php endwhile; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="9" style="text-align:center; padding:15px; color:#666;">No hay registros para esta zafra.</td>
+                        <td colspan="10" style="text-align:center; padding:15px; color:#666;">No hay registros para esta zafra.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
