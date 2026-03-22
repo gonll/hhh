@@ -702,7 +702,7 @@ function fmtNum($n) {
     </style>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
-<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mf=document.getElementById('modalFotoPago');if(mf&&mf.classList.contains('activo')){if(typeof cerrarModalFotoPago==='function')cerrarModalFotoPago();e.preventDefault();return false;}var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
+<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mf=document.getElementById('modalFotoPago');if(mf&&mf.classList.contains('activo')){if(typeof cancelarModalFotoPago==='function')cancelarModalFotoPago();e.preventDefault();return false;}var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
         <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
 
@@ -1152,12 +1152,15 @@ function fmtNum($n) {
             <input type="file" id="inputFotoPago" accept="image/*" capture="environment" style="display:none;">
         </p>
         <!-- Modal resultado foto -->
-        <div id="modalFotoPago" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalFotoPago()">
-            <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 480px;">
+        <div id="modalFotoPago" class="modal-venta-overlay" onclick="if(event.target===this) cancelarModalFotoPago()">
+            <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 520px;">
                 <h4 style="margin: 0 0 12px 0; color: #007bff;">Datos extraídos de la foto</h4>
-                <div id="resumenFotoPago" style="padding: 12px; background: #f8f9fa; border-radius: 4px; font-size: 12px; margin-bottom: 12px;"></div>
+                <div id="resumenFotoPago" style="padding: 12px; background: #f8f9fa; border-radius: 4px; font-size: 12px; margin-bottom: 12px; max-height: 280px; overflow-y: auto;"></div>
                 <p style="font-size: 11px; color: #666; margin: 0 0 10px 0;">Abra una operación (clic en Mov-Cobro), luego Nuevo cobro: se completará automáticamente.</p>
-                <button type="button" class="btn-cerrar-venta" onclick="cerrarModalFotoPago()">Cerrar</button>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn-guardar-venta" onclick="cerrarModalFotoPago()">Cerrar</button>
+                    <button type="button" class="btn-cerrar-venta" onclick="cancelarModalFotoPago()">Cancelar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -2267,6 +2270,11 @@ function fmtNum($n) {
         function cerrarModalFotoPago() {
             if (modalFotoPago) modalFotoPago.classList.remove('activo');
         }
+        function cancelarModalFotoPago() {
+            window.datosFotoPagoPendientes = null;
+            if (resumenFotoPago) resumenFotoPago.innerHTML = '';
+            if (modalFotoPago) modalFotoPago.classList.remove('activo');
+        }
         if (btnFotoPago && inputFotoPago) {
             btnFotoPago.addEventListener('click', function() {
                 inputFotoPago.value = '';
@@ -2298,8 +2306,10 @@ function fmtNum($n) {
                                     window.datosFotoPagoPendientes = data;
                                     var html = '';
                                     if (data.monto != null) html += '<strong>Monto:</strong> ' + data.monto + '<br>';
-                                    if (data.concepto_sugerido) html += '<strong>Concepto:</strong> ' + (data.concepto_sugerido.length > 60 ? data.concepto_sugerido.substring(0, 60) + '…' : data.concepto_sugerido) + '<br>';
-                                    if (data.fecha_pago) html += '<strong>Fecha:</strong> ' + data.fecha_pago + '<br>';
+                                    if (data.emisor) html += '<strong>Emisor:</strong> ' + data.emisor + '<br>';
+                                    if (data.cuit) html += '<strong>CUIT:</strong> ' + data.cuit + '<br>';
+                                    if (data.concepto_sugerido) html += '<strong>Concepto:</strong> ' + data.concepto_sugerido + '<br>';
+                                    if (data.fecha_pago) html += '<strong>Fecha pago:</strong> ' + data.fecha_pago + '<br>';
                                     if (data.nro_echeq) html += '<strong>N° Echeq:</strong> ' + data.nro_echeq + '<br>';
                                     if (resumenFotoPago) resumenFotoPago.innerHTML = html || 'Datos extraídos.';
                                     if (modalFotoPago) modalFotoPago.classList.add('activo');
