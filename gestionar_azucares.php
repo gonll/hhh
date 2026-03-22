@@ -700,8 +700,9 @@ function fmtNum($n) {
         .modal-alta #alta_orden,
         .modal-alta #alta_cantidad { -moz-appearance: textfield; appearance: textfield; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
-<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
+<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
         <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
 
@@ -1072,8 +1073,22 @@ function fmtNum($n) {
                 <div class="botones">
                     <button type="button" class="btn-guardar-venta" id="btnNuevoCobroOperacion" style="display:none;">Nuevo cobro</button>
                     <button type="button" class="btn-guardar-venta" id="btnLeerPdfEcheq" style="display:none;">Leer PDF ECheq</button>
+                    <button type="button" class="btn-guardar-venta" id="btnPegarPago" style="display:none;">Pegar Pago</button>
                     <input type="file" id="inputPdfEcheq" accept=".pdf,application/pdf" style="display:none;">
                     <button type="button" class="btn-cerrar-venta" onclick="cerrarModalMovimientosOperacion()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+        <!-- Modal Pegar Pago: zona para pegar imagen del comprobante -->
+        <div id="modalPegarPago" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalPegarPago()">
+            <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 600px; max-height: 90vh;">
+                <h4 style="margin: 0 0 12px 0; color: #007bff;">Pegar imagen del comprobante</h4>
+                <p style="font-size: 11px; color: #666; margin: 0 0 10px 0;">Haga clic en el recuadro y pegue (Ctrl+V) una captura o foto del PDF del echeq.</p>
+                <div id="zonaPegarPago" contenteditable="true" style="min-height: 280px; max-height: 400px; overflow: auto; border: 2px dashed #007bff; border-radius: 6px; padding: 15px; background: #f8f9fa; font-size: 12px; cursor: text;" title="Pegue aquí (Ctrl+V)">Pegue aquí la imagen…</div>
+                <div id="msgPegarPago" style="display:none; margin-top: 8px; padding: 8px; border-radius: 4px; font-size: 11px;"></div>
+                <div style="margin-top: 12px; display: flex; gap: 8px;">
+                    <button type="button" class="btn-guardar-venta" id="btnProcesarPegarPago">Procesar</button>
+                    <button type="button" class="btn-cerrar-venta" onclick="cerrarModalPegarPago()">Cerrar</button>
                 </div>
             </div>
         </div>
@@ -1767,6 +1782,8 @@ function fmtNum($n) {
                 if (btnNuevoCobro && usuarioId) {
                     btnNuevoCobro.style.display = 'inline-block';
                     if (btnLeerPdf) btnLeerPdf.style.display = 'inline-block';
+                    var btnPegarPago = document.getElementById('btnPegarPago');
+                    if (btnPegarPago) btnPegarPago.style.display = 'inline-block';
                     // Guardar datos de la operación para usar en el formulario
                     btnNuevoCobro.dataset.usuarioId = usuarioId;
                     btnNuevoCobro.dataset.operacion = operacion;
@@ -1794,6 +1811,8 @@ function fmtNum($n) {
                 } else {
                     if (btnNuevoCobro) btnNuevoCobro.style.display = 'none';
                     if (btnLeerPdf) btnLeerPdf.style.display = 'none';
+                    var btnPegarP = document.getElementById('btnPegarPago');
+                    if (btnPegarP) btnPegarP.style.display = 'none';
                 }
             })
             .catch(function(error) {
@@ -2072,6 +2091,111 @@ function fmtNum($n) {
                         btnLeerPdfEcheq.textContent = 'Leer PDF ECheq';
                         alert('Error: ' + (err.message || 'No se pudo procesar el PDF'));
                     });
+            });
+        }
+        // Botón Pegar Pago
+        var btnPegarPago = document.getElementById('btnPegarPago');
+        var modalPegarPago = document.getElementById('modalPegarPago');
+        var zonaPegarPago = document.getElementById('zonaPegarPago');
+        var msgPegarPago = document.getElementById('msgPegarPago');
+        var btnProcesarPegar = document.getElementById('btnProcesarPegarPago');
+        function cerrarModalPegarPago() {
+            if (modalPegarPago) modalPegarPago.classList.remove('activo');
+            if (zonaPegarPago) { zonaPegarPago.innerHTML = 'Pegue aquí la imagen…'; zonaPegarPago.dataset.imageData = ''; }
+            if (msgPegarPago) { msgPegarPago.style.display = 'none'; msgPegarPago.textContent = ''; }
+        }
+        function aplicarDatosPagoACobro(data) {
+            var formCobroEl = document.getElementById('formNuevoCobroOperacion');
+            var btnNuevo = document.getElementById('btnNuevoCobroOperacion');
+            if (!formCobroEl || !btnNuevo || !btnNuevo.dataset.usuarioId || !btnNuevo.dataset.operacion) {
+                alert('Abra primero una operación con movimientos.');
+                return;
+            }
+            formCobroEl.style.display = 'block';
+            document.getElementById('cobro_usuario_id').value = btnNuevo.dataset.usuarioId;
+            document.getElementById('cobro_operacion').value = btnNuevo.dataset.operacion;
+            document.getElementById('cobro_fecha').value = data.fecha_pago || new Date().toISOString().split('T')[0];
+            document.getElementById('cobro_concepto').value = data.concepto_sugerido || 'COBRO VTA AZUCAR: ';
+            document.getElementById('cobro_comprobante').value = 'CHEQUE/ECHEQ';
+            document.getElementById('cobro_referencia').value = 'OP N° ' + btnNuevo.dataset.operacion;
+            document.getElementById('cobro_monto').value = data.monto || '';
+            document.getElementById('msgCobroOperacion').style.display = 'none';
+            formCobroEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            setTimeout(function() {
+                if (data.monto) document.getElementById('cobro_monto').focus();
+                else document.getElementById('cobro_concepto').focus();
+            }, 50);
+        }
+        if (btnPegarPago && modalPegarPago && zonaPegarPago) {
+            btnPegarPago.addEventListener('click', function() {
+                cerrarModalPegarPago();
+                modalPegarPago.classList.add('activo');
+                zonaPegarPago.focus();
+            });
+            zonaPegarPago.addEventListener('paste', function(e) {
+                var items = e.clipboardData && e.clipboardData.items;
+                if (!items) return;
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        e.preventDefault();
+                        var file = items[i].getAsFile();
+                        if (!file) return;
+                        zonaPegarPago.innerHTML = '<span style="color:#666;">Procesando OCR…</span>';
+                        if (msgPegarPago) { msgPegarPago.style.display = 'none'; msgPegarPago.textContent = ''; }
+                        if (typeof Tesseract !== 'undefined') {
+                            Tesseract.recognize(file, 'spa+eng', { logger: function(m) {} }).then(function(result) {
+                                var texto = (result && result.data && result.data.text) ? result.data.text : '';
+                                if (!texto || texto.trim().length < 10) {
+                                    zonaPegarPago.innerHTML = 'Pegue aquí la imagen…';
+                                    if (msgPegarPago) { msgPegarPago.textContent = 'No se pudo extraer texto de la imagen.'; msgPegarPago.style.background = '#f8d7da'; msgPegarPago.style.display = 'block'; }
+                                    return;
+                                }
+                                var fd = new FormData();
+                                fd.append('texto', texto);
+                                fetch('extraer_echeq_texto.php', { method: 'POST', body: fd })
+                                    .then(function(r) { return r.json(); })
+                                    .then(function(data) {
+                                        cerrarModalPegarPago();
+                                        if (data.ok) aplicarDatosPagoACobro(data);
+                                        else alert(data.error || 'Error al procesar');
+                                    })
+                                    .catch(function() { alert('Error de conexión'); cerrarModalPegarPago(); });
+                            }).catch(function() {
+                                zonaPegarPago.innerHTML = 'Pegue aquí la imagen…';
+                                if (msgPegarPago) { msgPegarPago.textContent = 'Error en OCR.'; msgPegarPago.style.display = 'block'; }
+                            });
+                        } else {
+                            zonaPegarPago.innerHTML = 'Pegue aquí la imagen…';
+                            if (msgPegarPago) { msgPegarPago.textContent = 'Tesseract.js no cargó.'; msgPegarPago.style.display = 'block'; }
+                        }
+                        return;
+                    }
+                }
+            });
+            zonaPegarPago.addEventListener('focus', function() {
+                if (this.textContent.trim() === 'Pegue aquí la imagen…') this.innerHTML = '';
+            });
+            zonaPegarPago.addEventListener('blur', function() {
+                if (this.textContent.trim() === '') this.innerHTML = 'Pegue aquí la imagen…';
+            });
+        }
+        if (btnProcesarPegar && zonaPegarPago) {
+            btnProcesarPegar.addEventListener('click', function() {
+                var textoPegado = zonaPegarPago.innerText.replace(/Pegue aquí la imagen…/g, '').trim();
+                if (textoPegado.length >= 10) {
+                    var fd = new FormData();
+                    fd.append('texto', textoPegado);
+                    fetch('extraer_echeq_texto.php', { method: 'POST', body: fd })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            cerrarModalPegarPago();
+                            if (data.ok) aplicarDatosPagoACobro(data);
+                            else alert(data.error || 'Error');
+                        })
+                        .catch(function() { alert('Error de conexión'); });
+                } else {
+                    if (msgPegarPago) { msgPegarPago.textContent = 'Pegue una imagen (Ctrl+V) o pegue texto del comprobante y pulse Procesar.'; msgPegarPago.style.background = '#fff3cd'; msgPegarPago.style.display = 'block'; }
+                }
             });
         }
     })();

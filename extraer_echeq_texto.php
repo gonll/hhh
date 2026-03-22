@@ -1,7 +1,7 @@
 <?php
 /**
- * Extrae datos de un PDF de detalle de ECheq (monto, emisor, CUIT, fecha pago, número).
- * Requiere: composer require smalot/pdfparser
+ * Extrae datos de un texto (obtenido por OCR de imagen o pegando) de detalle de ECheq.
+ * Recibe POST texto=... y devuelve el mismo formato que extraer_echeq_pdf.php
  */
 header('Content-Type: application/json; charset=utf-8');
 
@@ -13,38 +13,13 @@ if (!isset($_SESSION['acceso_nivel']) || (int)$_SESSION['acceso_nivel'] < 2) {
     exit;
 }
 
-if (!isset($_FILES['pdf']) || $_FILES['pdf']['error'] !== UPLOAD_ERR_OK) {
-    echo json_encode(['ok' => false, 'error' => 'No se recibió el archivo PDF o hubo error en la subida']);
+$texto = trim($_POST['texto'] ?? '');
+if ($texto === '') {
+    echo json_encode(['ok' => false, 'error' => 'No se recibió texto']);
     exit;
 }
 
-$tmp = $_FILES['pdf']['tmp_name'];
-if (!is_uploaded_file($tmp) || !file_exists($tmp)) {
-    echo json_encode(['ok' => false, 'error' => 'Archivo no válido']);
-    exit;
-}
-
-$autoload = __DIR__ . '/vendor/autoload.php';
-if (!file_exists($autoload)) {
-    echo json_encode([
-        'ok' => false,
-        'error' => 'Falta la librería PDF. Ejecute en la carpeta del proyecto: composer require smalot/pdfparser'
-    ]);
-    exit;
-}
-
-require_once $autoload;
-
-try {
-    $parser = new \Smalot\PdfParser\Parser();
-    $pdf = $parser->parseFile($tmp);
-    $texto = $pdf->getText();
-} catch (Exception $e) {
-    echo json_encode(['ok' => false, 'error' => 'No se pudo leer el PDF: ' . $e->getMessage()]);
-    exit;
-}
-
-// Extraer datos con regex (ajustar patrones según formato real del PDF)
+// Misma lógica de extracción que extraer_echeq_pdf.php
 $resultado = [
     'ok' => true,
     'monto' => null,
@@ -55,12 +30,10 @@ $resultado = [
     'concepto_sugerido' => null
 ];
 
-// CUIT: XX-XXXXXXXX-X
 if (preg_match('/(\d{2}-\d{8}-\d)/', $texto, $m)) {
     $resultado['cuit'] = $m[1];
 }
 
-// Monto: $ 1.234,56 (argentino) o $ 1234.56
 if (preg_match('/\$\s*([\d.,]+)/', $texto, $m)) {
     $s = trim($m[1]);
     if (strpos($s, ',') !== false && strpos($s, '.') !== false) {
@@ -72,12 +45,10 @@ if (preg_match('/\$\s*([\d.,]+)/', $texto, $m)) {
     $resultado['monto'] = (float)preg_replace('/[^\d.]/', '', $s) ?: null;
 }
 
-// Fecha: dd/mm/yyyy o dd-mm-yyyy
 if (preg_match('/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/', $texto, $m)) {
     $resultado['fecha_pago'] = sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
 }
 
-// Número echeq: buscar patrones como "N° 12345", "Número: 12345", "ECHEQ 12345"
 if (preg_match('/(?:echeq|n[°º]|nro\.?|número|numero)\s*:?\s*(\d{4,})/i', $texto, $m)) {
     $resultado['nro_echeq'] = $m[1];
 } elseif (preg_match('/\b(\d{8,})\b/', $texto, $m)) {
@@ -85,7 +56,6 @@ if (preg_match('/(?:echeq|n[°º]|nro\.?|número|numero)\s*:?\s*(\d{4,})/i', $te
 }
 
 // Emisor: nombre de empresa entre el monto ($) y el CUIT (ej: "Froneri Arg Sa", "Lacteos Ramolac S.a")
-// Excluir direcciones como "Ruta Panamericana Km"
 $cuitEsc = $resultado['cuit'] ? preg_quote($resultado['cuit'], '/') : '';
 if ($cuitEsc) {
     if (preg_match('/\$\s*[\d.,]+\s*(.+?)\s*' . $cuitEsc . '/us', $texto, $m)) {
@@ -120,7 +90,6 @@ if (!empty($resultado['emisor'])) {
     $resultado['emisor'] = trim($resultado['emisor']);
 }
 
-// Concepto sugerido: COBRO VTA AZUCAR: emisor CUIT, N° echeq [número], Fecha Cobro [fecha]
 $partes = [];
 if ($resultado['emisor'] || $resultado['cuit']) {
     $emisorCuit = trim(($resultado['emisor'] ?? '') . ($resultado['cuit'] ? ' ' . $resultado['cuit'] : ''));
