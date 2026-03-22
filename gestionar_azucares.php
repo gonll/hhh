@@ -702,7 +702,7 @@ function fmtNum($n) {
     </style>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
-<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
+<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mf=document.getElementById('modalFotoPago');if(mf&&mf.classList.contains('activo')){if(typeof cerrarModalFotoPago==='function')cerrarModalFotoPago();e.preventDefault();return false;}var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
         <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
 
@@ -1148,7 +1148,18 @@ function fmtNum($n) {
 
         <p class="volver">
             <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
+            <button type="button" class="btn btn-secondary" id="btnFotoPago" title="En celular abre la cámara para capturar comprobante">Foto Pago</button>
+            <input type="file" id="inputFotoPago" accept="image/*" capture="environment" style="display:none;">
         </p>
+        <!-- Modal resultado foto -->
+        <div id="modalFotoPago" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalFotoPago()">
+            <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 480px;">
+                <h4 style="margin: 0 0 12px 0; color: #007bff;">Datos extraídos de la foto</h4>
+                <div id="resumenFotoPago" style="padding: 12px; background: #f8f9fa; border-radius: 4px; font-size: 12px; margin-bottom: 12px;"></div>
+                <p style="font-size: 11px; color: #666; margin: 0 0 10px 0;">Abra una operación (clic en Mov-Cobro), luego Nuevo cobro: se completará automáticamente.</p>
+                <button type="button" class="btn-cerrar-venta" onclick="cerrarModalFotoPago()">Cerrar</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1788,18 +1799,24 @@ function fmtNum($n) {
                     btnNuevoCobro.dataset.usuarioId = usuarioId;
                     btnNuevoCobro.dataset.operacion = operacion;
                     btnNuevoCobro.onclick = function() {
-                        // Mostrar formulario y prellenar campos
                         if (formCobro) {
                             formCobro.style.display = 'block';
                             document.getElementById('cobro_usuario_id').value = usuarioId;
                             document.getElementById('cobro_operacion').value = operacion;
-                            document.getElementById('cobro_fecha').value = new Date().toISOString().split('T')[0];
-                            document.getElementById('cobro_concepto').value = 'COBRO VTA AZUCAR: ';
-                            document.getElementById('cobro_comprobante').value = 'CHEQUE/ECHEQ';
                             document.getElementById('cobro_referencia').value = 'OP N° ' + operacion;
-                            document.getElementById('cobro_monto').value = '';
+                            document.getElementById('cobro_comprobante').value = 'CHEQUE/ECHEQ';
+                            var datosFoto = window.datosFotoPagoPendientes;
+                            if (datosFoto) {
+                                document.getElementById('cobro_fecha').value = datosFoto.fecha_pago || new Date().toISOString().split('T')[0];
+                                document.getElementById('cobro_concepto').value = datosFoto.concepto_sugerido || 'COBRO VTA AZUCAR: ';
+                                document.getElementById('cobro_monto').value = datosFoto.monto || '';
+                                window.datosFotoPagoPendientes = null;
+                            } else {
+                                document.getElementById('cobro_fecha').value = new Date().toISOString().split('T')[0];
+                                document.getElementById('cobro_concepto').value = 'COBRO VTA AZUCAR: ';
+                                document.getElementById('cobro_monto').value = '';
+                            }
                             document.getElementById('msgCobroOperacion').style.display = 'none';
-                            // Scroll al formulario
                             formCobro.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                             setTimeout(function() {
                                 var conceptoEl = document.getElementById('cobro_concepto');
@@ -2238,6 +2255,74 @@ function fmtNum($n) {
         var tabla = document.querySelector('.tabla-azucar tbody');
         if (tabla) {
             tabla.addEventListener('click', manejarClickOP);
+        }
+    })();
+
+    // Botón Foto Pago: en celular abre cámara, captura imagen, OCR y extrae datos
+    (function() {
+        var btnFotoPago = document.getElementById('btnFotoPago');
+        var inputFotoPago = document.getElementById('inputFotoPago');
+        var modalFotoPago = document.getElementById('modalFotoPago');
+        var resumenFotoPago = document.getElementById('resumenFotoPago');
+        function cerrarModalFotoPago() {
+            if (modalFotoPago) modalFotoPago.classList.remove('activo');
+        }
+        if (btnFotoPago && inputFotoPago) {
+            btnFotoPago.addEventListener('click', function() {
+                inputFotoPago.value = '';
+                inputFotoPago.click();
+            });
+            inputFotoPago.addEventListener('change', function() {
+                var file = this.files[0];
+                if (!file || !file.type.startsWith('image/')) {
+                    alert('Seleccione una imagen.');
+                    return;
+                }
+                btnFotoPago.disabled = true;
+                btnFotoPago.textContent = 'Procesando…';
+                if (typeof Tesseract !== 'undefined') {
+                    Tesseract.recognize(file, 'spa+eng', { logger: function() {} }).then(function(result) {
+                        var texto = (result && result.data && result.data.text) ? result.data.text : '';
+                        btnFotoPago.disabled = false;
+                        btnFotoPago.textContent = 'Foto Pago';
+                        if (!texto || texto.trim().length < 10) {
+                            alert('No se pudo extraer texto de la imagen.');
+                            return;
+                        }
+                        var fd = new FormData();
+                        fd.append('texto', texto);
+                        fetch('extraer_echeq_texto.php', { method: 'POST', body: fd })
+                            .then(function(r) { return r.json(); })
+                            .then(function(data) {
+                                if (data.ok) {
+                                    window.datosFotoPagoPendientes = data;
+                                    var html = '';
+                                    if (data.monto != null) html += '<strong>Monto:</strong> ' + data.monto + '<br>';
+                                    if (data.concepto_sugerido) html += '<strong>Concepto:</strong> ' + (data.concepto_sugerido.length > 60 ? data.concepto_sugerido.substring(0, 60) + '…' : data.concepto_sugerido) + '<br>';
+                                    if (data.fecha_pago) html += '<strong>Fecha:</strong> ' + data.fecha_pago + '<br>';
+                                    if (data.nro_echeq) html += '<strong>N° Echeq:</strong> ' + data.nro_echeq + '<br>';
+                                    if (resumenFotoPago) resumenFotoPago.innerHTML = html || 'Datos extraídos.';
+                                    if (modalFotoPago) modalFotoPago.classList.add('activo');
+                                } else {
+                                    alert(data.error || 'Error al extraer datos.');
+                                }
+                            })
+                            .catch(function() {
+                                btnFotoPago.disabled = false;
+                                btnFotoPago.textContent = 'Foto Pago';
+                                alert('Error de conexión.');
+                            });
+                    }).catch(function() {
+                        btnFotoPago.disabled = false;
+                        btnFotoPago.textContent = 'Foto Pago';
+                        alert('Error en OCR.');
+                    });
+                } else {
+                    btnFotoPago.disabled = false;
+                    btnFotoPago.textContent = 'Foto Pago';
+                    alert('Tesseract.js no cargó.');
+                }
+            });
         }
     })();
 
