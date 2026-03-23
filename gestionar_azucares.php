@@ -51,6 +51,10 @@ $res_col3 = @mysqli_query($conexion, "SHOW COLUMNS FROM stock LIKE 'operador_id'
 if ($res_col3 && mysqli_num_rows($res_col3) == 0) {
     mysqli_query($conexion, "ALTER TABLE stock ADD operador_id INT NULL AFTER vendida_a_id");
 }
+$res_col_pdf = @mysqli_query($conexion, "SHOW COLUMNS FROM stock LIKE 'pdf_liq_prod'");
+if ($res_col_pdf && mysqli_num_rows($res_col_pdf) == 0) {
+    mysqli_query($conexion, "ALTER TABLE stock ADD pdf_liq_prod VARCHAR(255) NULL AFTER n_remt");
+}
 // Permitir operación duplicada (varias órdenes en la misma operación): quitar UNIQUE si existe
 $r_idx = @mysqli_query($conexion, "SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock' AND COLUMN_NAME = 'operacion' AND NON_UNIQUE = 0 LIMIT 1");
 if ($r_idx && mysqli_num_rows($r_idx) > 0) {
@@ -127,6 +131,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_query($conexion, "UPDATE stock SET fecha_fact = NULL, cant_fact = 0, facturada_a_id = NULL, precio_fac = NULL, n_fact = NULL, n_remt = NULL WHERE id = $stock_id");
             header('Location: gestionar_azucares.php?factura=elim');
             exit;
+        }
+    } elseif (isset($_POST['subir_pdf_liq_prod'])) {
+        $stock_id = (int)($_POST['stock_id'] ?? 0);
+        if ($stock_id > 0 && isset($_FILES['pdf_liq_prod']) && $_FILES['pdf_liq_prod']['error'] === UPLOAD_ERR_OK) {
+            $f = $_FILES['pdf_liq_prod'];
+            $ext = strtolower(pathinfo($f['name'], PATHINFO_EXTENSION));
+            if ($ext !== 'pdf') {
+                $mensaje_stock = 'Solo se permiten archivos PDF.';
+            } else {
+                $dir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'pdf_liq_prod';
+                if (!is_dir($dir)) mkdir($dir, 0755, true);
+                $nombre = 'stock_' . $stock_id . '_' . time() . '.pdf';
+                $destino = $dir . DIRECTORY_SEPARATOR . $nombre;
+                if (move_uploaded_file($f['tmp_name'], $destino)) {
+                    $r_old = mysqli_fetch_assoc(mysqli_query($conexion, "SELECT pdf_liq_prod FROM stock WHERE id = $stock_id LIMIT 1"));
+                    $old_path = $r_old['pdf_liq_prod'] ?? '';
+                    if ($old_path !== '') {
+                        $old_full = __DIR__ . DIRECTORY_SEPARATOR . $old_path;
+                        if (file_exists($old_full)) @unlink($old_full);
+                    }
+                    $ruta_rel = 'uploads/pdf_liq_prod/' . $nombre;
+                    $ruta_esc = mysqli_real_escape_string($conexion, $ruta_rel);
+                    mysqli_query($conexion, "UPDATE stock SET pdf_liq_prod = '$ruta_esc' WHERE id = $stock_id");
+                    header('Location: gestionar_azucares.php?pdf_liq=ok');
+                    exit;
+                } else {
+                    $mensaje_stock = 'No se pudo guardar el PDF. Verifique permisos de la carpeta uploads/pdf_liq_prod.';
+                }
+            }
+        } else {
+            $mensaje_stock = 'Seleccione un archivo PDF válido.';
         }
     } elseif (isset($_POST['guardar_venta_azucar']) || isset($_POST['editar_venta_azucar'])) {
         $stock_id = (int)($_POST['stock_id'] ?? 0);
@@ -499,6 +534,9 @@ if (isset($_GET['factura']) && $_GET['factura'] === 'ok') {
 if (isset($_GET['factura']) && $_GET['factura'] === 'elim') {
     $mensaje_stock = 'Factura eliminada del registro.';
 }
+if (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'ok') {
+    $mensaje_stock = 'PDF Liq Prod subido correctamente.';
+}
 
 function siguienteOperacion($conexion, $excluir_id = 0) {
     $excluir_id = (int)$excluir_id;
@@ -575,7 +613,12 @@ function fmtNum($n) {
         .tabla-azucar tbody tr.fila-seleccionada .col-operador .link-operador { color: white; }
         .tabla-azucar tbody tr.fila-seleccionada .col-operador .link-operador:hover { color: #e7f3ff; }
         .tabla-azucar .col-preciovta, .tabla-azucar .col-preciofac { width: 75px; }
-        .tabla-azucar .col-nfact { width: 70px; }
+        .tabla-azucar .col-nfact { width: 140px; min-width: 140px; }
+        .tabla-azucar .btn-pdf-liq-prod { font-size: 9px; padding: 2px 5px; margin-left: 4px; vertical-align: middle; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .tabla-azucar .btn-pdf-rojo { background: #dc3545; color: white; }
+        .tabla-azucar .btn-pdf-rojo:hover { background: #c82333; }
+        .tabla-azucar .btn-pdf-verde { background: #28a745; color: white; }
+        .tabla-azucar .btn-pdf-verde:hover { background: #218838; }
         .tabla-azucar .col-nremt { width: 100px; }
         .tabla-azucar .col-nremt .link-remito { color: #0066cc !important; text-decoration: underline !important; cursor: pointer; }
         .tabla-azucar .col-nremt .link-remito:hover { color: #004499 !important; }
@@ -703,7 +746,7 @@ function fmtNum($n) {
     </style>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
-<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mf=document.getElementById('modalFotoPago');if(mf&&mf.classList.contains('activo')){if(typeof cancelarModalFotoPago==='function')cancelarModalFotoPago();e.preventDefault();return false;}var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
+<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mf=document.getElementById('modalFotoPago');if(mf&&mf.classList.contains('activo')){if(typeof cancelarModalFotoPago==='function')cancelarModalFotoPago();e.preventDefault();return false;}var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var pl=document.getElementById('modalPdfLiqProd');if(pl&&pl.classList.contains('activo')){if(typeof cerrarModalPdfLiqProd==='function')cerrarModalPdfLiqProd();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
         <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
 
@@ -804,6 +847,7 @@ function fmtNum($n) {
                             data-preciofac="<?= $r['precio_fac'] !== null && $r['precio_fac'] !== '' ? (float)$r['precio_fac'] : '' ?>"
                             data-nfact="<?= htmlspecialchars($r['n_fact'] ?? '') ?>"
                             data-nremt="<?= htmlspecialchars($r['n_remt'] ?? '') ?>"
+                            data-pdf-liq-prod="<?= htmlspecialchars($r['pdf_liq_prod'] ?? '') ?>"
                             data-operador-id="<?= (int)($r['operador_id'] ?? 0) ?>"
                             data-operador-apellido="<?= htmlspecialchars($r['operador_apellido'] ?? '') ?>">
                             <td class="col-fecha"><?= htmlspecialchars(fmtFecha($r['fecha'])) ?></td>
@@ -845,7 +889,10 @@ function fmtNum($n) {
                             <td class="col-cantfact"><?= (int)$r['cant_fact'] ?></td>
                             <td class="col-facturada <?= empty($r['facturada_a_apellido']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['facturada_a_apellido'] ?? '') ?></td>
                             <td class="col-preciofac"><?= fmtNum($r['precio_fac']) ?></td>
-                            <td class="col-nfact <?= empty($r['n_fact']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['n_fact'] ?? '') ?></td>
+                            <td class="col-nfact <?= empty($r['n_fact']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['n_fact'] ?? '') ?>
+                                <?php $tiene_pdf = !empty($r['pdf_liq_prod']); ?>
+                                <button type="button" class="btn-pdf-liq-prod <?= $tiene_pdf ? 'btn-pdf-verde' : 'btn-pdf-rojo' ?>" data-stock-id="<?= (int)$r['id'] ?>" data-pdf-path="<?= htmlspecialchars($r['pdf_liq_prod'] ?? '', ENT_QUOTES, 'UTF-8') ?>" onclick="event.stopPropagation(); abrirModalPdfLiqProd(this);" title="<?= $tiene_pdf ? 'PDF Liq Prod subido' : 'Subir PDF Liq Prod' ?>">PDF Liq Prod</button>
+                            </td>
                             <td class="col-nremt <?= empty($r['n_remt']) ? 'sin-dato' : '' ?>"><?php
                                 $nremt = $r['n_remt'] ?? '';
                                 if ($nremt !== '') {
@@ -1007,6 +1054,30 @@ function fmtNum($n) {
                         <button type="button" class="btn-cerrar-venta" onclick="cerrarModalFactura()">Cancelar</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Modal PDF Liq Prod -->
+        <div id="modalPdfLiqProd" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalPdfLiqProd()">
+            <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 90%; max-height: 90vh; overflow: auto;">
+                <h3>PDF Liq Prod - Registro ID <span id="modalPdfLiqStockId"></span></h3>
+                <div id="modalPdfLiqSubir" style="display:none;">
+                    <form method="post" action="gestionar_azucares.php" enctype="multipart/form-data">
+                        <input type="hidden" name="subir_pdf_liq_prod" value="1">
+                        <input type="hidden" name="stock_id" id="modalPdfLiqStockIdInput" value="">
+                        <div style="margin-bottom: 10px;">
+                            <label for="inputPdfLiq">Seleccionar archivo PDF</label>
+                            <input type="file" name="pdf_liq_prod" id="inputPdfLiq" accept=".pdf" required>
+                        </div>
+                        <button type="submit" class="btn-guardar-venta">Subir PDF</button>
+                    </form>
+                </div>
+                <div id="modalPdfLiqVisor" style="display:none;">
+                    <iframe id="iframePdfLiq" src="" style="width:100%; height:60vh; border:1px solid #ddd;"></iframe>
+                </div>
+                <div class="botones" style="margin-top: 12px;">
+                    <button type="button" class="btn-cerrar-venta" onclick="cerrarModalPdfLiqProd()">Volver</button>
+                </div>
             </div>
         </div>
 
@@ -1346,6 +1417,23 @@ function fmtNum($n) {
 
     function cerrarModalFactura() {
         document.getElementById('modalFactura').classList.remove('activo');
+    }
+    function cerrarModalPdfLiqProd() {
+        document.getElementById('modalPdfLiqProd').classList.remove('activo');
+    }
+    function abrirModalPdfLiqProd(btn) {
+        var stockId = btn.getAttribute('data-stock-id');
+        var pdfPath = btn.getAttribute('data-pdf-path') || '';
+        document.getElementById('modalPdfLiqStockId').textContent = stockId;
+        document.getElementById('modalPdfLiqStockIdInput').value = stockId;
+        document.getElementById('modalPdfLiqSubir').style.display = pdfPath ? 'none' : 'block';
+        document.getElementById('modalPdfLiqVisor').style.display = pdfPath ? 'block' : 'none';
+        if (pdfPath) {
+            document.getElementById('iframePdfLiq').src = pdfPath;
+        } else {
+            document.getElementById('inputPdfLiq').value = '';
+        }
+        document.getElementById('modalPdfLiqProd').classList.add('activo');
     }
     function abrirModalFactura(esEdicion) {
         var tr = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada[data-id]');
