@@ -30,10 +30,15 @@ if (!empty($_GET['guardar_como'])) {
     }
 }
 
+while (ob_get_level() > 0) {
+    ob_end_clean();
+}
+
 header('Content-Type: application/pdf');
+header('X-Content-Type-Options: nosniff');
 $fnEsc = str_replace(['\\', '"'], ['', "'"], $nombreSalida);
 header('Content-Disposition: attachment; filename="' . $fnEsc . '"');
 header('Content-Length: ' . filesize($ruta));
-header('Cache-Control: no-cache, must-revalidate');
+header('Cache-Control: private, no-cache, must-revalidate');
 readfile($ruta);
 exit;

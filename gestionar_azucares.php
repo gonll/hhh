@@ -110,6 +110,8 @@ if ($res_faltan && $r = mysqli_fetch_assoc($res_faltan)) {
 $mensaje_stock = '';
 $mensaje_stock_link = null;
 $url_desc = '';
+$pdf_liq_marcar_sid = 0;
+$pdf_liq_marcar_path = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['eliminar_venta_azucar'])) {
         $stock_id = (int)($_POST['id'] ?? 0);
@@ -242,7 +244,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ruta_rel = 'uploads/pdf_liq_prod/' . $nombre_final;
                     $ruta_esc = mysqli_real_escape_string($conexion, $ruta_rel);
                     mysqli_query($conexion, "UPDATE stock SET pdf_liq_prod = '$ruta_esc' WHERE id = $stock_id");
-                    $redir_pdf = 'gestionar_azucares.php?pdf_liq=ok&descargar=' . urlencode($nombre_final);
+                    $redir_pdf = 'gestionar_azucares.php?pdf_liq=ok&descargar=' . urlencode($nombre_final)
+                        . '&pdf_liq_sid=' . (int)$stock_id . '&pdf_liq_path=' . urlencode($ruta_rel);
                     if ($nombre_para_descargas !== '') {
                         $redir_pdf .= '&guardar_como=' . urlencode($nombre_para_descargas);
                     }
@@ -630,12 +633,37 @@ if (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'error') {
     $mensaje_stock = 'No se encontró el archivo para descargar.';
 } elseif (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'ok') {
     $mensaje_stock = 'PDF guardado en el sistema. Se descarga a la carpeta Descargas (o la que tengas configurada en el navegador).';
+    if (!empty($_GET['pdf_liq_sid'])) {
+        $pdf_liq_marcar_sid = (int)$_GET['pdf_liq_sid'];
+    }
+    if (!empty($_GET['pdf_liq_path'])) {
+        $pp = (string)$_GET['pdf_liq_path'];
+        if (preg_match('#^uploads/pdf_liq_prod/[^/\\\\]+$#', $pp)) {
+            $pdf_liq_marcar_path = $pp;
+        }
+    }
     if (!empty($_GET['descargar'])) {
         $nombre_desc = !empty($_GET['guardar_como']) ? htmlspecialchars($_GET['guardar_como']) : htmlspecialchars($_GET['descargar']);
-        $url_desc = 'descargar_pdf_liq.php?f=' . urlencode($_GET['descargar']);
+        $q = 'f=' . urlencode($_GET['descargar']);
         if (!empty($_GET['guardar_como'])) {
-            $url_desc .= '&guardar_como=' . urlencode($_GET['guardar_como']);
+            $q .= '&guardar_como=' . urlencode($_GET['guardar_como']);
         }
+        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && (string)$_SERVER['SERVER_PORT'] === '443')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+            ? 'https' : 'http';
+        if (!empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+            $host = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_HOST'])[0]);
+        } else {
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        }
+        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
+        if ($scriptDir === '/' || $scriptDir === '.') {
+            $appPath = '';
+        } else {
+            $appPath = rtrim($scriptDir, '/');
+        }
+        $url_desc = $proto . '://' . $host . ($appPath === '' ? '' : $appPath) . '/descargar_pdf_liq.php?' . $q;
     } else {
         $nombre_desc = '';
         $url_desc = '';
@@ -857,7 +885,11 @@ function fmtNum($n) {
         <?php if ($mensaje_stock): ?>
         <p class="msg-interpretar ok" style="display: block;"><?= htmlspecialchars($mensaje_stock) ?></p>
         <?php if (!empty($url_desc)): ?>
-        <script>window.addEventListener('DOMContentLoaded', function(){ var a=document.createElement('a'); a.href='<?= htmlspecialchars($url_desc, ENT_QUOTES, 'UTF-8') ?>'; a.download='<?= htmlspecialchars($nombre_desc ?? '', ENT_QUOTES, 'UTF-8') ?>'; a.style.display='none'; document.body.appendChild(a); a.click(); document.body.removeChild(a); });</script>
+        <p class="msg-interpretar ok" style="margin-top:8px;"><a href="<?= htmlspecialchars($url_desc, ENT_QUOTES, 'UTF-8') ?>" id="linkDescargaPdfLiq" download="<?= htmlspecialchars($nombre_desc ?? '', ENT_QUOTES, 'UTF-8') ?>">Descargar PDF</a> — si no se bajó solo, hacé clic aquí (en el servidor a veces el navegador bloquea la descarga automática).</p>
+        <script>window.addEventListener('DOMContentLoaded',function(){var u=<?= json_encode($url_desc, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;var ifr=document.createElement('iframe');ifr.style.cssText='position:fixed;width:1px;height:1px;top:-99px;left:-99px;opacity:0;pointer-events:none;';ifr.setAttribute('aria-hidden','true');ifr.src=u;document.body.appendChild(ifr);setTimeout(function(){try{if(ifr.parentNode)ifr.parentNode.removeChild(ifr);}catch(e){}},18e4);});</script>
+        <?php endif; ?>
+        <?php if (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'ok' && $pdf_liq_marcar_sid > 0 && $pdf_liq_marcar_path !== ''): ?>
+        <script>window.addEventListener('DOMContentLoaded',function(){var sid=<?= (int)$pdf_liq_marcar_sid ?>;var path=<?= json_encode($pdf_liq_marcar_path, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;var tr=document.querySelector('.tabla-azucar tbody tr[data-id="'+sid+'"]');if(!tr)return;tr.setAttribute('data-pdf-liq-prod',path);var btn=tr.querySelector('.btn-pdf-liq-prod');if(!btn)return;btn.classList.remove('btn-pdf-rojo');btn.classList.add('btn-pdf-verde');btn.setAttribute('data-pdf-path',path);btn.title='PDF Liq Prod subido';});</script>
         <?php endif; ?>
         <?php endif; ?>
 
