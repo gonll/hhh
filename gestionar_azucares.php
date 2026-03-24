@@ -255,6 +255,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $mensaje_stock = 'No se pudo guardar el PDF. Verifique permisos de la carpeta uploads/pdf_liq_prod.';
                 }
             }
+        } elseif ($stock_id > 0 && isset($_FILES['pdf_liq_prod'])) {
+            $err = (int)($_FILES['pdf_liq_prod']['error'] ?? UPLOAD_ERR_NO_FILE);
+            $errMsg = [
+                UPLOAD_ERR_INI_SIZE => 'El PDF supera upload_max_filesize del servidor (pedir al hosting que lo suban o comprimir el archivo).',
+                UPLOAD_ERR_FORM_SIZE => 'El PDF supera el tamaño máximo del formulario.',
+                UPLOAD_ERR_PARTIAL => 'La subida se cortó. Probá de nuevo.',
+                UPLOAD_ERR_NO_FILE => 'Seleccioná un archivo PDF.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Error temporal en el servidor (carpeta tmp).',
+                UPLOAD_ERR_CANT_WRITE => 'El servidor no pudo escribir el archivo (permisos).',
+                UPLOAD_ERR_EXTENSION => 'Subida bloqueada por una extensión en el servidor.',
+            ];
+            $mensaje_stock = $errMsg[$err] ?? ('Error al subir el PDF (código ' . $err . ').');
         } else {
             $mensaje_stock = 'Seleccione un archivo PDF válido.';
         }
@@ -648,22 +660,8 @@ if (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'error') {
         if (!empty($_GET['guardar_como'])) {
             $q .= '&guardar_como=' . urlencode($_GET['guardar_como']);
         }
-        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (isset($_SERVER['SERVER_PORT']) && (string)$_SERVER['SERVER_PORT'] === '443')
-            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
-            ? 'https' : 'http';
-        if (!empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
-            $host = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_HOST'])[0]);
-        } else {
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        }
-        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
-        if ($scriptDir === '/' || $scriptDir === '.') {
-            $appPath = '';
-        } else {
-            $appPath = rtrim($scriptDir, '/');
-        }
-        $url_desc = $proto . '://' . $host . ($appPath === '' ? '' : $appPath) . '/descargar_pdf_liq.php?' . $q;
+        // URL relativa: el navegador resuelve bien en servidor (proxy, subcarpeta); la absoluta a veces falla.
+        $url_desc = 'descargar_pdf_liq.php?' . $q;
     } else {
         $nombre_desc = '';
         $url_desc = '';
@@ -897,9 +895,18 @@ function fmtNum($n) {
 
         <?php if ($mensaje_stock): ?>
         <p class="msg-interpretar ok" style="display: block;"><?= htmlspecialchars($mensaje_stock) ?></p>
-        <?php if (!empty($url_desc)): ?>
-        <p class="msg-interpretar ok" style="margin-top:8px;"><a href="<?= htmlspecialchars($url_desc, ENT_QUOTES, 'UTF-8') ?>" id="linkDescargaPdfLiq" download="<?= htmlspecialchars($nombre_desc ?? '', ENT_QUOTES, 'UTF-8') ?>">Descargar PDF</a> — si no se bajó solo, hacé clic aquí (en el servidor a veces el navegador bloquea la descarga automática).</p>
-        <script>window.addEventListener('DOMContentLoaded',function(){var u=<?= json_encode($url_desc, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;var ifr=document.createElement('iframe');ifr.style.cssText='position:fixed;width:1px;height:1px;top:-99px;left:-99px;opacity:0;pointer-events:none;';ifr.setAttribute('aria-hidden','true');ifr.src=u;document.body.appendChild(ifr);setTimeout(function(){try{if(ifr.parentNode)ifr.parentNode.removeChild(ifr);}catch(e){}},18e4);});</script>
+        <?php if (!empty($url_desc) && !empty($_GET['descargar'])): ?>
+        <p class="msg-interpretar ok" style="margin-top:8px;"><a href="<?= htmlspecialchars($url_desc, ENT_QUOTES, 'UTF-8') ?>" id="linkDescargaPdfLiq" target="_blank" rel="noopener noreferrer" download="<?= htmlspecialchars($nombre_desc ?? '', ENT_QUOTES, 'UTF-8') ?>">Descargar PDF otra vez</a> — si no apareció la descarga arriba, hacé clic aquí.</p>
+        <form id="formAutoDescargaPdf" method="get" action="descargar_pdf_liq.php" style="position:absolute;width:0;height:0;overflow:hidden;opacity:0;" aria-hidden="true">
+            <input type="hidden" name="f" value="<?= htmlspecialchars($_GET['descargar'], ENT_QUOTES, 'UTF-8') ?>">
+            <?php if (!empty($_GET['guardar_como'])): ?>
+            <input type="hidden" name="guardar_como" value="<?= htmlspecialchars($_GET['guardar_como'], ENT_QUOTES, 'UTF-8') ?>">
+            <?php endif; ?>
+        </form>
+        <?php
+        $js_nombre_descarga = !empty($_GET['guardar_como']) ? (string)$_GET['guardar_como'] : (string)$_GET['descargar'];
+        ?>
+        <script>window.addEventListener('DOMContentLoaded',function(){var url=<?= json_encode($url_desc, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;var fname=<?= json_encode($js_nombre_descarga, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;if(!url)return;function fallback(){var f=document.getElementById('formAutoDescargaPdf');if(!f)return;var n='iframeAutoDescargaPdf';var ifr=document.getElementById(n);if(!ifr){ifr=document.createElement('iframe');ifr.id=n;ifr.name=n;ifr.setAttribute('aria-hidden','true');ifr.style.cssText='position:absolute;width:0;height:0;border:0;visibility:hidden';document.body.appendChild(ifr);}f.target=n;try{f.submit();}catch(e){}}if(typeof fetch!=='undefined'){fetch(url,{credentials:'same-origin',cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('bad');var ct=(r.headers.get('content-type')||'').toLowerCase();if(ct.indexOf('text/html')!==-1)throw new Error('html');return r.blob();}).then(function(blob){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname&&fname.length?fname:'documento.pdf';a.rel='noopener';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},2e3);}).catch(function(){fallback();});}else{fallback();}});</script>
         <?php endif; ?>
         <?php if (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'ok' && $pdf_liq_marcar_sid > 0 && $pdf_liq_marcar_path !== ''): ?>
         <script>window.addEventListener('DOMContentLoaded',function(){var sid=<?= (int)$pdf_liq_marcar_sid ?>;var path=<?= json_encode($pdf_liq_marcar_path, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;var tr=document.querySelector('.tabla-azucar tbody tr[data-id="'+sid+'"]');if(!tr)return;tr.setAttribute('data-pdf-liq-prod',path);var btn=tr.querySelector('.btn-pdf-liq-prod');if(!btn)return;btn.classList.remove('btn-pdf-rojo');btn.classList.add('btn-pdf-verde');btn.setAttribute('data-pdf-path',path);btn.title='PDF Liq Prod subido';});</script>

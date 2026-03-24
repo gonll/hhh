@@ -37,8 +37,11 @@ while (ob_get_level() > 0) {
 header('Content-Type: application/pdf');
 header('X-Content-Type-Options: nosniff');
 $fnEsc = str_replace(['\\', '"'], ['', "'"], $nombreSalida);
-header('Content-Disposition: attachment; filename="' . $fnEsc . '"');
+$fnAscii = preg_replace('/[^\x20-\x7E]/', '_', $nombreSalida);
+$fnAscii = str_replace(['\\', '"'], ['', "'"], $fnAscii);
+header('Content-Disposition: attachment; filename="' . $fnAscii . '"; filename*=UTF-8\'\'' . rawurlencode($nombreSalida));
 header('Content-Length: ' . filesize($ruta));
 header('Cache-Control: private, no-cache, must-revalidate');
+header('Pragma: no-cache');
 readfile($ruta);
 exit;
