@@ -108,6 +108,8 @@ if ($res_faltan && $r = mysqli_fetch_assoc($res_faltan)) {
 }
 
 $mensaje_stock = '';
+$mensaje_stock_link = null;
+$url_desc = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['eliminar_venta_azucar'])) {
         $stock_id = (int)($_POST['id'] ?? 0);
@@ -142,19 +144,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $dir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'pdf_liq_prod';
                 if (!is_dir($dir)) mkdir($dir, 0755, true);
-                $nombre = 'stock_' . $stock_id . '_' . time() . '.pdf';
-                $destino = $dir . DIRECTORY_SEPARATOR . $nombre;
-                if (move_uploaded_file($f['tmp_name'], $destino)) {
+                $tmp_destino = $dir . DIRECTORY_SEPARATOR . 'temp_' . $stock_id . '_' . time() . '.pdf';
+                if (move_uploaded_file($f['tmp_name'], $tmp_destino)) {
                     $r_old = mysqli_fetch_assoc(mysqli_query($conexion, "SELECT pdf_liq_prod FROM stock WHERE id = $stock_id LIMIT 1"));
                     $old_path = $r_old['pdf_liq_prod'] ?? '';
                     if ($old_path !== '') {
                         $old_full = __DIR__ . DIRECTORY_SEPARATOR . $old_path;
                         if (file_exists($old_full)) @unlink($old_full);
                     }
-                    $ruta_rel = 'uploads/pdf_liq_prod/' . $nombre;
+                    $ts = time();
+                    $nombre = '';
+                    $nombre_usuario = trim($_POST['nombre_archivo'] ?? '');
+                    if ($nombre_usuario !== '') {
+                        $nombre_usuario = preg_replace('/[\\\\\/:*?"<>|]/', '_', $nombre_usuario);
+                        $nombre_usuario = preg_replace('/\.pdf$/i', '', $nombre_usuario);
+                        $nombre_usuario = substr(trim($nombre_usuario), 0, 180);
+                        if ($nombre_usuario !== '') {
+                            $nombre = $nombre_usuario . '_' . $ts . '.pdf';
+                        }
+                    }
+                    if (empty($nombre)) {
+                        $r_stock = mysqli_fetch_assoc(mysqli_query($conexion, "SELECT n_fact, articulo, fecha_fact, facturada_a_id FROM stock WHERE id = $stock_id LIMIT 1"));
+                    $n_fact_stock = trim($r_stock['n_fact'] ?? '');
+                    $fecha_fact_stock = !empty($r_stock['fecha_fact']) ? date('Y-m-d', strtotime($r_stock['fecha_fact'])) : null;
+                    $partes_nombre = [];
+                    $emisor = null;
+                    $numero = null;
+                    $fecha = null;
+                    if (file_exists(__DIR__ . '/extraer_datos_liq_prod_pdf.php')) {
+                        include_once __DIR__ . '/extraer_datos_liq_prod_pdf.php';
+                        $datos = extraerDatosLiqProdPdf($tmp_destino);
+                        $emisor = $datos['emisor'] ?? null;
+                        $numero = $datos['numero'] ?? $datos['numero_factura'] ?? null;
+                        $fecha = $datos['fecha_emision'] ?? null;
+                        // Si la extracción del PDF falló, intentar desde el nombre original del archivo
+                        if ((empty($emisor) || empty($numero) || empty($fecha)) && !empty($f['name'])) {
+                            $datos_fn = extraerDatosDesdeNombreArchivo($f['name']);
+                            if (empty($emisor) && !empty($datos_fn['emisor'])) $emisor = $datos_fn['emisor'];
+                            if (empty($numero) && !empty($datos_fn['numero'])) $numero = $datos_fn['numero'];
+                            if (empty($fecha) && !empty($datos_fn['fecha_emision'])) $fecha = $datos_fn['fecha_emision'];
+                        }
+                    }
+                    $numero = $numero ?: $n_fact_stock;
+                    $fecha = $fecha ?: $fecha_fact_stock;
+                    if (!empty($emisor)) {
+                        $emisor_safe = str_replace('&', '_', $emisor);
+                        $emisor_safe = preg_replace('/[^\pL\pN\s\-\.]/u', '', $emisor_safe);
+                        $emisor_safe = str_replace('.', '', $emisor_safe); // S.R.L. → SRL
+                        $emisor_safe = preg_replace('/\s+/', '_', trim($emisor_safe));
+                        $partes_nombre[] = substr($emisor_safe, 0, 50);
+                    }
+                    if (!empty($numero)) {
+                        $partes_nombre[] = 'Fact' . preg_replace('/[^\d]/', '', $numero);
+                    }
+                    if (!empty($fecha)) {
+                        $partes_nombre[] = $fecha;
+                    }
+                    if (!empty($partes_nombre)) {
+                        $base = implode('_', $partes_nombre);
+                        $base = preg_replace('/[\\\\\/:*?"<>|]/', '_', $base);
+                        $base = substr($base, 0, 180);
+                        $nombre = $base . '_' . $ts . '.pdf';
+                    } else {
+                        $articulo_abrev = preg_replace('/[^a-zA-Z0-9_-]/', '_', substr($r_stock['articulo'] ?? '', 0, 30));
+                        $nombre = 'LiqProd_Stock' . $stock_id . '_' . $articulo_abrev . '_' . $ts . '.pdf';
+                    }
+                    }
+                    $destino = $dir . DIRECTORY_SEPARATOR . $nombre;
+                    if (!@rename($tmp_destino, $destino)) {
+                        if (!empty($partes_nombre)) {
+                            $base_ascii = preg_replace('/[^\pL\pN_\-]/u', '', $base ?? '');
+                            if ($base_ascii !== '') {
+                                $nombre_alt = substr($base_ascii, 0, 100) . '_' . $ts . '.pdf';
+                                $destino_alt = $dir . DIRECTORY_SEPARATOR . $nombre_alt;
+                                if (@rename($tmp_destino, $destino_alt)) {
+                                    $nombre = $nombre_alt;
+                                    $destino = $destino_alt;
+                                }
+                            }
+                        }
+                        if (file_exists($tmp_destino)) {
+                            $nombre = 'stock_' . $stock_id . '_' . $ts . '.pdf';
+                            $destino = $dir . DIRECTORY_SEPARATOR . $nombre;
+                            @rename($tmp_destino, $destino);
+                        }
+                    }
+                    $nombre_final = basename($destino);
+                    $ruta_rel = 'uploads/pdf_liq_prod/' . $nombre_final;
                     $ruta_esc = mysqli_real_escape_string($conexion, $ruta_rel);
                     mysqli_query($conexion, "UPDATE stock SET pdf_liq_prod = '$ruta_esc' WHERE id = $stock_id");
-                    header('Location: gestionar_azucares.php?pdf_liq=ok');
+                    header('Location: gestionar_azucares.php?pdf_liq=ok&descargar=' . urlencode($nombre_final));
                     exit;
                 } else {
                     $mensaje_stock = 'No se pudo guardar el PDF. Verifique permisos de la carpeta uploads/pdf_liq_prod.';
@@ -534,8 +613,17 @@ if (isset($_GET['factura']) && $_GET['factura'] === 'ok') {
 if (isset($_GET['factura']) && $_GET['factura'] === 'elim') {
     $mensaje_stock = 'Factura eliminada del registro.';
 }
-if (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'ok') {
-    $mensaje_stock = 'PDF Liq Prod subido correctamente.';
+if (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'error') {
+    $mensaje_stock = 'No se encontró el archivo para descargar.';
+} elseif (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'ok') {
+    $mensaje_stock = 'PDF Liq Prod guardado. Se descargará en tu PC con el nombre asignado.';
+    if (!empty($_GET['descargar'])) {
+        $nombre_desc = htmlspecialchars($_GET['descargar']);
+        $url_desc = 'descargar_pdf_liq.php?f=' . urlencode($_GET['descargar']);
+    } else {
+        $nombre_desc = '';
+        $url_desc = '';
+    }
 }
 
 function siguienteOperacion($conexion, $excluir_id = 0) {
@@ -748,10 +836,13 @@ function fmtNum($n) {
 </head>
 <body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mf=document.getElementById('modalFotoPago');if(mf&&mf.classList.contains('activo')){if(typeof cancelarModalFotoPago==='function')cancelarModalFotoPago();e.preventDefault();return false;}var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var pl=document.getElementById('modalPdfLiqProd');if(pl&&pl.classList.contains('activo')){if(typeof cerrarModalPdfLiqProd==='function')cerrarModalPdfLiqProd();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
-        <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
+        <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span> <a href="limpiar_pdf_liq_prod.php" style="font-size:11px; margin-left:8px;">Limpiar refs PDF</a></h2>
 
         <?php if ($mensaje_stock): ?>
         <p class="msg-interpretar ok" style="display: block;"><?= htmlspecialchars($mensaje_stock) ?></p>
+        <?php if (!empty($url_desc)): ?>
+        <script>window.addEventListener('DOMContentLoaded', function(){ var a=document.createElement('a'); a.href='<?= htmlspecialchars($url_desc, ENT_QUOTES, 'UTF-8') ?>'; a.download='<?= htmlspecialchars($nombre_desc ?? '', ENT_QUOTES, 'UTF-8') ?>'; a.style.display='none'; document.body.appendChild(a); a.click(); document.body.removeChild(a); });</script>
+        <?php endif; ?>
         <?php endif; ?>
 
         <div class="contenedor-grilla-con-botones">
@@ -1061,13 +1152,24 @@ function fmtNum($n) {
         <div id="modalPdfLiqProd" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalPdfLiqProd()">
             <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 90%; max-height: 90vh; overflow: auto;">
                 <h3>PDF Liq Prod - Registro ID <span id="modalPdfLiqStockId"></span></h3>
+                <div id="modalPdfLiqEleccion" style="display:none; margin-bottom: 12px;">
+                    <p style="margin: 0 0 10px 0;">¿Qué desea hacer?</p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" class="btn-guardar-venta" onclick="modalPdfLiqElegirSubir()">Volver a elegir PDF</button>
+                        <button type="button" class="btn-cerrar-venta" onclick="modalPdfLiqMostrar()">Mostrar PDF</button>
+                    </div>
+                </div>
                 <div id="modalPdfLiqSubir" style="display:none;">
-                    <form method="post" action="gestionar_azucares.php" enctype="multipart/form-data">
+                    <form method="post" action="gestionar_azucares.php" enctype="multipart/form-data" id="formPdfLiqSubir">
                         <input type="hidden" name="subir_pdf_liq_prod" value="1">
                         <input type="hidden" name="stock_id" id="modalPdfLiqStockIdInput" value="">
                         <div style="margin-bottom: 10px;">
                             <label for="inputPdfLiq">Seleccionar archivo PDF</label>
                             <input type="file" name="pdf_liq_prod" id="inputPdfLiq" accept=".pdf" required>
+                        </div>
+                        <div id="wrapNombrePdfLiq" style="margin-bottom: 10px;">
+                            <label for="inputNombrePdfLiq">Nombre asignado (se descarga en tu PC)</label>
+                            <input type="text" name="nombre_archivo" id="inputNombrePdfLiq" placeholder="Ej: Emisor_Liq123_2025-03-18 (dejar vacío = automático)" maxlength="200" style="width:100%; padding:6px; box-sizing:border-box;">
                         </div>
                         <button type="submit" class="btn-guardar-venta">Subir PDF</button>
                     </form>
@@ -1421,20 +1523,55 @@ function fmtNum($n) {
     function cerrarModalPdfLiqProd() {
         document.getElementById('modalPdfLiqProd').classList.remove('activo');
     }
+    var _modalPdfLiqPath = '';
     function abrirModalPdfLiqProd(btn) {
         var stockId = btn.getAttribute('data-stock-id');
         var pdfPath = btn.getAttribute('data-pdf-path') || '';
+        _modalPdfLiqPath = pdfPath;
         document.getElementById('modalPdfLiqStockId').textContent = stockId;
         document.getElementById('modalPdfLiqStockIdInput').value = stockId;
+        document.getElementById('modalPdfLiqEleccion').style.display = pdfPath ? 'block' : 'none';
         document.getElementById('modalPdfLiqSubir').style.display = pdfPath ? 'none' : 'block';
-        document.getElementById('modalPdfLiqVisor').style.display = pdfPath ? 'block' : 'none';
-        if (pdfPath) {
-            document.getElementById('iframePdfLiq').src = pdfPath;
-        } else {
+        document.getElementById('modalPdfLiqVisor').style.display = 'none';
+        if (!pdfPath) {
             document.getElementById('inputPdfLiq').value = '';
+            document.getElementById('inputNombrePdfLiq').value = '';
         }
         document.getElementById('modalPdfLiqProd').classList.add('activo');
     }
+    function modalPdfLiqMostrar() {
+        document.getElementById('modalPdfLiqEleccion').style.display = 'none';
+        document.getElementById('modalPdfLiqSubir').style.display = 'none';
+        document.getElementById('modalPdfLiqVisor').style.display = 'block';
+        document.getElementById('iframePdfLiq').src = _modalPdfLiqPath;
+    }
+    function modalPdfLiqElegirSubir() {
+        document.getElementById('modalPdfLiqEleccion').style.display = 'none';
+        document.getElementById('modalPdfLiqVisor').style.display = 'none';
+        document.getElementById('modalPdfLiqSubir').style.display = 'block';
+        document.getElementById('inputPdfLiq').value = '';
+        document.getElementById('inputNombrePdfLiq').value = '';
+    }
+    (function() {
+        var formPdf = document.getElementById('formPdfLiqSubir');
+        var inputPdf = document.getElementById('inputPdfLiq');
+        var inputNombre = document.getElementById('inputNombrePdfLiq');
+        if (formPdf) {
+            formPdf.addEventListener('submit', function() {
+                var btn = this.querySelector('button[type="submit"]');
+                if (btn) { btn.disabled = true; btn.textContent = 'Subiendo...'; }
+            });
+        }
+        if (inputPdf && inputNombre) {
+            inputPdf.addEventListener('change', function() {
+                if (this.files && this.files.length > 0 && !inputNombre.value) {
+                    var base = this.files[0].name.replace(/\.pdf$/i, '');
+                    inputNombre.value = base;
+                    inputNombre.focus();
+                }
+            });
+        }
+    })();
     function abrirModalFactura(esEdicion) {
         var tr = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada[data-id]');
         if (!tr) {

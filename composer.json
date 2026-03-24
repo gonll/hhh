@@ -2,6 +2,7 @@
     "name": "sistema/hhh",
     "description": "Sistema HHH",
     "require": {
-        "smalot/pdfparser": "^2.0"
+        "smalot/pdfparser": "^2.0",
+        "google/apiclient": "^2.0"
     }
 }
