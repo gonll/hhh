@@ -804,6 +804,19 @@ function fmtNum($n) {
         .btn-eliminar-fact { background: #dc3545; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-eliminar-fact:hover { background: #c82333; }
         .volver { margin-top: 15px; }
+        .volver .btn-volver-panel {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #28a745;
+            color: #fff !important;
+            text-decoration: none;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .volver .btn-volver-panel:hover { background: #218838; color: #fff !important; }
         #btnFotoPago:disabled { opacity: 0.6; cursor: not-allowed; }
         .modal-venta-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 8px; box-sizing: border-box; overflow-y: auto; }
         .modal-venta-overlay.activo { display: flex; }
@@ -1369,7 +1382,7 @@ function fmtNum($n) {
         </div>
 
         <p class="volver">
-            <a href="index.php" class="btn btn-secondary">← Volver al panel</a>
+            <a href="index.php" class="btn-volver-panel">← Volver al panel</a>
             <button type="button" class="btn btn-secondary" id="btnFotoPago" disabled title="Inhabilitado">Foto Pago (Inhabilitado)</button>
             <input type="file" id="inputFotoPago" accept="image/*" capture="environment" style="display:none;">
         </p>
