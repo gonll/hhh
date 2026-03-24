@@ -3,7 +3,7 @@
         'name' => 'sistema/hhh',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'eb29c82d7b58097ff622745074f409ebcff676f0',
+        'reference' => '3e547261742a3ae35f63411ab659dd26e5ca5e67',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -190,7 +190,7 @@
         'sistema/hhh' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'eb29c82d7b58097ff622745074f409ebcff676f0',
+            'reference' => '3e547261742a3ae35f63411ab659dd26e5ca5e67',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

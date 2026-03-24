@@ -51,6 +51,10 @@ $res_col3 = @mysqli_query($conexion, "SHOW COLUMNS FROM stock LIKE 'operador_id'
 if ($res_col3 && mysqli_num_rows($res_col3) == 0) {
     mysqli_query($conexion, "ALTER TABLE stock ADD operador_id INT NULL AFTER vendida_a_id");
 }
+$res_col_liq_email = @mysqli_query($conexion, "SHOW COLUMNS FROM stock LIKE 'liq_prod_pdf_email_enviado'");
+if ($res_col_liq_email && mysqli_num_rows($res_col_liq_email) == 0) {
+    mysqli_query($conexion, "ALTER TABLE stock ADD liq_prod_pdf_email_enviado TINYINT(1) NOT NULL DEFAULT 0 AFTER n_remt");
+}
 // Permitir operación duplicada (varias órdenes en la misma operación): quitar UNIQUE si existe
 $r_idx = @mysqli_query($conexion, "SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock' AND COLUMN_NAME = 'operacion' AND NON_UNIQUE = 0 LIMIT 1");
 if ($r_idx && mysqli_num_rows($r_idx) > 0) {
@@ -546,10 +550,10 @@ function fmtNum($n) {
         .btn-secondary { background: #6c757d; color: white; }
         .contenedor-grilla-con-botones { overflow-x: hidden; margin-top: 10px; }
         .contenedor-grilla-con-botones .fila-botones-stock,
-        .contenedor-grilla-con-botones #cartelSaldoOrden { min-width: 1370px; }
+        .contenedor-grilla-con-botones #cartelSaldoOrden { min-width: 1410px; }
         .grid-azucar-wrap { overflow-x: visible; overflow-y: scroll; max-height: 185px; border: 1px solid #ddd; outline: none; }
         .grid-azucar-wrap:focus { outline: none; }
-        .tabla-azucar { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; min-width: 1230px; line-height: 1.2; font-weight: bold; }
+        .tabla-azucar { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; min-width: 1270px; line-height: 1.2; font-weight: bold; }
         .tabla-azucar th { background: #007bff; color: white; padding: 4px 3px; position: sticky; top: 0; z-index: 10; font-weight: bold; text-align: center; white-space: nowrap; border: 1px solid #0056b3; }
         .tabla-azucar td { padding: 2px 3px; border: 1px solid #ddd; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold; }
         .tabla-azucar tbody tr { cursor: pointer; }
@@ -576,7 +580,12 @@ function fmtNum($n) {
         .tabla-azucar tbody tr.fila-seleccionada .col-operador .link-operador { color: white; }
         .tabla-azucar tbody tr.fila-seleccionada .col-operador .link-operador:hover { color: #e7f3ff; }
         .tabla-azucar .col-preciovta, .tabla-azucar .col-preciofac { width: 75px; }
-        .tabla-azucar .col-nfact { width: 100px; }
+        .tabla-azucar .col-nfact { width: 155px; min-width: 155px; }
+        .tabla-azucar .btn-email-liq-pdf { font-size: 9px; padding: 2px 5px; margin-left: 4px; vertical-align: middle; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: #fff; }
+        .tabla-azucar .btn-email-liq-rojo { background: #dc3545; }
+        .tabla-azucar .btn-email-liq-rojo:hover { background: #c82333; }
+        .tabla-azucar .btn-email-liq-verde { background: #28a745; }
+        .tabla-azucar .btn-email-liq-verde:hover { background: #218838; }
         .tabla-azucar .col-nremt { width: 100px; }
         .tabla-azucar .col-nremt .link-remito { color: #0066cc !important; text-decoration: underline !important; cursor: pointer; }
         .tabla-azucar .col-nremt .link-remito:hover { color: #004499 !important; }
@@ -717,7 +726,7 @@ function fmtNum($n) {
     </style>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
-<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mf=document.getElementById('modalFotoPago');if(mf&&mf.classList.contains('activo')){if(typeof cancelarModalFotoPago==='function')cancelarModalFotoPago();e.preventDefault();return false;}var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
+<body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mf=document.getElementById('modalFotoPago');if(mf&&mf.classList.contains('activo')){if(typeof cancelarModalFotoPago==='function')cancelarModalFotoPago();e.preventDefault();return false;}var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var mel=document.getElementById('modalEmailLiqProd');if(mel&&mel.classList.contains('activo')){if(typeof cerrarModalEmailLiqProd==='function')cerrarModalEmailLiqProd();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
         <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
 
@@ -817,6 +826,7 @@ function fmtNum($n) {
                             data-facturada-a-apellido="<?= htmlspecialchars($r['facturada_a_apellido'] ?? '') ?>"
                             data-preciofac="<?= $r['precio_fac'] !== null && $r['precio_fac'] !== '' ? (float)$r['precio_fac'] : '' ?>"
                             data-nfact="<?= htmlspecialchars($r['n_fact'] ?? '') ?>"
+                            data-liq-email-enviado="<?= !empty($r['liq_prod_pdf_email_enviado']) ? '1' : '0' ?>"
                             data-nremt="<?= htmlspecialchars($r['n_remt'] ?? '') ?>"
                             data-operador-id="<?= (int)($r['operador_id'] ?? 0) ?>"
                             data-operador-apellido="<?= htmlspecialchars($r['operador_apellido'] ?? '') ?>">
@@ -859,7 +869,15 @@ function fmtNum($n) {
                             <td class="col-cantfact"><?= (int)$r['cant_fact'] ?></td>
                             <td class="col-facturada <?= empty($r['facturada_a_apellido']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['facturada_a_apellido'] ?? '') ?></td>
                             <td class="col-preciofac"><?= fmtNum($r['precio_fac']) ?></td>
-                            <td class="col-nfact <?= empty($r['n_fact']) ? 'sin-dato' : '' ?>"><?= htmlspecialchars($r['n_fact'] ?? '') ?></td>
+                            <td class="col-nfact <?= empty($r['n_fact']) ? 'sin-dato' : '' ?>"><?php
+                                $nf = trim((string)($r['n_fact'] ?? ''));
+                                echo htmlspecialchars($nf);
+                                if ($nf !== '') {
+                                    $env_ok = !empty($r['liq_prod_pdf_email_enviado']);
+                                    $cls = $env_ok ? 'btn-email-liq-verde' : 'btn-email-liq-rojo';
+                                    echo ' <button type="button" class="btn-email-liq-pdf ' . $cls . '" data-stock-id="' . (int)$r['id'] . '" onclick="event.stopPropagation(); abrirModalEmailLiqProd(this);" title="' . ($env_ok ? 'PDF enviado por email' : 'Enviar PDF por email') . '">Email PDF</button>';
+                                }
+                            ?></td>
                             <td class="col-nremt <?= empty($r['n_remt']) ? 'sin-dato' : '' ?>"><?php
                                 $nremt = $r['n_remt'] ?? '';
                                 if ($nremt !== '') {
@@ -1021,6 +1039,27 @@ function fmtNum($n) {
                         <button type="button" class="btn-cerrar-venta" onclick="cerrarModalFactura()">Cancelar</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <div id="modalEmailLiqProd" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalEmailLiqProd()">
+            <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 480px;">
+                <h3>Enviar PDF por email</h3>
+                <p style="margin:0 0 10px 0; font-size:11px; color:#555;">Destino: hectorhugoherrera@gmail.com · Asunto: <strong>Liquido Producto</strong> y el nombre del archivo.</p>
+                <div id="msgEmailLiqProd" style="display:none; margin-bottom:10px; padding:8px; border-radius:4px; font-size:11px;"></div>
+                <input type="hidden" id="emailLiqStockId" value="">
+                <div style="margin-bottom:10px;">
+                    <label for="emailLiqFile" style="display:block; margin-bottom:4px; font-weight:bold; font-size:10px;">Archivo PDF</label>
+                    <input type="file" id="emailLiqFile" accept=".pdf,application/pdf" style="width:100%; font-size:12px; box-sizing:border-box;">
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label for="emailLiqNombre" style="display:block; margin-bottom:4px; font-weight:bold; font-size:10px;">Nombre del archivo (sin .pdf; se adjunta como .pdf)</label>
+                    <input type="text" id="emailLiqNombre" maxlength="200" placeholder="Ej: Emisor_Liq_2025-03-24" style="width:100%; padding:6px; box-sizing:border-box; border:1px solid #ced4da; border-radius:4px;">
+                </div>
+                <div class="botones" style="margin-top:0;">
+                    <button type="button" class="btn-guardar-venta" id="emailLiqBtnEnviar">Enviar</button>
+                    <button type="button" class="btn-cerrar-venta" onclick="cerrarModalEmailLiqProd()">Cancelar</button>
+                </div>
             </div>
         </div>
 
@@ -1361,6 +1400,96 @@ function fmtNum($n) {
     function cerrarModalFactura() {
         document.getElementById('modalFactura').classList.remove('activo');
     }
+    function cerrarModalEmailLiqProd() {
+        var m = document.getElementById('modalEmailLiqProd');
+        if (m) m.classList.remove('activo');
+        var msg = document.getElementById('msgEmailLiqProd');
+        if (msg) { msg.style.display = 'none'; msg.textContent = ''; msg.style.background = ''; msg.style.color = ''; }
+    }
+    function abrirModalEmailLiqProd(btn) {
+        var sid = btn.getAttribute('data-stock-id');
+        document.getElementById('emailLiqStockId').value = sid || '';
+        document.getElementById('emailLiqFile').value = '';
+        document.getElementById('emailLiqNombre').value = '';
+        var msg = document.getElementById('msgEmailLiqProd');
+        if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+        document.getElementById('modalEmailLiqProd').classList.add('activo');
+    }
+    (function() {
+        var fileEl = document.getElementById('emailLiqFile');
+        var nomEl = document.getElementById('emailLiqNombre');
+        if (fileEl && nomEl) {
+            fileEl.addEventListener('change', function() {
+                if (this.files && this.files.length > 0 && !nomEl.value) {
+                    var base = this.files[0].name.replace(/\.pdf$/i, '');
+                    nomEl.value = base;
+                    nomEl.focus();
+                }
+            });
+        }
+        var btnEnviar = document.getElementById('emailLiqBtnEnviar');
+        if (btnEnviar) {
+            btnEnviar.addEventListener('click', function() {
+                var sid = document.getElementById('emailLiqStockId').value;
+                var msg = document.getElementById('msgEmailLiqProd');
+                var f = document.getElementById('emailLiqFile');
+                if (!sid || !f || !f.files || f.files.length === 0) {
+                    if (msg) {
+                        msg.style.display = 'block';
+                        msg.style.background = '#f8d7da';
+                        msg.style.color = '#721c24';
+                        msg.textContent = 'Seleccioná un archivo PDF.';
+                    }
+                    return;
+                }
+                var fd = new FormData();
+                fd.append('accion', 'enviar');
+                fd.append('stock_id', sid);
+                fd.append('nombre_archivo', document.getElementById('emailLiqNombre').value || '');
+                fd.append('pdf_liq', f.files[0]);
+                btnEnviar.disabled = true;
+                var txtOk = btnEnviar.textContent;
+                btnEnviar.textContent = 'Enviando...';
+                fetch('enviar_email_liq_prod.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+                    .then(function(r) {
+                        return r.text().then(function(text) {
+                            try {
+                                var j = JSON.parse(text);
+                                return { j: j };
+                            } catch (e) {
+                                return { j: { ok: false, error: 'Respuesta inválida del servidor.' } };
+                            }
+                        });
+                    })
+                    .catch(function() {
+                        return { j: { ok: false, error: 'Error de red.' } };
+                    })
+                    .then(function(res) {
+                        btnEnviar.disabled = false;
+                        btnEnviar.textContent = txtOk;
+                        if (res.j && res.j.ok) {
+                            var tr = document.querySelector('.tabla-azucar tbody tr[data-id="' + sid + '"]');
+                            if (tr) tr.setAttribute('data-liq-email-enviado', '1');
+                            var b = document.querySelector('.btn-email-liq-pdf[data-stock-id="' + sid + '"]');
+                            if (b) {
+                                b.classList.remove('btn-email-liq-rojo');
+                                b.classList.add('btn-email-liq-verde');
+                                b.title = 'PDF enviado por email';
+                            }
+                            cerrarModalEmailLiqProd();
+                        } else {
+                            var err = (res.j && res.j.error) ? res.j.error : 'No se pudo enviar.';
+                            if (msg) {
+                                msg.style.display = 'block';
+                                msg.style.background = '#f8d7da';
+                                msg.style.color = '#721c24';
+                                msg.textContent = err;
+                            }
+                        }
+                    });
+            });
+        }
+    })();
     function abrirModalFactura(esEdicion) {
         var tr = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada[data-id]');
         if (!tr) {

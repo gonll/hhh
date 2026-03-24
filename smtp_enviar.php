@@ -222,8 +222,9 @@ function enviar_mail_smtp($para, $asunto, $cuerpo) {
  * Envía un correo con HTML y archivo adjunto (PDF, SQL, etc.)
  * @param string $archivo_adjunto Ruta del archivo a adjuntar
  * @param string $mime_adjunto   MIME type del adjunto (ej: application/pdf, application/sql). Por defecto se infiere por extensión.
+ * @param string|null $adjunto_nombre_mostrar Nombre del archivo en el correo (si es null, se usa basename de $archivo_adjunto)
  */
-function enviar_mail_smtp_con_adjunto($para, $asunto, $cuerpo_html, $archivo_adjunto = null, $mime_adjunto = null) {
+function enviar_mail_smtp_con_adjunto($para, $asunto, $cuerpo_html, $archivo_adjunto = null, $mime_adjunto = null, $adjunto_nombre_mostrar = null) {
     $GLOBALS['smtp_ultimo_error'] = '';
     if (!file_exists(__DIR__ . '/mail_config.php')) {
         $GLOBALS['smtp_ultimo_error'] = 'No existe mail_config.php';
@@ -362,7 +363,9 @@ function enviar_mail_smtp_con_adjunto($para, $asunto, $cuerpo_html, $archivo_adj
         $mensaje .= $cuerpo_html . "\r\n\r\n";
         
         // Adjunto
-        $nombre_archivo = basename($archivo_adjunto);
+        $nombre_archivo = ($adjunto_nombre_mostrar !== null && $adjunto_nombre_mostrar !== '')
+            ? str_replace(["\r", "\n", '"'], '', basename($adjunto_nombre_mostrar))
+            : basename($archivo_adjunto);
         $contenido = file_get_contents($archivo_adjunto);
         $contenido_base64 = chunk_split(base64_encode($contenido));
         if ($mime_adjunto === null) {
