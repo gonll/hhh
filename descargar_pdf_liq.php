@@ -21,8 +21,18 @@ if (!file_exists($ruta) || !is_file($ruta)) {
     exit;
 }
 
+$nombreSalida = $f;
+if (!empty($_GET['guardar_como'])) {
+    $gc = trim($_GET['guardar_como']);
+    $gc = basename(str_replace(['\\', '/'], '', $gc));
+    if ($gc !== '' && preg_match('/\.pdf$/i', $gc) && !preg_match('/[\/\\\\]/', $gc)) {
+        $nombreSalida = $gc;
+    }
+}
+
 header('Content-Type: application/pdf');
-header('Content-Disposition: attachment; filename="' . addslashes($f) . '"');
+$fnEsc = str_replace(['\\', '"'], ['', "'"], $nombreSalida);
+header('Content-Disposition: attachment; filename="' . $fnEsc . '"');
 header('Content-Length: ' . filesize($ruta));
 header('Cache-Control: no-cache, must-revalidate');
 readfile($ruta);

@@ -155,6 +155,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ts = time();
                     $nombre = '';
                     $nombre_usuario = trim($_POST['nombre_archivo'] ?? '');
+                    $nombre_para_descargas = '';
+                    if ($nombre_usuario !== '') {
+                        $tmp_dn = preg_replace('/[\\\\\/:*?"<>|]/', '_', $nombre_usuario);
+                        $tmp_dn = preg_replace('/\.pdf$/i', '', $tmp_dn);
+                        $tmp_dn = substr(trim($tmp_dn), 0, 180);
+                        if ($tmp_dn !== '') {
+                            $nombre_para_descargas = $tmp_dn . '.pdf';
+                        }
+                    }
                     if ($nombre_usuario !== '') {
                         $nombre_usuario = preg_replace('/[\\\\\/:*?"<>|]/', '_', $nombre_usuario);
                         $nombre_usuario = preg_replace('/\.pdf$/i', '', $nombre_usuario);
@@ -233,7 +242,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ruta_rel = 'uploads/pdf_liq_prod/' . $nombre_final;
                     $ruta_esc = mysqli_real_escape_string($conexion, $ruta_rel);
                     mysqli_query($conexion, "UPDATE stock SET pdf_liq_prod = '$ruta_esc' WHERE id = $stock_id");
-                    header('Location: gestionar_azucares.php?pdf_liq=ok&descargar=' . urlencode($nombre_final));
+                    $redir_pdf = 'gestionar_azucares.php?pdf_liq=ok&descargar=' . urlencode($nombre_final);
+                    if ($nombre_para_descargas !== '') {
+                        $redir_pdf .= '&guardar_como=' . urlencode($nombre_para_descargas);
+                    }
+                    header('Location: ' . $redir_pdf);
                     exit;
                 } else {
                     $mensaje_stock = 'No se pudo guardar el PDF. Verifique permisos de la carpeta uploads/pdf_liq_prod.';
@@ -616,10 +629,13 @@ if (isset($_GET['factura']) && $_GET['factura'] === 'elim') {
 if (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'error') {
     $mensaje_stock = 'No se encontró el archivo para descargar.';
 } elseif (isset($_GET['pdf_liq']) && $_GET['pdf_liq'] === 'ok') {
-    $mensaje_stock = 'PDF Liq Prod guardado. Se descargará en tu PC con el nombre asignado.';
+    $mensaje_stock = 'PDF guardado en el sistema. Se descarga a la carpeta Descargas (o la que tengas configurada en el navegador).';
     if (!empty($_GET['descargar'])) {
-        $nombre_desc = htmlspecialchars($_GET['descargar']);
+        $nombre_desc = !empty($_GET['guardar_como']) ? htmlspecialchars($_GET['guardar_como']) : htmlspecialchars($_GET['descargar']);
         $url_desc = 'descargar_pdf_liq.php?f=' . urlencode($_GET['descargar']);
+        if (!empty($_GET['guardar_como'])) {
+            $url_desc .= '&guardar_como=' . urlencode($_GET['guardar_como']);
+        }
     } else {
         $nombre_desc = '';
         $url_desc = '';
@@ -1168,10 +1184,10 @@ function fmtNum($n) {
                             <input type="file" name="pdf_liq_prod" id="inputPdfLiq" accept=".pdf" required>
                         </div>
                         <div id="wrapNombrePdfLiq" style="margin-bottom: 10px;">
-                            <label for="inputNombrePdfLiq">Nombre asignado (se descarga en tu PC)</label>
-                            <input type="text" name="nombre_archivo" id="inputNombrePdfLiq" placeholder="Ej: Emisor_Liq123_2025-03-18 (dejar vacío = automático)" maxlength="200" style="width:100%; padding:6px; box-sizing:border-box;">
+                            <label for="inputNombrePdfLiq">Nombre del archivo en Descargas (dejar vacío = nombre automático)</label>
+                            <input type="text" name="nombre_archivo" id="inputNombrePdfLiq" placeholder="Ej: Emisor_Liq123_2025-03-18" maxlength="200" style="width:100%; padding:6px; box-sizing:border-box;">
                         </div>
-                        <button type="submit" class="btn-guardar-venta">Subir PDF</button>
+                        <button type="submit" class="btn-guardar-venta">Bajar PDF</button>
                     </form>
                 </div>
                 <div id="modalPdfLiqVisor" style="display:none;">
@@ -1559,7 +1575,7 @@ function fmtNum($n) {
         if (formPdf) {
             formPdf.addEventListener('submit', function() {
                 var btn = this.querySelector('button[type="submit"]');
-                if (btn) { btn.disabled = true; btn.textContent = 'Subiendo...'; }
+                if (btn) { btn.disabled = true; btn.textContent = 'Descargando...'; }
             });
         }
         if (inputPdf && inputNombre) {
