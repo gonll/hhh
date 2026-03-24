@@ -1,5 +1,6 @@
 <?php
 include 'db.php';
+include_once __DIR__ . '/inc_azucar_destinatarios_factura.php';
 include 'verificar_sesion.php';
 
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
@@ -110,7 +111,31 @@ if ($res_faltan && $r = mysqli_fetch_assoc($res_faltan)) {
 $mensaje_stock = '';
 $mensaje_stock_link = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['eliminar_venta_azucar'])) {
+    if (isset($_POST['agregar_dest_factura_mail'])) {
+        ensure_azucar_factura_mail_table($conexion);
+        $email = strtolower(trim($_POST['email_dest_factura'] ?? ''));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $mensaje_stock = 'Email no válido.';
+        } else {
+            $esc = mysqli_real_escape_string($conexion, $email);
+            $dup = mysqli_query($conexion, "SELECT id FROM azucar_factura_mail_destinatarios WHERE email = '$esc' LIMIT 1");
+            if ($dup && mysqli_num_rows($dup) > 0) {
+                $mensaje_stock = 'Ese correo ya está en la lista.';
+            } else {
+                mysqli_query($conexion, "INSERT INTO azucar_factura_mail_destinatarios (email) VALUES ('$esc')");
+                header('Location: gestionar_azucares.php?dest_mail=ok');
+                exit;
+            }
+        }
+    } elseif (isset($_POST['quitar_dest_factura_mail'])) {
+        ensure_azucar_factura_mail_table($conexion);
+        $id_quit = (int)($_POST['id'] ?? 0);
+        if ($id_quit > 0) {
+            mysqli_query($conexion, "DELETE FROM azucar_factura_mail_destinatarios WHERE id = $id_quit LIMIT 1");
+            header('Location: gestionar_azucares.php?dest_mail=quit');
+            exit;
+        }
+    } elseif (isset($_POST['eliminar_venta_azucar'])) {
         $stock_id = (int)($_POST['id'] ?? 0);
         if ($stock_id > 0) {
             $r = mysqli_fetch_assoc(mysqli_query($conexion, "SELECT venta_movimiento_id, vendida_a_id, orden, operacion, linea FROM stock WHERE id = $stock_id LIMIT 1"));
@@ -504,6 +529,14 @@ if (isset($_GET['factura']) && $_GET['factura'] === 'ok') {
 if (isset($_GET['factura']) && $_GET['factura'] === 'elim') {
     $mensaje_stock = 'Factura eliminada del registro.';
 }
+if (isset($_GET['dest_mail']) && $_GET['dest_mail'] === 'ok') {
+    $mensaje_stock = 'Destinatario de correo agregado.';
+}
+if (isset($_GET['dest_mail']) && $_GET['dest_mail'] === 'quit') {
+    $mensaje_stock = 'Destinatario de correo quitado.';
+}
+
+$dest_factura_mails = get_azucar_factura_mail_rows($conexion);
 
 function siguienteOperacion($conexion, $excluir_id = 0) {
     $excluir_id = (int)$excluir_id;
@@ -549,7 +582,7 @@ function fmtNum($n) {
         .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; text-decoration: none; display: inline-block; }
         .btn-secondary { background: #6c757d; color: white; }
         .contenedor-grilla-con-botones { overflow-x: hidden; margin-top: 10px; }
-        .contenedor-grilla-con-botones .fila-botones-stock,
+        .contenedor-grilla-con-botones .fila-botones-stock-toolbar,
         .contenedor-grilla-con-botones #cartelSaldoOrden { min-width: 1410px; }
         .grid-azucar-wrap { overflow-x: visible; overflow-y: scroll; max-height: 185px; border: 1px solid #ddd; outline: none; }
         .grid-azucar-wrap:focus { outline: none; }
@@ -616,27 +649,53 @@ function fmtNum($n) {
         .msg-interpretar { margin-top: 8px; font-size: 11px; }
         .msg-interpretar.error { color: #dc3545; }
         .msg-interpretar.ok { color: #28a745; }
-        .fila-botones-stock { display: flex; align-items: stretch; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-        .fila-botones-venta { margin-left: calc(303px + 2cm); display: flex; align-items: stretch; gap: 8px; }
-        .fila-botones-facturacion { margin-left: 3cm; display: flex; align-items: stretch; gap: 8px; }
-        .btn-alta-stock, .btn-editar-stock, .btn-eliminar-stock { padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; box-sizing: border-box; }
+        .cabecera-azucar-con-mails { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 10px; }
+        .cabecera-azucar-con-mails h2 { margin: 0; flex: 1 1 auto; min-width: 0; }
+        .cabecera-azucar-con-mails .fila-destinatarios-factura-mail { flex: 1 1 260px; max-width: min(100%, 720px); align-self: center; }
+        /* Alineación con columna FechaVta + ancho del botón Venta (--ancho-btn-venta lo fija JS) */
+        .fila-botones-stock-toolbar { position: relative; min-height: 26px; margin-bottom: 10px; --ancho-btn-venta: 0px; }
+        .toolbar-grupo-stock { display: inline-flex; align-items: center; gap: 8px; flex-wrap: nowrap; vertical-align: middle; }
+        .toolbar-venta-y-factura {
+            position: absolute;
+            left: calc(1px + 75px + 28px + 200px + 55px + 55px + 160px + 75px + var(--ancho-btn-venta));
+            top: 0;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px 18px;
+            max-width: calc(100% - 660px - var(--ancho-btn-venta));
+            box-sizing: border-box;
+        }
+        .toolbar-grupo { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+        .toolbar-grupo form { display: inline-flex; align-items: center; margin: 0; padding: 0; vertical-align: middle; }
+        .btn-accion-toolbar { min-height: 24px; padding: 4px 12px; font-size: 12px; line-height: 1.2; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; }
+        .fila-destinatarios-factura-mail { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 8px; font-weight: bold; background: #e7f3ff; padding: 4px 6px; border-radius: 3px; border: 1px solid #90c5ff; max-width: 100%; box-sizing: border-box; line-height: 1.15; }
+        .fila-destinatarios-factura-mail .lbl-envia { color: #004085; margin-right: 2px; font-size: 8px; }
+        .tag-dest-factura-mail { display: inline-flex; align-items: center; gap: 2px; background: #fff; padding: 1px 4px 1px 5px; border-radius: 2px; border: 1px solid #ced4da; font-weight: normal; font-size: 8px; }
+        .tag-dest-factura-mail .email-txt { color: #333; font-size: 8px; }
+        .btn-dest-factura-mas, .btn-dest-factura-menos { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 3px; border: none; border-radius: 2px; cursor: pointer; font-weight: bold; font-size: 11px; line-height: 1; vertical-align: middle; box-sizing: border-box; }
+        .btn-dest-factura-mas { background: #28a745; color: #fff; }
+        .btn-dest-factura-mas:hover { background: #218838; }
+        .btn-dest-factura-menos { background: #dc3545; color: #fff; min-width: 15px; height: 15px; font-size: 10px; }
+        .btn-dest-factura-menos:hover { background: #c82333; }
+        .form-quitar-dest-factura { display: inline; margin: 0; padding: 0; }
         .btn-alta-stock { background: #28a745; color: white; }
         .btn-alta-stock:hover { background: #218838; }
         .btn-editar-stock { background: #007bff; color: white; }
         .btn-editar-stock:hover { background: #0056b3; }
         .btn-eliminar-stock { background: #dc3545; color: white; }
         .btn-eliminar-stock:hover { background: #c82333; }
-        .btn-venta-vta { background: #17a2b8; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-venta-vta { background: #17a2b8; color: white; }
         .btn-venta-vta:hover { background: #138496; }
-        .btn-editar-vta { background: #6f42c1; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-editar-vta { background: #6f42c1; color: white; }
         .btn-editar-vta:hover { background: #5a32a3; }
-        .btn-eliminar-vta { background: #fd7e14; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-eliminar-vta { background: #fd7e14; color: white; }
         .btn-eliminar-vta:hover { background: #e96f0a; }
-        .btn-facturar { background: #20c997; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-facturar { background: #20c997; color: white; }
         .btn-facturar:hover { background: #1aa179; }
-        .btn-editar-fact { background: #6f42c1; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-editar-fact { background: #6f42c1; color: white; }
         .btn-editar-fact:hover { background: #5a32a3; }
-        .btn-eliminar-fact { background: #dc3545; color: white; padding: 5px 12px; font-size: 12px; line-height: 1.25; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-eliminar-fact { background: #dc3545; color: white; }
         .btn-eliminar-fact:hover { background: #c82333; }
         .volver { margin-top: 15px; }
         .volver .btn-volver-panel {
@@ -728,38 +787,65 @@ function fmtNum($n) {
 </head>
 <body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mf=document.getElementById('modalFotoPago');if(mf&&mf.classList.contains('activo')){if(typeof cancelarModalFotoPago==='function')cancelarModalFotoPago();e.preventDefault();return false;}var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var mel=document.getElementById('modalEmailLiqProd');if(mel&&mel.classList.contains('activo')){if(typeof cerrarModalEmailLiqProd==='function')cerrarModalEmailLiqProd();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
-        <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
+        <div class="cabecera-azucar-con-mails">
+            <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
+            <div class="fila-destinatarios-factura-mail" title="Destinatarios del correo del PDF de liquidación (factura)">
+                <span class="lbl-envia">Se envía a:</span>
+                <form id="formAgregarDestFacturaMail" method="post" action="gestionar_azucares.php" style="display:inline;margin:0;padding:0;">
+                    <input type="hidden" name="agregar_dest_factura_mail" value="1">
+                    <input type="hidden" name="email_dest_factura" id="hiddenEmailDestFactura" value="">
+                </form>
+                <button type="button" class="btn-dest-factura-mas" id="btnAddDestFacturaMail" title="Agregar destinatario">+</button>
+                <?php foreach ($dest_factura_mails as $dm): ?>
+                <span class="tag-dest-factura-mail">
+                    <span class="email-txt"><?= htmlspecialchars($dm['email']) ?></span>
+                    <form method="post" action="gestionar_azucares.php" class="form-quitar-dest-factura" onsubmit="return confirm('¿Quitar este destinatario?');">
+                        <input type="hidden" name="quitar_dest_factura_mail" value="1">
+                        <input type="hidden" name="id" value="<?= (int)$dm['id'] ?>">
+                        <button type="submit" class="btn-dest-factura-menos" title="Quitar destinatario">−</button>
+                    </form>
+                </span>
+                <?php endforeach; ?>
+                <?php if (empty($dest_factura_mails)): ?>
+                <span style="color:#856404;font-weight:normal;">(ninguno — agregá al menos uno con +)</span>
+                <?php endif; ?>
+            </div>
+        </div>
 
         <?php if ($mensaje_stock): ?>
         <p class="msg-interpretar ok" style="display: block;"><?= htmlspecialchars($mensaje_stock) ?></p>
         <?php endif; ?>
 
         <div class="contenedor-grilla-con-botones">
-        <div class="fila-botones-stock">
-            <button type="button" class="btn-alta-stock" id="btnAltaStock">Alta stock</button>
-            <button type="button" class="btn-editar-stock" id="btnEditarStock">Editar</button>
-            <form id="formEliminarStock" method="post" action="gestionar_azucares.php" style="display: inline;">
-                <input type="hidden" name="eliminar_stock" value="1">
-                <input type="hidden" name="id" id="eliminar_id" value="">
-                <button type="button" class="btn-eliminar-stock" id="btnEliminarStock">Eliminar</button>
-            </form>
-            <div class="fila-botones-venta">
-                <button type="button" class="btn-venta-vta" id="btnVenta">Venta</button>
-                <button type="button" class="btn-editar-vta" id="btnEditarVta">Editar Vta</button>
-                <form id="formEliminarVta" method="post" action="gestionar_azucares.php" style="display: inline;">
-                    <input type="hidden" name="eliminar_venta_azucar" value="1">
-                    <input type="hidden" name="id" id="eliminar_vta_id" value="">
-                    <button type="button" class="btn-eliminar-vta" id="btnEliminarVta">Eliminar Vta</button>
+        <div class="fila-botones-stock-toolbar">
+            <div class="toolbar-grupo toolbar-grupo-stock">
+                <button type="button" class="btn-accion-toolbar btn-alta-stock" id="btnAltaStock">Alta stock</button>
+                <button type="button" class="btn-accion-toolbar btn-editar-stock" id="btnEditarStock">Editar</button>
+                <form id="formEliminarStock" method="post" action="gestionar_azucares.php">
+                    <input type="hidden" name="eliminar_stock" value="1">
+                    <input type="hidden" name="id" id="eliminar_id" value="">
+                    <button type="button" class="btn-accion-toolbar btn-eliminar-stock" id="btnEliminarStock">Eliminar</button>
                 </form>
             </div>
-            <div class="fila-botones-facturacion">
-                <button type="button" class="btn-facturar" id="btnFacturar">Facturar</button>
-                <button type="button" class="btn-editar-fact" id="btnEditarFact">Editar Factura</button>
-                <form id="formEliminarFactura" method="post" action="gestionar_azucares.php" style="display: inline;">
-                    <input type="hidden" name="eliminar_factura_azucar" value="1">
-                    <input type="hidden" name="id" id="eliminar_factura_id" value="">
-                    <button type="button" class="btn-eliminar-fact" id="btnEliminarFact">Eliminar Factura</button>
-                </form>
+            <div class="toolbar-venta-y-factura">
+                <div class="toolbar-grupo toolbar-grupo-venta">
+                    <button type="button" class="btn-accion-toolbar btn-venta-vta" id="btnVenta">Venta</button>
+                    <button type="button" class="btn-accion-toolbar btn-editar-vta" id="btnEditarVta">Editar Vta</button>
+                    <form id="formEliminarVta" method="post" action="gestionar_azucares.php">
+                        <input type="hidden" name="eliminar_venta_azucar" value="1">
+                        <input type="hidden" name="id" id="eliminar_vta_id" value="">
+                        <button type="button" class="btn-accion-toolbar btn-eliminar-vta" id="btnEliminarVta">Eliminar Vta</button>
+                    </form>
+                </div>
+                <div class="toolbar-grupo toolbar-grupo-factura">
+                    <button type="button" class="btn-accion-toolbar btn-facturar" id="btnFacturar">Facturar</button>
+                    <button type="button" class="btn-accion-toolbar btn-editar-fact" id="btnEditarFact">Editar Factura</button>
+                    <form id="formEliminarFactura" method="post" action="gestionar_azucares.php">
+                        <input type="hidden" name="eliminar_factura_azucar" value="1">
+                        <input type="hidden" name="id" id="eliminar_factura_id" value="">
+                        <button type="button" class="btn-accion-toolbar btn-eliminar-fact" id="btnEliminarFact">Eliminar Factura</button>
+                    </form>
+                </div>
             </div>
         </div>
 
@@ -1045,7 +1131,7 @@ function fmtNum($n) {
         <div id="modalEmailLiqProd" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalEmailLiqProd()">
             <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 480px;">
                 <h3>Enviar PDF por email</h3>
-                <p style="margin:0 0 10px 0; font-size:11px; color:#555;">Destino: hectorhugoherrera@gmail.com · Asunto: <strong>Liquido Producto</strong> y el nombre del archivo.</p>
+                <p style="margin:0 0 10px 0; font-size:11px; color:#555;">Se envía a los correos listados arriba (<strong>Se envía a</strong>, junto a Facturar). Asunto: <strong>Liquido Producto</strong> y el nombre del archivo.</p>
                 <div id="msgEmailLiqProd" style="display:none; margin-bottom:10px; padding:8px; border-radius:4px; font-size:11px;"></div>
                 <input type="hidden" id="emailLiqStockId" value="">
                 <div style="margin-bottom:10px;">
@@ -1554,6 +1640,30 @@ function fmtNum($n) {
         document.getElementById('factura_precio_sin_iva').textContent = fmt(sinIva);
         document.getElementById('factura_monto_final').textContent = fmt(montoFinal);
     }
+    var btnAddDest = document.getElementById('btnAddDestFacturaMail');
+    if (btnAddDest) {
+        btnAddDest.addEventListener('click', function() {
+            var e = prompt('Email del destinatario:');
+            if (!e) return;
+            e = e.trim();
+            if (!e) return;
+            var hid = document.getElementById('hiddenEmailDestFactura');
+            var frm = document.getElementById('formAgregarDestFacturaMail');
+            if (hid && frm) {
+                hid.value = e;
+                frm.submit();
+            }
+        });
+    }
+    function aplicarDespExtraToolbarVenta() {
+        var bar = document.querySelector('.fila-botones-stock-toolbar');
+        var btn = document.getElementById('btnVenta');
+        if (!bar || !btn) return;
+        bar.style.setProperty('--ancho-btn-venta', btn.offsetWidth + 'px');
+    }
+    aplicarDespExtraToolbarVenta();
+    window.addEventListener('resize', aplicarDespExtraToolbarVenta);
+    window.addEventListener('load', aplicarDespExtraToolbarVenta);
     document.getElementById('btnFacturar').addEventListener('click', function() { abrirModalFactura(false); });
     document.getElementById('btnEditarFact').addEventListener('click', function() { abrirModalFactura(true); });
     document.getElementById('btnEliminarFact').addEventListener('click', function() {

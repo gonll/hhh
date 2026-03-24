@@ -21,6 +21,7 @@ if ((int)$_SESSION['acceso_nivel'] < 2) {
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/smtp_enviar.php';
+require_once __DIR__ . '/inc_azucar_destinatarios_factura.php';
 
 $resCol = @mysqli_query($conexion, "SHOW COLUMNS FROM stock LIKE 'liq_prod_pdf_email_enviado'");
 if ($resCol && mysqli_num_rows($resCol) === 0) {
@@ -89,7 +90,21 @@ if ($safeNombreAdjunto === '' || !preg_match('/\.pdf$/i', $safeNombreAdjunto)) {
     $safeNombreAdjunto = 'liquido_producto.pdf';
 }
 
-$to = 'hectorhugoherrera@gmail.com';
+$rowsDest = get_azucar_factura_mail_rows($conexion);
+$destinatarios = [];
+foreach ($rowsDest as $row) {
+    if (filter_var($row['email'], FILTER_VALIDATE_EMAIL)) {
+        $destinatarios[] = $row['email'];
+    }
+}
+if ($destinatarios === []) {
+    echo json_encode([
+        'ok' => false,
+        'error' => 'No hay destinatarios configurados. Usá «Se envía a» y el botón + arriba de Facturar.',
+    ]);
+    exit;
+}
+
 $subject = 'Liquido Producto – ' . $safeNombreAdjunto;
 $n_fact_txt = trim((string)$r['n_fact']);
 $body = "Liquidación de producto adjunta.\r\n\r\n";
@@ -101,13 +116,19 @@ $cuerpo_html = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><p
     . htmlspecialchars($body, ENT_QUOTES, 'UTF-8')
     . '</pre></body></html>';
 
-$ok = enviar_mail_smtp_con_adjunto($to, $subject, $cuerpo_html, $tmp, 'application/pdf', $safeNombreAdjunto);
-$errSmtp = smtp_ultimo_error();
+$lastErr = '';
+$allOk = true;
+foreach ($destinatarios as $to) {
+    if (!enviar_mail_smtp_con_adjunto($to, $subject, $cuerpo_html, $tmp, 'application/pdf', $safeNombreAdjunto)) {
+        $allOk = false;
+        $lastErr = smtp_ultimo_error();
+    }
+}
 
-if (!$ok) {
+if (!$allOk) {
     echo json_encode([
         'ok' => false,
-        'error' => $errSmtp !== '' ? $errSmtp : 'No se pudo enviar el correo. Revisá mail_config.php (mismo que expensas).',
+        'error' => $lastErr !== '' ? $lastErr : 'Falló el envío a algún destinatario. Revisá mail_config.php.',
     ]);
     exit;
 }
