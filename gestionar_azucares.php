@@ -1519,7 +1519,7 @@ function fmtNum($n) {
             return null;
         }
     }
-    function marcarBtnEmailLiqProdEnviado(sid, btnOrigen) {
+    function resolverBtnEmailLiqPdf(sid, btnOrigen) {
         var sidNorm = String(parseInt(sid, 10) || 0);
         var b = btnOrigen;
         if (!b || !b.classList || !b.classList.contains('btn-email-liq-pdf')) {
@@ -1530,10 +1530,22 @@ function fmtNum($n) {
         if (!b && sidNorm !== '0') {
             b = document.querySelector('.tabla-azucar .btn-email-liq-pdf[data-stock-id="' + sidNorm + '"]');
         }
+        return b;
+    }
+    function marcarBtnEmailLiqProdEnviado(sid, btnOrigen) {
+        var b = resolverBtnEmailLiqPdf(sid, btnOrigen);
         if (b) {
             b.classList.remove('btn-email-liq-rojo');
             b.classList.add('btn-email-liq-verde');
             b.title = 'PDF enviado por email';
+        }
+    }
+    function marcarBtnEmailLiqProdFallo(sid, btnOrigen) {
+        var b = resolverBtnEmailLiqPdf(sid, btnOrigen);
+        if (b) {
+            b.classList.remove('btn-email-liq-verde');
+            b.classList.add('btn-email-liq-rojo');
+            b.title = 'Enviar PDF por email';
         }
     }
     (function() {
@@ -1569,9 +1581,12 @@ function fmtNum($n) {
                 fd.append('stock_id', sid);
                 fd.append('nombre_archivo', document.getElementById('emailLiqNombre').value || '');
                 fd.append('pdf_liq', f.files[0]);
-                btnEnviar.disabled = true;
-                var txtOk = btnEnviar.textContent;
-                btnEnviar.textContent = 'Enviando...';
+                var sidNum = String(parseInt(sid, 10) || 0);
+                f.value = '';
+                document.getElementById('emailLiqNombre').value = '';
+                document.getElementById('emailLiqStockId').value = '';
+                emailLiqBtnOrigen = null;
+                cerrarModalEmailLiqProd();
                 fetch('enviar_email_liq_prod.php', { method: 'POST', body: fd, credentials: 'same-origin' })
                     .then(function(r) {
                         return r.text().then(function(text) {
@@ -1586,23 +1601,12 @@ function fmtNum($n) {
                         return { j: { ok: false, error: 'Error de red.' } };
                     })
                     .then(function(res) {
-                        btnEnviar.disabled = false;
-                        btnEnviar.textContent = txtOk;
                         if (res.j && res.j.ok) {
-                            var sidNum = String(parseInt(sid, 10) || 0);
                             var tr = document.querySelector('.tabla-azucar tbody tr[data-id="' + sidNum + '"]');
                             if (tr) tr.setAttribute('data-liq-email-enviado', '1');
                             marcarBtnEmailLiqProdEnviado(sidNum, btnOrigenEnvio);
-                            emailLiqBtnOrigen = null;
-                            cerrarModalEmailLiqProd();
                         } else {
-                            var err = (res.j && res.j.error) ? res.j.error : 'No se pudo enviar.';
-                            if (msg) {
-                                msg.style.display = 'block';
-                                msg.style.background = '#f8d7da';
-                                msg.style.color = '#721c24';
-                                msg.textContent = err;
-                            }
+                            marcarBtnEmailLiqProdFallo(sidNum, btnOrigenEnvio);
                         }
                     });
             });
