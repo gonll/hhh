@@ -587,7 +587,12 @@ function fmtNum($n) {
         .grid-azucar-wrap { overflow-x: visible; overflow-y: scroll; max-height: 185px; border: 1px solid #ddd; outline: none; }
         .grid-azucar-wrap:focus { outline: none; }
         .tabla-azucar { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; min-width: 1270px; line-height: 1.2; font-weight: bold; }
-        .tabla-azucar th { background: #007bff; color: white; padding: 4px 3px; position: sticky; top: 0; z-index: 10; font-weight: bold; text-align: center; white-space: nowrap; border: 1px solid #0056b3; }
+        .tabla-azucar thead tr:first-child th { background: #007bff; color: white; padding: 4px 3px; position: sticky; top: 0; z-index: 12; font-weight: bold; text-align: center; white-space: nowrap; border: 1px solid #0056b3; }
+        .tabla-azucar thead tr.fila-filtros-azucar th { background: #e7f1ff; color: #1a3a5c; padding: 3px 2px; position: sticky; top: 28px; z-index: 11; font-weight: normal; text-align: center; border: 1px solid #9ec5fe; vertical-align: middle; }
+        .filtro-azucar-cell { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; font-size: 9px; padding: 2px 3px; border: 1px solid #90c5ff; border-radius: 2px; font-weight: normal; color: #212529; background: #fff; }
+        .filtro-azucar-cell::placeholder { color: #6c757d; font-size: 9px; }
+        .btn-limpiar-filtros-azucar { font-size: 9px; padding: 2px 6px; cursor: pointer; border: 1px solid #6c757d; border-radius: 3px; background: #fff; color: #495057; font-weight: bold; white-space: nowrap; }
+        .btn-limpiar-filtros-azucar:hover { background: #f8f9fa; }
         .tabla-azucar td { padding: 2px 3px; border: 1px solid #ddd; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold; }
         .tabla-azucar tbody tr { cursor: pointer; }
         .tabla-azucar tbody tr:hover { background: #e7f3ff; }
@@ -889,6 +894,29 @@ function fmtNum($n) {
                         <th class="col-preciofac">Precio Fac</th>
                         <th class="col-nfact">N° Fact</th>
                         <th class="col-nremt">N° Remt</th>
+                    </tr>
+                    <tr class="fila-filtros-azucar">
+                        <th class="col-fecha">
+                            <button type="button" class="btn-limpiar-filtros-azucar" id="btnLimpiarFiltrosAzucar" title="Quitar todos los filtros" style="width:100%;margin-bottom:4px;">Limpiar filtros</button>
+                            <input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off">
+                        </th>
+                        <th class="col-l"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-articulo"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-orden"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-cantidad"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-deposito"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-operacion"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-fechavta"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-cantvta"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-vendida"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-operador"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-preciovta"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-fechafact"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-cantfact"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-facturada"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-preciofac"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-nfact"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
+                        <th class="col-nremt"><input type="text" class="filtro-azucar-cell" placeholder="Filtrar…" title="Contiene texto" autocomplete="off"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1363,10 +1391,40 @@ function fmtNum($n) {
             e.preventDefault();
         }
     });
+    function aplicarFiltrosAzucar() {
+        var inputs = document.querySelectorAll('.fila-filtros-azucar .filtro-azucar-cell');
+        var rows = document.querySelectorAll('.tabla-azucar tbody tr[data-id]');
+        rows.forEach(function(tr) {
+            var tds = tr.querySelectorAll('td');
+            var show = true;
+            for (var i = 0; i < inputs.length; i++) {
+                var q = (inputs[i].value || '').trim().toLowerCase();
+                if (!q) continue;
+                var cellText = (tds[i] && tds[i].innerText) ? tds[i].innerText.toLowerCase() : '';
+                if (cellText.indexOf(q) === -1) { show = false; break; }
+            }
+            tr.style.display = show ? '' : 'none';
+        });
+        var sel = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada[data-id]');
+        if (sel && sel.style.display === 'none') {
+            sel.classList.remove('fila-seleccionada');
+            for (var j = 0; j < rows.length; j++) {
+                if (rows[j].style.display !== 'none') {
+                    rows[j].classList.add('fila-seleccionada');
+                    break;
+                }
+            }
+        }
+        if (typeof actualizarCartelSaldoOrden === 'function') actualizarCartelSaldoOrden();
+    }
     function exportarGrillaAzucarExcel() {
         var table = document.querySelector('.tabla-azucar');
         if (!table) return;
         var clone = table.cloneNode(true);
+        clone.querySelectorAll('.fila-filtros-azucar').forEach(function(r) { r.remove(); });
+        clone.querySelectorAll('tbody tr[data-id]').forEach(function(tr) {
+            if (tr.style.display === 'none') tr.remove();
+        });
         clone.querySelectorAll('button, .btn-mov-cobro, .btn-imprimir-remito').forEach(function(el) { el.remove(); });
         clone.querySelectorAll('a').forEach(function(a) {
             var t = document.createTextNode(a.textContent);
@@ -1404,6 +1462,21 @@ function fmtNum($n) {
     var btnExportarExcelAzucar = document.getElementById('btnExportarExcelAzucar');
     if (btnExportarExcelAzucar) {
         btnExportarExcelAzucar.addEventListener('click', exportarGrillaAzucarExcel);
+    }
+    var filaFiltrosAzucar = document.querySelector('.fila-filtros-azucar');
+    if (filaFiltrosAzucar) {
+        filaFiltrosAzucar.addEventListener('input', function(e) {
+            if (e.target && e.target.classList && e.target.classList.contains('filtro-azucar-cell')) aplicarFiltrosAzucar();
+        });
+        filaFiltrosAzucar.addEventListener('click', function(e) { e.stopPropagation(); });
+    }
+    var btnLimpiarFiltrosAzucar = document.getElementById('btnLimpiarFiltrosAzucar');
+    if (btnLimpiarFiltrosAzucar) {
+        btnLimpiarFiltrosAzucar.addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.querySelectorAll('.fila-filtros-azucar .filtro-azucar-cell').forEach(function(inp) { inp.value = ''; });
+            aplicarFiltrosAzucar();
+        });
     }
     document.getElementById('btnAltaStock').addEventListener('click', function() {
         document.getElementById('alta_id').value = '';
@@ -2843,10 +2916,12 @@ function fmtNum($n) {
             var target = e.target;
             if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.tagName === 'BUTTON') return;
             e.preventDefault();
-            var rows = document.querySelectorAll('.tabla-azucar tbody tr[data-id]');
+            var rows = Array.prototype.filter.call(document.querySelectorAll('.tabla-azucar tbody tr[data-id]'), function(tr) {
+                return tr.style.display !== 'none';
+            });
             var current = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada');
             if (!rows.length) return;
-            var idx = current ? Array.prototype.indexOf.call(rows, current) : -1;
+            var idx = current ? rows.indexOf(current) : -1;
             if (e.key === 'ArrowDown' && idx < rows.length - 1) idx++;
             else if (e.key === 'ArrowUp' && idx > 0) idx--;
             else return;
