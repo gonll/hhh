@@ -650,7 +650,21 @@ function fmtNum($n) {
         .msg-interpretar.error { color: #dc3545; }
         .msg-interpretar.ok { color: #28a745; }
         .cabecera-azucar-con-mails { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 10px; }
-        .cabecera-azucar-con-mails h2 { margin: 0; flex: 1 1 auto; min-width: 0; }
+        .cabecera-azucar-titulo-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1 1 auto; min-width: 0; }
+        .cabecera-azucar-titulo-row h2 { margin: 0; }
+        .btn-export-excel-azucar {
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #217346;
+            color: #fff;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .btn-export-excel-azucar:hover { background: #1e6b40; }
         .cabecera-azucar-con-mails .fila-destinatarios-factura-mail { flex: 1 1 260px; max-width: min(100%, 720px); align-self: center; }
         /* Alineación con columna FechaVta + ancho del botón Venta (--ancho-btn-venta lo fija JS) */
         .fila-botones-stock-toolbar { position: relative; min-height: 26px; margin-bottom: 10px; --ancho-btn-venta: 0px; }
@@ -788,7 +802,10 @@ function fmtNum($n) {
 <body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){var mf=document.getElementById('modalFotoPago');if(mf&&mf.classList.contains('activo')){if(typeof cancelarModalFotoPago==='function')cancelarModalFotoPago();e.preventDefault();return false;}var mp=document.getElementById('modalPegarPago');if(mp&&mp.classList.contains('activo')){if(typeof cerrarModalPegarPago==='function')cerrarModalPegarPago();e.preventDefault();return false;}var o=document.getElementById('modalOperacionesOperador');if(o&&o.classList.contains('activo')){if(typeof cerrarModalOperacionesOperador==='function')cerrarModalOperacionesOperador();e.preventDefault();return false;}var mo=document.getElementById('modalMovimientosOrden');if(mo&&mo.classList.contains('activo')){if(typeof cerrarModalMovimientosOrden==='function')cerrarModalMovimientosOrden();e.preventDefault();return false;}var m=document.getElementById('modalMovimientosOperacion');if(m&&m.classList.contains('activo')){if(typeof cerrarModalMovimientosOperacion==='function')cerrarModalMovimientosOperacion();e.preventDefault();return false;}var v=document.getElementById('modalVenta');if(v&&v.classList.contains('activo')){if(typeof cerrarModalVenta==='function')cerrarModalVenta();e.preventDefault();return false;}var f=document.getElementById('modalFactura');if(f&&f.classList.contains('activo')){if(typeof cerrarModalFactura==='function')cerrarModalFactura();e.preventDefault();return false;}var mel=document.getElementById('modalEmailLiqProd');if(mel&&mel.classList.contains('activo')){if(typeof cerrarModalEmailLiqProd==='function')cerrarModalEmailLiqProd();e.preventDefault();return false;}var a=document.getElementById('modalAltaStock');if(a&&a.classList.contains('activo')){if(typeof cerrarModalAltaStock==='function')cerrarModalAltaStock();e.preventDefault();return false;}if(history.length>1){history.back();e.preventDefault();return false;}location.href='index.php';e.preventDefault();return false;}">
     <div class="container">
         <div class="cabecera-azucar-con-mails">
-            <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
+            <div class="cabecera-azucar-titulo-row">
+                <h2>Gestión de azúcares <span style="font-size:14px; color:#856404; font-weight:normal;">(Faltan vender: <?= $faltan_vender ?> órdenes, <?= number_format($faltan_vender_cantidad, 0, ',', '.') ?> cantidad)</span></h2>
+                <button type="button" class="btn-export-excel-azucar" id="btnExportarExcelAzucar" title="Descargar la grilla en Excel (CSV)">Exportar Excel</button>
+            </div>
             <div class="fila-destinatarios-factura-mail" title="Destinatarios del correo del PDF de liquidación (factura)">
                 <span class="lbl-envia">Se envía a:</span>
                 <form id="formAgregarDestFacturaMail" method="post" action="gestionar_azucares.php" style="display:inline;margin:0;padding:0;">
@@ -1346,6 +1363,48 @@ function fmtNum($n) {
             e.preventDefault();
         }
     });
+    function exportarGrillaAzucarExcel() {
+        var table = document.querySelector('.tabla-azucar');
+        if (!table) return;
+        var clone = table.cloneNode(true);
+        clone.querySelectorAll('button, .btn-mov-cobro, .btn-imprimir-remito').forEach(function(el) { el.remove(); });
+        clone.querySelectorAll('a').forEach(function(a) {
+            var t = document.createTextNode(a.textContent);
+            a.parentNode.replaceChild(t, a);
+        });
+        var lines = [];
+        var trs = clone.querySelectorAll('thead tr, tbody tr');
+        for (var i = 0; i < trs.length; i++) {
+            var tr = trs[i];
+            if (tr.querySelector('td[colspan]')) continue;
+            var cells = tr.querySelectorAll('th, td');
+            if (!cells.length) continue;
+            var row = [];
+            for (var j = 0; j < cells.length; j++) {
+                var txt = (cells[j].innerText || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ').replace(/"/g, '""').trim();
+                row.push('"' + txt + '"');
+            }
+            lines.push(row.join(';'));
+        }
+        if (!lines.length) {
+            alert('No hay datos para exportar.');
+            return;
+        }
+        var bom = '\ufeff';
+        var blob = new Blob([bom + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'gestion_azucares_' + new Date().toISOString().slice(0, 10) + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    var btnExportarExcelAzucar = document.getElementById('btnExportarExcelAzucar');
+    if (btnExportarExcelAzucar) {
+        btnExportarExcelAzucar.addEventListener('click', exportarGrillaAzucarExcel);
+    }
     document.getElementById('btnAltaStock').addEventListener('click', function() {
         document.getElementById('alta_id').value = '';
         document.getElementById('modalAltaTitulo').textContent = 'Alta stock – Nuevo registro';
