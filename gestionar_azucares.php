@@ -584,7 +584,8 @@ function fmtNum($n) {
         .contenedor-grilla-con-botones { overflow-x: hidden; margin-top: 10px; }
         .contenedor-grilla-con-botones .fila-botones-stock-toolbar,
         .contenedor-grilla-con-botones #cartelSaldoOrden { min-width: 1410px; }
-        .grid-azucar-wrap { overflow-x: visible; overflow-y: scroll; max-height: 185px; border: 1px solid #ddd; outline: none; }
+        /* Alto ≈ 2 filas de cabecera (títulos + filtros) + 12 filas de registros */
+        .grid-azucar-wrap { overflow-x: visible; overflow-y: auto; max-height: calc(116px + 12 * 24px); border: 1px solid #ddd; outline: none; }
         .grid-azucar-wrap:focus { outline: none; }
         .tabla-azucar { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; min-width: 1270px; line-height: 1.2; font-weight: bold; }
         .tabla-azucar thead tr:first-child th { background: #007bff; color: white; padding: 4px 3px; position: sticky; top: 0; z-index: 12; font-weight: bold; text-align: center; white-space: nowrap; border: 1px solid #0056b3; }
