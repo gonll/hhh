@@ -548,6 +548,36 @@ if ($nivelAcceso === 3) {
         </div>
     </div>
 
+    <div id="modalImprimirExpensas" class="modal-overlay" onclick="if(event.target===this) cerrarModalImprimirExpensas()">
+        <div class="modal-cobro" onclick="event.stopPropagation()">
+            <h3>Imprimir expensas</h3>
+            <p style="font-size:11px; color:#666; margin:0 0 12px;">Elegí el mes y año de la liquidación que querés imprimir (debe existir un movimiento LIQ EXPENSAS con esa referencia).</p>
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:12px;">
+                <label style="display:flex; align-items:center; gap:8px;">Mes
+                    <select id="impExpMes" style="padding:8px; min-width:120px;">
+                        <?php for ($m = 1; $m <= 12; $m++): ?>
+                        <option value="<?= $m ?>"<?= (int)date('n') === $m ? ' selected' : '' ?>><?= str_pad((string)$m, 2, '0', STR_PAD_LEFT) ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px;">Año
+                    <select id="impExpAnio" style="padding:8px; min-width:100px;">
+                        <?php
+                        $yMax = (int)date('Y');
+                        for ($y = $yMax; $y >= $yMax - 15; $y--):
+                        ?>
+                        <option value="<?= $y ?>"<?= $y === $yMax ? ' selected' : '' ?>><?= $y ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </label>
+            </div>
+            <div class="btns">
+                <button type="button" class="btn-guardar" onclick="confirmarImprimirExpensas()">Imprimir</button>
+                <button type="button" class="btn-cerrar" onclick="cerrarModalImprimirExpensas()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <?php if ($nivelAcceso === 3): ?>
     <div id="modalBorrarTodasLiqExp" class="modal-overlay" onclick="if(event.target===this) cerrarModalBorrarTodasLiqExp()">
         <div class="modal-cobro" onclick="event.stopPropagation()">
@@ -1410,7 +1440,28 @@ function abrirImprimirExpensas() {
         alert('El usuario seleccionado debe ser un Consorcio.');
         return;
     }
-    window.open('imprimir_expensas_consorcio.php?id=' + uSel, '_blank', 'width=900,height=700');
+    var d = new Date();
+    var mesEl = document.getElementById('impExpMes');
+    var anioEl = document.getElementById('impExpAnio');
+    if (mesEl) mesEl.value = String(d.getMonth() + 1);
+    if (anioEl) anioEl.value = String(d.getFullYear());
+    document.getElementById('modalImprimirExpensas').classList.add('visible');
+}
+
+function cerrarModalImprimirExpensas() {
+    document.getElementById('modalImprimirExpensas').classList.remove('visible');
+}
+
+function confirmarImprimirExpensas() {
+    if (!uSel) return;
+    var mes = parseInt(document.getElementById('impExpMes').value, 10);
+    var anio = parseInt(document.getElementById('impExpAnio').value, 10);
+    if (!mes || mes < 1 || mes > 12 || !anio || anio < 2000) {
+        alert('Seleccioná un mes y año válidos.');
+        return;
+    }
+    cerrarModalImprimirExpensas();
+    window.open('imprimir_expensas_consorcio.php?id=' + uSel + '&mes=' + mes + '&anio=' + anio, '_blank', 'width=900,height=700');
 }
 
 function ejecutarLiquidarExpensas() {
@@ -1804,8 +1855,7 @@ function eliminarMovSeguro(movId) {
 
 function generarWord() {
     if (esConsorcioUsuario && uSel) {
-        // Si es consorcio, mostrar interfaz de impresión de expensas
-        window.open('imprimir_expensas_consorcio.php?id=' + uSel, '_blank', 'width=900,height=700');
+        abrirImprimirExpensas();
     } else if (!movSel || !movSel.movimientoId) {
         return;
     } else {

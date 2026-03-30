@@ -70,10 +70,14 @@ $row_sum = mysqli_fetch_assoc($res_sum);
 $suma_negativos = (float)($row_sum['total'] ?? 0);
 $total_expensa   = abs($suma_negativos);
 
-// Suma solo movimientos con comprobante "Exp Extraordinaria" (extraordinarias)
+// Extraordinarias: comprobante EXP EXTRAORDINARIA o concepto que empieza con "Expensa extraordinaria" (botón EXTRAORDINARIA)
+$cond_extra = "(
+    UPPER(TRIM(comprobante)) = 'EXP EXTRAORDINARIA'
+    OR LOWER(TRIM(COALESCE(concepto,''))) LIKE 'expensa extraordinaria%'
+)";
 $res_extra = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas 
     WHERE usuario_id = $consorcio_id AND monto < 0 $cond_periodo $cond_fecha_laprida
-    AND UPPER(TRIM(comprobante)) = 'EXP EXTRAORDINARIA'");
+    AND $cond_extra");
 $row_extra = mysqli_fetch_assoc($res_extra);
 $suma_extraordinarias = abs((float)($row_extra['total'] ?? 0));
 

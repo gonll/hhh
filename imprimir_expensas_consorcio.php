@@ -2,6 +2,8 @@
 include 'db.php';
 include 'verificar_sesion.php';
 include 'helpers_contrato.php';
+include __DIR__ . '/includes/expensa_extraordinaria.php';
+include_once __DIR__ . '/includes/expensa_hoja_propiedad.php';
 
 // Configurar zona horaria de Argentina
 date_default_timezone_set('America/Argentina/Buenos_Aires');
@@ -22,38 +24,77 @@ if (!$row_u || stripos($row_u['apellido'], 'CONSORCIO') !== 0) {
 $nombre_consorcio = trim($row_u['consorcio'] ?? '');
 $consorcio_esc = mysqli_real_escape_string($conexion, $nombre_consorcio);
 
-// Obtener las dos últimas liquidaciones (LIQ EXPENSAS con monto 0)
+$toFloatLiq = function ($s) {
+    $s = str_replace('.', '', $s);
+    $s = str_replace(',', '.', $s);
+    return (float)$s;
+};
+
 $ultimo_liq_id = null;
 $penultimo_liq_id = null;
 $ultimo_mes_liq = null;
 $liq_ordinarias = null;
 $liq_extraordinarias = null;
-$res_liq = mysqli_query($conexion, "SELECT movimiento_id, referencia, concepto FROM cuentas 
-    WHERE usuario_id = $consorcio_id AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
-    ORDER BY movimiento_id DESC LIMIT 2");
-$liq_rows = [];
-while ($res_liq && $row = mysqli_fetch_assoc($res_liq)) {
-    $liq_rows[] = $row;
-}
-if (count($liq_rows) >= 1) {
-    $ultimo_liq_id = (int)$liq_rows[0]['movimiento_id'];
-    $ultimo_mes_liq = trim($liq_rows[0]['referencia'] ?? '');
-    $concepto = trim($liq_rows[0]['concepto'] ?? '');
-    if (preg_match('/Ordinarias\s+([\d.,]+)\s*-\s*Extraordinarias\s+([\d.,]+)/i', $concepto, $m)) {
-        $toFloat = function ($s) {
-            $s = str_replace('.', '', $s);
-            $s = str_replace(',', '.', $s);
-            return (float)$s;
-        };
-        $liq_ordinarias = $toFloat($m[1]);
-        $liq_extraordinarias = $toFloat($m[2]);
+
+// Período explícito (?mes=1-12&anio=AAAA): liquidación de ese mes/año
+$periodo_solicitado = null;
+if (isset($_GET['mes'], $_GET['anio'])) {
+    $mes_sel = (int)$_GET['mes'];
+    $anio_sel = (int)$_GET['anio'];
+    if ($mes_sel >= 1 && $mes_sel <= 12 && $anio_sel >= 2000 && $anio_sel <= 2100) {
+        $periodo_solicitado = str_pad((string)$mes_sel, 2, '0', STR_PAD_LEFT) . '/' . $anio_sel;
     }
 }
-if (count($liq_rows) >= 2) {
-    $penultimo_liq_id = (int)$liq_rows[1]['movimiento_id'];
+
+if ($periodo_solicitado !== null) {
+    $ref_esc = mysqli_real_escape_string($conexion, $periodo_solicitado);
+    $res_target = mysqli_query($conexion, "SELECT movimiento_id, referencia, concepto FROM cuentas 
+        WHERE usuario_id = $consorcio_id AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
+        AND TRIM(referencia) = '$ref_esc'
+        ORDER BY movimiento_id DESC LIMIT 1");
+    if (!$res_target || !($row_target = mysqli_fetch_assoc($res_target))) {
+        die('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Expensas</title></head><body style="font-family:sans-serif;padding:20px;">'
+            . '<p>No hay liquidación (LIQ EXPENSAS) para el período <strong>' . htmlspecialchars($periodo_solicitado) . '</strong>.</p>'
+            . '<p><a href="javascript:history.back()">Volver</a></p></body></html>');
+    }
+    $ultimo_liq_id = (int)$row_target['movimiento_id'];
+    $ultimo_mes_liq = trim($row_target['referencia'] ?? '');
+    $concepto = trim($row_target['concepto'] ?? '');
+    if (preg_match('/Ordinarias\s+([\d.,]+)\s*-\s*Extraordinarias\s+([\d.,]+)/i', $concepto, $m)) {
+        $liq_ordinarias = $toFloatLiq($m[1]);
+        $liq_extraordinarias = $toFloatLiq($m[2]);
+    }
+    $res_prev = mysqli_query($conexion, "SELECT movimiento_id FROM cuentas 
+        WHERE usuario_id = $consorcio_id AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
+        AND movimiento_id < $ultimo_liq_id 
+        ORDER BY movimiento_id DESC LIMIT 1");
+    if ($res_prev && $row_prev = mysqli_fetch_assoc($res_prev)) {
+        $penultimo_liq_id = (int)$row_prev['movimiento_id'];
+    }
+} else {
+    // Sin período: las dos últimas liquidaciones (comportamiento anterior)
+    $res_liq = mysqli_query($conexion, "SELECT movimiento_id, referencia, concepto FROM cuentas 
+        WHERE usuario_id = $consorcio_id AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
+        ORDER BY movimiento_id DESC LIMIT 2");
+    $liq_rows = [];
+    while ($res_liq && $row = mysqli_fetch_assoc($res_liq)) {
+        $liq_rows[] = $row;
+    }
+    if (count($liq_rows) >= 1) {
+        $ultimo_liq_id = (int)$liq_rows[0]['movimiento_id'];
+        $ultimo_mes_liq = trim($liq_rows[0]['referencia'] ?? '');
+        $concepto = trim($liq_rows[0]['concepto'] ?? '');
+        if (preg_match('/Ordinarias\s+([\d.,]+)\s*-\s*Extraordinarias\s+([\d.,]+)/i', $concepto, $m)) {
+            $liq_ordinarias = $toFloatLiq($m[1]);
+            $liq_extraordinarias = $toFloatLiq($m[2]);
+        }
+    }
+    if (count($liq_rows) >= 2) {
+        $penultimo_liq_id = (int)$liq_rows[1]['movimiento_id'];
+    }
 }
 
-// Obtener movimientos ENTRE las dos últimas liquidaciones (incluye la última LIQ EXPENSAS)
+// Movimientos entre liquidación anterior y la elegida (incluye la LIQ EXPENSAS de ese período)
 $movimientos = [];
 if ($ultimo_liq_id !== null) {
     $cond_rango = ($penultimo_liq_id !== null)
@@ -99,7 +140,7 @@ if ($liq_ordinarias !== null && $liq_extraordinarias !== null) {
         } else {
             $monto_abs = abs($mov['monto']);
             $total_egresos += $monto_abs;
-            if ($mov['comprobante'] === 'EXP EXTRAORDINARIA') {
+            if (es_movimiento_expensa_extraordinaria($mov['comprobante'], $mov['concepto'])) {
                 $total_egresos_extraordinarias += $monto_abs;
             }
         }
@@ -132,6 +173,8 @@ while ($prop = mysqli_fetch_assoc($res_prop)) {
     $propiedad_id = (int)$prop['propiedad_id'];
     $propietario_id = (int)$prop['propietario_id'];
     $porcentaje = (float)$prop['porcentaje'];
+    $monto_extraordinaria = round($total_egresos_extraordinarias * ($porcentaje / 100), 2);
+    $monto_ordinaria = round($total_egresos_ordinarias * ($porcentaje / 100), 2);
     $monto_expensa = round($total_expensas * ($porcentaje / 100), 2);
 
     // Obtener inquilino si existe (ya viene en la consulta principal)
@@ -145,6 +188,8 @@ while ($prop = mysqli_fetch_assoc($res_prop)) {
         'propietario' => strtoupper(trim($prop['propietario_nombre'])),
         'inquilino' => $inquilino_nombre,
         'porcentaje' => $porcentaje,
+        'monto_extraordinaria' => $monto_extraordinaria,
+        'monto_ordinaria' => $monto_ordinaria,
         'monto' => $monto_expensa
     ];
 }
@@ -160,41 +205,11 @@ $anio_actual = date('Y');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Imprimir Expensas - Consorcio</title>
     <style>
-        @page { size: A4; margin: 18mm 10mm 10mm 10mm; }
-        @media print {
-            .no-print { display: none !important; }
-            body { margin: 0; padding: 0; background: white; scroll-snap-type: none; }
-            .container { max-width: none; box-shadow: none; padding: 0; }
-            .expensa-page {
-                page-break-after: always;
-            }
-            .expensa-page:last-child { page-break-after: auto; }
-            .expensa-logo { display: block !important; margin-bottom: 6px; width: 36px !important; height: 36px !important; }
-            .expensa-container {
-                page-break-inside: avoid;
-                margin: 0;
-                padding: 8mm;
-                border: 1px solid #ccc;
-                min-height: 0;
-                transform-origin: top center;
-            }
-            .expensa-header { margin-bottom: 4px; padding-bottom: 4px; }
-            .expensa-title { font-size: 11px !important; margin-bottom: 2px !important; }
-            .expensa-info { font-size: 8px !important; margin: 1px 0 !important; }
-            .expensa-section { margin: 4px 0 !important; }
-            .expensa-section h3 { font-size: 9px !important; margin-bottom: 2px !important; padding-bottom: 2px !important; }
-            table { font-size: 7px !important; margin: 3px 0 !important; }
-            th, td { padding: 2px 4px !important; font-size: 7px !important; }
-            .total-box { padding: 6px !important; margin-top: 4px !important; }
-            .total-box strong { font-size: 10px !important; }
-            .expensa-tabla-wrap { max-height: none !important; overflow: visible !important; }
-        }
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 10px;
             background: #f5f5f5;
-            scroll-snap-type: y mandatory;
         }
         .container {
             background: white;
@@ -230,85 +245,21 @@ $anio_actual = date('Y');
         .controles button:hover {
             background: #0056b3;
         }
-        .expensa-container {
-            margin-bottom: 20px;
-            padding: 12px;
-            border: 2px solid #007bff;
-            border-radius: 6px;
-            background: white;
-            min-height: 100vh;
-            box-sizing: border-box;
-            scroll-snap-align: start;
-        }
-        .expensa-header {
-            text-align: center;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #007bff;
-        }
-        .expensa-title {
-            font-size: 15px;
-            font-weight: bold;
-            color: #007bff;
-            margin-bottom: 4px;
-        }
-        .expensa-info {
-            font-size: 11px;
-            color: #666;
-            margin: 2px 0;
-        }
-        .expensa-section {
-            margin: 8px 0;
-        }
-        .expensa-section h3 {
-            font-size: 12px;
-            color: #333;
-            margin-bottom: 6px;
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 3px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 6px 0;
-            font-size: 9px;
-        }
-        th {
-            background: #007bff;
-            color: white;
-            padding: 4px 6px;
-            text-align: left;
-            font-weight: bold;
-        }
-        td {
-            padding: 3px 6px;
-            border-bottom: 1px solid #eee;
-        }
-        .monto-negativo {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        .monto-positivo {
-            color: #28a745;
-            font-weight: bold;
-        }
-        .total-box {
-            background: #e7f3ff;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 8px;
-            text-align: right;
-        }
-        .total-box strong {
-            font-size: 14px;
-            color: #007bff;
-        }
-        .expensa-tabla-wrap {
-            max-height: 35vh;
-            overflow-y: auto;
-        }
         @media print {
-            .expensa-tabla-wrap { max-height: none; overflow: visible; }
+            .no-print { display: none !important; }
+            body { margin: 0; padding: 0; background: white; }
+            .container { max-width: none; box-shadow: none; padding: 0; }
+        }
+        <?= expensa_hoja_propiedad_css_base() ?>
+        <?= expensa_hoja_propiedad_css_a4_print() ?>
+        @media screen {
+            .expensa-page-a4 { margin-bottom: 18px; }
+            .expensa-page-a4 .expensa-container {
+                min-height: 280mm;
+                max-width: 210mm;
+                margin-left: auto;
+                margin-right: auto;
+            }
         }
         .expensa-acciones {
             display: flex;
@@ -372,88 +323,20 @@ $anio_actual = date('Y');
         </div>
         
         <?php foreach ($expensas as $idx => $expensa): ?>
-        <div class="expensa-page" data-expensa-idx="<?= $idx ?>">
+        <div class="expensa-page expensa-page-a4" data-expensa-idx="<?= $idx ?>">
         <div class="expensa-container" id="expensa-<?= $idx ?>">
-            <img src="assets/logo.png" alt="Logo" class="expensa-logo" style="width: 36px; height: 36px; margin-bottom: 8px;">
-            <div class="expensa-header">
-                <div class="expensa-title">EXPENSA - <?= htmlspecialchars($expensa['propiedad']) ?> - Porcentaje: <?= number_format($expensa['porcentaje'], 2, ',', '.') ?>%</div>
-                <div class="expensa-info">Mes Liquidado: <?= $ultimo_mes_liq ? htmlspecialchars($ultimo_mes_liq) : 'Desde inicio' ?></div>
-                <div class="expensa-info">Fecha: <?= $fecha_actual ?></div>
-            </div>
-            
-            <div class="expensa-section">
-                <h3>PROPIETARIO: <strong><?= htmlspecialchars($expensa['propietario']) ?></strong></h3>
-            </div>
-            
-            <?php if ($expensa['inquilino']): ?>
-            <div class="expensa-section">
-                <h3>INQUILINO: <strong><?= htmlspecialchars($expensa['inquilino']) ?></strong></h3>
-            </div>
-            <?php endif; ?>
-            
-            <div class="expensa-section">
-                <h3>DETALLE DE MOVIMIENTOS</h3>
-                <div class="expensa-tabla-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 12%;">Fecha</th>
-                            <th style="width: 40%;">Concepto</th>
-                            <th style="width: 15%;">Comprobante</th>
-                            <th style="width: 13%;">Referencia</th>
-                            <th style="width: 20%; text-align: right;">Monto</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($movimientos as $mov): ?>
-                        <tr>
-                            <td><?= date('d/m/Y', strtotime($mov['fecha'])) ?></td>
-                            <td><?= htmlspecialchars($mov['concepto']) ?></td>
-                            <td><?= htmlspecialchars($mov['comprobante']) ?></td>
-                            <td><?= htmlspecialchars($mov['referencia']) ?></td>
-                            <td style="text-align: right; <?= $mov['monto'] >= 0 ? 'color: #28a745;' : 'color: #dc3545;' ?>">
-                                <?= $mov['monto'] >= 0 ? '+' : '' ?>$ <?= number_format($mov['monto'], 2, ',', '.') ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                    <tfoot>
-                        <tr style="background: #f8f9fa;">
-                            <td colspan="4" style="text-align: right; font-weight: bold;">Total Ingresos:</td>
-                            <td style="text-align: right; color: #28a745; font-weight: bold;">
-                                $ <?= number_format($total_ingresos, 2, ',', '.') ?>
-                            </td>
-                        </tr>
-                        <tr style="background: #f8f9fa;">
-                            <td colspan="4" style="text-align: right; font-weight: bold;">Gastado en exp ordinarias:</td>
-                            <td style="text-align: right; color: #dc3545; font-weight: bold;">
-                                $ <?= number_format($total_egresos_ordinarias, 2, ',', '.') ?>
-                            </td>
-                        </tr>
-                        <tr style="background: #f8f9fa;">
-                            <td colspan="4" style="text-align: right; font-weight: bold;">Gastado en extraordinarias:</td>
-                            <td style="text-align: right; color: #dc3545; font-weight: bold;">
-                                $ <?= number_format($total_egresos_extraordinarias, 2, ',', '.') ?>
-                            </td>
-                        </tr>
-                        <tr style="background: #fff3cd;">
-                            <td colspan="4" style="text-align: right; font-weight: bold;">Total Expensas:</td>
-                            <td style="text-align: right; color: #856404; font-weight: bold; font-size: 14px;">
-                                $ <?= number_format($total_expensas, 2, ',', '.') ?>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-                </div>
-            </div>
-            
-            <div class="expensa-section">
-                <h3>MONTO A PAGAR</h3>
-                <div class="total-box">
-                    <strong>MONTO A PAGAR: $ <?= number_format($expensa['monto'], 2, ',', '.') ?></strong>
-                </div>
-            </div>
-            
+            <?= expensa_hoja_propiedad_fragmento_html([
+                'expensa' => $expensa,
+                'movimientos' => $movimientos,
+                'total_ingresos' => $total_ingresos,
+                'total_egresos_ordinarias' => $total_egresos_ordinarias,
+                'total_egresos_extraordinarias' => $total_egresos_extraordinarias,
+                'total_expensas' => $total_expensas,
+                'ultimo_mes_liq' => $ultimo_mes_liq,
+                'fecha_actual' => $fecha_actual,
+                'nombre_consorcio' => $nombre_consorcio,
+                'logo_src' => 'assets/logo.png',
+            ]) ?>
             <div class="no-print expensa-acciones">
                 <button type="button" class="btn-icono-exp imprimir" title="Enviar a impresora" data-expensa-idx="<?= $idx ?>" onclick="imprimirExpensa(<?= $idx ?>)">🖨️</button>
                 <button type="button" class="btn-icono-exp seguir" title="Seguir" onclick="seguirExpensa(<?= $idx ?>)">▶</button>

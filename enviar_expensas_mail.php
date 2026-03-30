@@ -2,6 +2,7 @@
 include 'db.php';
 include 'verificar_sesion.php';
 include 'helpers_contrato.php';
+include __DIR__ . '/includes/expensa_extraordinaria.php';
 include 'smtp_enviar.php';
 include_once __DIR__ . '/generar_expensa_html.php';
 include_once __DIR__ . '/generar_expensa_pdf.php';
@@ -70,7 +71,7 @@ foreach ($movimientos as $mov) {
     } else {
         $monto_abs = abs($mov['monto']);
         $total_egresos += $monto_abs;
-        if ($mov['comprobante'] === 'EXP EXTRAORDINARIA') {
+        if (es_movimiento_expensa_extraordinaria($mov['comprobante'], $mov['concepto'])) {
             $total_egresos_extraordinarias += $monto_abs;
         }
     }
@@ -95,6 +96,8 @@ while ($prop = mysqli_fetch_assoc($res_prop)) {
     $propiedad_id = (int)$prop['propiedad_id'];
     $propietario_id = (int)$prop['propietario_id'];
     $porcentaje = (float)$prop['porcentaje'];
+    $monto_extraordinaria = round($total_egresos_extraordinarias * ($porcentaje / 100), 2);
+    $monto_ordinaria = round($total_egresos_ordinarias * ($porcentaje / 100), 2);
     $monto_expensa = round($total_expensas * ($porcentaje / 100), 2);
     
     // Obtener inquilino si existe
@@ -117,6 +120,8 @@ while ($prop = mysqli_fetch_assoc($res_prop)) {
         'inquilino' => $inquilino_nombre,
         'inquilino_email' => $inquilino_email,
         'porcentaje' => $porcentaje,
+        'monto_extraordinaria' => $monto_extraordinaria,
+        'monto_ordinaria' => $monto_ordinaria,
         'monto' => $monto_expensa
     ];
 }
