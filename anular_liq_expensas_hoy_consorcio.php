@@ -1,13 +1,23 @@
 <?php
 /**
- * Anula la liquidación de expensas registrada HOY para un consorcio (por defecto Laprida 430).
- * Ejecutar en el servidor con la misma .env que la app.
+ * Anula liquidaciones de expensas de un consorcio (por defecto Laprida 430).
  *
- * Uso (desde la carpeta del proyecto):
+ * Modo A — rango de fechas (por defecto): fecha >= ayer y <= hoy en el servidor
+ * (cuentas.fecha es DATE, sin hora).
+ *
+ * Modo B — desde movimiento ancla: borra liquidaciones cuyo LIQ EXPENSAS tiene
+ * movimiento_id MAYOR al del movimiento ancla (p. ej. el COBRO EXPENSA inmediatamente
+ * anterior a la liquidación en el libro).
+ *
+ * Uso:
  *   php anular_liq_expensas_hoy_consorcio.php --dry-run
  *   php anular_liq_expensas_hoy_consorcio.php --execute
+ *   php anular_liq_expensas_hoy_consorcio.php --execute --solo-hoy
+ *   php anular_liq_expensas_hoy_consorcio.php --dry-run --despues-de-movimiento=12345
+ *   php anular_liq_expensas_hoy_consorcio.php --dry-run --auto-cobro-laprida-mar2026
+ *     (localiza el COBRO 30/03/2026 EXP/EFVO 02/2026 DPTO 6° Laprida 430 y usa su movimiento_id como ancla)
  *
- * Opcional: --consorcio="Laprida 430"  (coincide con campo usuarios.consorcio o apellido CONSORCIO…)
+ * Opcional: --consorcio="Laprida 430"
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -20,16 +30,27 @@ require __DIR__ . '/db.php';
 
 $dry_run = in_array('--dry-run', $argv, true);
 $execute = in_array('--execute', $argv, true);
+$solo_hoy = in_array('--solo-hoy', $argv, true);
 $consorcio_buscar = 'Laprida 430';
+$anchor_m_id = null;
+$auto_cobro_laprida_mar2026 = false;
 
 foreach ($argv as $arg) {
     if (strpos($arg, '--consorcio=') === 0) {
         $consorcio_buscar = trim(substr($arg, strlen('--consorcio=')), " \t\n\r\0\x0B\"'");
     }
+    if (preg_match('/^--despues-de-movimiento=(\d+)$/', $arg, $m)) {
+        $anchor_m_id = (int)$m[1];
+    }
+    if ($arg === '--auto-cobro-laprida-mar2026') {
+        $auto_cobro_laprida_mar2026 = true;
+    }
 }
 
 if (!$dry_run && !$execute) {
     fwrite(STDERR, "Indique --dry-run (solo listar) o --execute (aplicar borrados).\n");
+    fwrite(STDERR, "Por defecto: liquidaciones con fecha ayer u hoy. Opción: --solo-hoy\n");
+    fwrite(STDERR, "O bien: --despues-de-movimiento=ID o --auto-cobro-laprida-mar2026\n");
     exit(1);
 }
 
@@ -38,7 +59,23 @@ if ($dry_run && $execute) {
     exit(1);
 }
 
+if ($anchor_m_id !== null && $anchor_m_id <= 0) {
+    fwrite(STDERR, "--despues-de-movimiento requiere un id numérico > 0.\n");
+    exit(1);
+}
+
+if ($auto_cobro_laprida_mar2026 && $anchor_m_id !== null) {
+    fwrite(STDERR, "Use solo uno: --despues-de-movimiento=… o --auto-cobro-laprida-mar2026.\n");
+    exit(1);
+}
+
 $hoy = date('Y-m-d');
+$ayer = date('Y-m-d', strtotime('-1 day'));
+$fecha_desde = $solo_hoy ? $hoy : $ayer;
+$fecha_hasta = $hoy;
+$fecha_desde_esc = mysqli_real_escape_string($conexion, $fecha_desde);
+$fecha_hasta_esc = mysqli_real_escape_string($conexion, $fecha_hasta);
+
 $bus_upper = strtoupper(trim($consorcio_buscar));
 
 // Resolver consorcio: apellido CONSORCIO* y nombre en consorcio o apellido
@@ -80,14 +117,70 @@ $nombre_consorcio = trim($row_u['consorcio'] ?? '');
 $consorcio_esc = mysqli_real_escape_string($conexion, $nombre_consorcio);
 
 echo "Consorcio: id={$consorcio_id} apellido={$row_u['apellido']} consorcio={$nombre_consorcio}\n";
-echo "Fecha objetivo (liquidación): {$hoy}\n\n";
 
-$res_liq = mysqli_query($conexion, "SELECT movimiento_id, fecha, referencia, concepto, comprobante 
-    FROM cuentas 
-    WHERE usuario_id = $consorcio_id 
-    AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
-    AND DATE(fecha) = '$hoy'
-    ORDER BY movimiento_id DESC");
+if ($auto_cobro_laprida_mar2026) {
+    // COBRO indicado por el usuario: 30/03/2026, EXP/EFVO, 02/2026, DPTO 6° Laprida 430
+    $sql_cobro = "SELECT movimiento_id, usuario_id, fecha, concepto, comprobante, referencia 
+        FROM cuentas 
+        WHERE fecha = '2026-03-30' 
+        AND TRIM(referencia) = '02/2026' 
+        AND UPPER(TRIM(comprobante)) = 'EXP/EFVO' 
+        AND concepto LIKE '%COBRO EXPENSA%' 
+        AND concepto LIKE '%LAPRIDA%' 
+        AND (concepto LIKE '%DPTO 6%' OR concepto LIKE '%6°%' OR concepto LIKE '%6 PISO%') 
+        ORDER BY movimiento_id ASC";
+    $r_cobro = mysqli_query($conexion, $sql_cobro);
+    if (!$r_cobro) {
+        fwrite(STDERR, 'Error SQL cobro: ' . mysqli_error($conexion) . "\n");
+        exit(1);
+    }
+    $cobros = [];
+    while ($c = mysqli_fetch_assoc($r_cobro)) {
+        $cobros[] = $c;
+    }
+    if (count($cobros) === 0) {
+        fwrite(STDERR, "No se encontró el movimiento COBRO EXPENSA (30/03/2026, EXP/EFVO, 02/2026, Laprida DPTO 6°).\n");
+        fwrite(STDERR, "Puede localizar movimiento_id en la base y usar: --despues-de-movimiento=ID\n");
+        exit(1);
+    }
+    if (count($cobros) > 1) {
+        fwrite(STDERR, "Hay varios COBRO que coinciden; elija movimiento_id y use --despues-de-movimiento=ID:\n");
+        foreach ($cobros as $c) {
+            fwrite(STDERR, "  movimiento_id={$c['movimiento_id']} usuario_id={$c['usuario_id']} " . substr($c['concepto'], 0, 80) . "…\n");
+        }
+        exit(1);
+    }
+    $anchor_m_id = (int)$cobros[0]['movimiento_id'];
+    echo "Ancla COBRO: movimiento_id={$anchor_m_id} (siguiente LIQ EXPENSAS del consorcio con id mayor).\n\n";
+}
+
+$modo_anchor = ($anchor_m_id !== null && $anchor_m_id > 0);
+
+if ($modo_anchor) {
+    echo "Modo: liquidaciones con LIQ EXPENSAS donde movimiento_id > {$anchor_m_id} (cuenta del consorcio).\n\n";
+} elseif ($solo_hoy) {
+    echo "Rango: solo HOY ({$hoy}) según fecha del servidor.\n\n";
+} else {
+    echo "Rango: desde AYER ({$ayer}) hasta HOY ({$hoy}) inclusive; cuentas.fecha es DATE (sin hora).\n\n";
+}
+
+if ($modo_anchor) {
+    $aid = (int)$anchor_m_id;
+    $res_liq = mysqli_query($conexion, "SELECT movimiento_id, fecha, referencia, concepto, comprobante 
+        FROM cuentas 
+        WHERE usuario_id = $consorcio_id 
+        AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
+        AND movimiento_id > $aid
+        ORDER BY movimiento_id ASC");
+} else {
+    $res_liq = mysqli_query($conexion, "SELECT movimiento_id, fecha, referencia, concepto, comprobante 
+        FROM cuentas 
+        WHERE usuario_id = $consorcio_id 
+        AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
+        AND fecha >= '$fecha_desde_esc' 
+        AND fecha <= '$fecha_hasta_esc'
+        ORDER BY fecha ASC, movimiento_id ASC");
+}
 
 if (!$res_liq) {
     fwrite(STDERR, 'Error SQL: ' . mysqli_error($conexion) . "\n");
@@ -100,12 +193,16 @@ while ($l = mysqli_fetch_assoc($res_liq)) {
 }
 
 if (count($liqs) === 0) {
-    fwrite(STDERR, "No hay movimiento LIQ EXPENSAS con fecha {$hoy} para este consorcio.\n");
+    if ($modo_anchor) {
+        fwrite(STDERR, "No hay LIQ EXPENSAS en cuenta consorcio con movimiento_id > {$anchor_m_id}.\n");
+    } else {
+        fwrite(STDERR, "No hay LIQ EXPENSAS en el rango {$fecha_desde} … {$fecha_hasta} para este consorcio.\n");
+    }
     exit(1);
 }
 
-// Agrupar por referencia (período): puede haber más de una liquidación el mismo día
-$por_ref = [];
+// Pares (período, fecha de movimiento): mismo período puede liquidarse en días distintos
+$pairs = [];
 foreach ($liqs as $l) {
     $ref = trim((string)($l['referencia'] ?? ''));
     if ($ref === '') {
@@ -115,14 +212,19 @@ foreach ($liqs as $l) {
         fwrite(STDERR, "Referencia inesperada en LIQ EXPENSAS: {$ref}\n");
         exit(1);
     }
-    $por_ref[$ref] = true;
+    $partes_r = preg_split('/\//', $ref);
+    $ref_norm = str_pad((string)(int)$partes_r[0], 2, '0', STR_PAD_LEFT) . '/' . (int)$partes_r[1];
+    $fecha_dia = substr($l['fecha'], 0, 10);
+    $key = $ref_norm . '|' . $fecha_dia;
+    $pairs[$key] = ['referencia' => $ref_norm, 'fecha' => $fecha_dia];
 }
-$referencias = array_keys($por_ref);
-$fecha_liq = substr($liqs[0]['fecha'], 0, 10);
-$fecha_liq_esc = mysqli_real_escape_string($conexion, $fecha_liq);
+$pairs = array_values($pairs);
 
-echo "Liquidaciones del día en cuenta consorcio: " . count($referencias) . " período(s): " . implode(', ', $referencias) . "\n";
-echo "Se borran solo movimientos con DATE(fecha) = {$fecha_liq} (misma corrida que la liquidación web).\n\n";
+echo "Lotes a anular (período + fecha de registro): " . count($pairs) . "\n";
+foreach ($pairs as $p) {
+    echo "  - {$p['referencia']} @ {$p['fecha']}\n";
+}
+echo "Se borran LIQ EXP / LIQ EXP EXT / Honorarios / LIQ EXPENSAS con esa misma fecha.\n\n";
 
 // Propietarios + inquilinos del consorcio (mismo criterio que al liquidar / eliminar_liq_expensas_periodo.php)
 $cond_consorcio = $nombre_consorcio === ''
@@ -159,13 +261,14 @@ $total_n_li = 0;
 $total_n_hon = 0;
 $total_n_liq = 0;
 
-foreach ($referencias as $referencia) {
-    $partes = preg_split('/\//', $referencia);
-    $mes = (int)$partes[0];
-    $anio = (int)$partes[1];
-    $ref_norm = str_pad((string)$mes, 2, '0', STR_PAD_LEFT) . '/' . $anio;
+foreach ($pairs as $p) {
+    $ref_norm = $p['referencia'];
+    $fecha_liq_esc = mysqli_real_escape_string($conexion, $p['fecha']);
     $ref_esc = mysqli_real_escape_string($conexion, $ref_norm);
 
+    $partes = preg_split('/\//', $ref_norm);
+    $mes = (int)$partes[0];
+    $anio = (int)$partes[1];
     $mes_sig = ($mes >= 12) ? 1 : $mes + 1;
     $anio_sig = ($mes >= 12) ? $anio + 1 : $anio;
     $ref_sig = str_pad((string)$mes_sig, 2, '0', STR_PAD_LEFT) . '/' . $anio_sig;
@@ -187,7 +290,7 @@ foreach ($referencias as $referencia) {
         AND TRIM(referencia) = '$ref_esc' 
         AND DATE(fecha) = '$fecha_liq_esc'");
 
-    echo "Período {$ref_norm}: LIQ EXP/LIQ EXP EXT (fecha hoy)={$n_li}, Honorarios ref {$ref_sig}={$n_hon}, LIQ EXPENSAS={$n_liq}\n";
+    echo "Período {$ref_norm} @ {$p['fecha']}: LIQ EXP/LIQ EXP EXT={$n_li}, Honorarios ref {$ref_sig}={$n_hon}, LIQ EXPENSAS={$n_liq}\n";
     $total_n_li += $n_li;
     $total_n_hon += $n_hon;
     $total_n_liq += $n_liq;
@@ -203,19 +306,20 @@ if ($dry_run) {
 mysqli_begin_transaction($conexion);
 
 try {
-    foreach ($referencias as $referencia) {
-        $partes = preg_split('/\//', $referencia);
-        $mes = (int)$partes[0];
-        $anio = (int)$partes[1];
-        $ref_norm = str_pad((string)$mes, 2, '0', STR_PAD_LEFT) . '/' . $anio;
+    foreach ($pairs as $p) {
+        $ref_norm = $p['referencia'];
+        $fecha_liq_esc = mysqli_real_escape_string($conexion, $p['fecha']);
         $ref_esc = mysqli_real_escape_string($conexion, $ref_norm);
 
+        $partes = preg_split('/\//', $ref_norm);
+        $mes = (int)$partes[0];
+        $anio = (int)$partes[1];
         $mes_sig = ($mes >= 12) ? 1 : $mes + 1;
         $anio_sig = ($mes >= 12) ? $anio + 1 : $anio;
         $ref_sig = str_pad((string)$mes_sig, 2, '0', STR_PAD_LEFT) . '/' . $anio_sig;
         $ref_sig_esc = mysqli_real_escape_string($conexion, $ref_sig);
 
-        // 1) Cargos en propietarios/inquilinos: solo los insertados en la misma fecha (evita borrar liquidaciones viejas del mismo período)
+        // 1) Cargos en propietarios/inquilinos: misma fecha que esa corrida de liquidación
         if ($ids_lista !== '') {
             $sql2 = "DELETE FROM cuentas 
                 WHERE usuario_id IN ($ids_lista) 
@@ -225,10 +329,9 @@ try {
             if (!mysqli_query($conexion, $sql2)) {
                 throw new Exception(mysqli_error($conexion));
             }
-            echo "Período {$ref_norm}: eliminados LIQ EXP / LIQ EXP EXT: " . mysqli_affected_rows($conexion) . "\n";
+            echo "Período {$ref_norm} @ {$p['fecha']}: eliminados LIQ EXP / LIQ EXP EXT: " . mysqli_affected_rows($conexion) . "\n";
         }
 
-        // 2) Honorarios al consorcio (referencia = mes siguiente), misma fecha que la liquidación
         $sql_h = "DELETE FROM cuentas WHERE usuario_id = $consorcio_id 
             AND UPPER(TRIM(comprobante)) = 'HONORARIOS' 
             AND TRIM(referencia) = '$ref_sig_esc' 
@@ -236,9 +339,8 @@ try {
         if (!mysqli_query($conexion, $sql_h)) {
             throw new Exception(mysqli_error($conexion));
         }
-        echo "Período {$ref_norm}: eliminados Honorarios (ref {$ref_sig}): " . mysqli_affected_rows($conexion) . "\n";
+        echo "Período {$ref_norm} @ {$p['fecha']}: eliminados Honorarios (ref {$ref_sig}): " . mysqli_affected_rows($conexion) . "\n";
 
-        // 3) Movimiento LIQ EXPENSAS en cuenta del consorcio
         $sql1 = "DELETE FROM cuentas WHERE usuario_id = $consorcio_id 
             AND TRIM(referencia) = '$ref_esc' 
             AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS'
@@ -247,15 +349,18 @@ try {
             throw new Exception(mysqli_error($conexion));
         }
         $aff = mysqli_affected_rows($conexion);
-        echo "Período {$ref_norm}: eliminados LIQ EXPENSAS: {$aff}\n";
+        echo "Período {$ref_norm} @ {$p['fecha']}: eliminados LIQ EXPENSAS: {$aff}\n";
 
         if ($aff < 1) {
-            throw new Exception("No se borró LIQ EXPENSAS para período {$ref_norm}; rollback.");
+            throw new Exception("No se borró LIQ EXPENSAS para {$ref_norm} @ {$p['fecha']}; rollback.");
         }
     }
 
     mysqli_commit($conexion);
-    echo "\nListo: anulada(s) la(s) liquidación(es) del {$fecha_liq} (" . implode(', ', $referencias) . ").\n";
+    $resumen = array_map(function ($x) {
+        return $x['referencia'] . ' @ ' . $x['fecha'];
+    }, $pairs);
+    echo "\nListo: anulado(s) " . count($pairs) . " lote(s): " . implode('; ', $resumen) . ".\n";
 } catch (Exception $e) {
     mysqli_rollback($conexion);
     fwrite(STDERR, "Error: " . $e->getMessage() . "\n");
