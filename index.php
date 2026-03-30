@@ -260,6 +260,7 @@ if ($nivelAcceso === 3) {
                 <?php if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
                     <a href="gestionar_accesos.php" style="color:#007bff; font-size:9px; margin-right:6px;">Accesos</a>
                     <a href="respaldar_bd.php" style="color:#28a745; font-size:9px; margin-right:6px;">Respaldar</a>
+                    <a href="restaurar_bd.php" style="color:#721c24; font-size:9px; margin-right:6px;" title="Restaurar BD desde archivo .sql">Restaurar</a>
                 <?php endif; ?>
                 <a href="<?= (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 1 && $_SESSION['acceso_nivel'] <= 3) ? 'respaldar_al_salir.php' : 'logout.php' ?>" style="color:#dc3545; font-size:9px;">Salir</a>
             </div>
