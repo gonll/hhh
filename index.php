@@ -582,7 +582,7 @@ if ($nivelAcceso === 3) {
     <div id="modalBorrarTodasLiqExp" class="modal-overlay" onclick="if(event.target===this) cerrarModalBorrarTodasLiqExp()">
         <div class="modal-cobro" onclick="event.stopPropagation()">
             <h3>Borrar TODAS las liquidaciones de expensas</h3>
-            <p style="font-size:11px; color:#666; margin:0 0 12px;">Elimina TODOS los movimientos de liquidación (LIQ EXPENSAS, Honorarios, LIQ EXP, LIQ EXP EXT) del consorcio en cuenta del consorcio y en cuentas de propietarios e inquilinos. Sin filtro de período.</p>
+            <p style="font-size:11px; color:#666; margin:0 0 12px;">Elimina TODOS los movimientos de liquidación (LIQ EXPENSAS, Honorarios, LIQ EXP, LIQ EXP EXT) del consorcio en cuenta del consorcio y en cuentas de propietarios e inquilinos. Sin filtro de período. <strong>Solo nivel 3.</strong></p>
             <label>Consorcio</label>
             <select id="borrarTodasLiqExpConsorcio" style="width:100%; padding:8px; margin-bottom:12px;">
                 <option value="">-- Seleccionar consorcio --</option>
@@ -599,19 +599,47 @@ if ($nivelAcceso === 3) {
     <div id="modalBorrarLiqExp" class="modal-overlay" onclick="if(event.target===this) cerrarModalBorrarLiqExp()">
         <div class="modal-cobro" onclick="event.stopPropagation()">
             <h3>Borrar liquidación de expensas (por período)</h3>
-            <p style="font-size:11px; color:#666; margin:0 0 12px;">Elimina movimientos LIQ EXPENSAS, LIQ EXP y LIQ EXP EXT del consorcio y período indicados.</p>
-            <label>Consorcio</label>
-            <select id="borrarLiqExpConsorcio" style="width:100%; padding:8px; margin-bottom:12px;">
-                <option value="">-- Seleccionar consorcio --</option>
-                <?php foreach ($consorcios_lista as $c): ?>
-                <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['apellido'] . ($c['consorcio'] ? ' (' . $c['consorcio'] . ')' : '')) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <label>Período (referencia MM/AAAA)</label>
-            <input type="text" id="borrarLiqExpPeriodo" placeholder="Ej: 02/2026" maxlength="7" style="width:100%; padding:8px; margin-bottom:12px;">
-            <div class="btns">
-                <button type="button" class="btn-guardar" onclick="ejecutarBorrarLiqExp()" style="background:#dc3545;">Borrar</button>
-                <button type="button" class="btn-cerrar" onclick="cerrarModalBorrarLiqExp()">Cerrar</button>
+            <p style="font-size:11px; color:#666; margin:0 0 12px;">Elimina movimientos LIQ EXPENSAS, LIQ EXP y LIQ EXP EXT del consorcio y período indicados. <strong>Solo nivel 3.</strong></p>
+            <div id="borrarLiqExpPaso1">
+                <label>Consorcio</label>
+                <select id="borrarLiqExpConsorcio" style="width:100%; padding:8px; margin-bottom:12px;">
+                    <option value="">-- Seleccionar consorcio --</option>
+                    <?php foreach ($consorcios_lista as $c): ?>
+                    <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['apellido'] . ($c['consorcio'] ? ' (' . $c['consorcio'] . ')' : '')) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <p style="font-size:11px; margin:0 0 8px;">Período a borrar (mes y año de la referencia)</p>
+                <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:12px;">
+                    <label style="display:flex; align-items:center; gap:8px;">Mes
+                        <select id="borrarLiqExpMes" style="padding:8px; min-width:120px;">
+                            <?php for ($m = 1; $m <= 12; $m++): ?>
+                            <option value="<?= $m ?>"<?= (int)date('n') === $m ? ' selected' : '' ?>><?= str_pad((string)$m, 2, '0', STR_PAD_LEFT) ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px;">Año
+                        <select id="borrarLiqExpAnio" style="padding:8px; min-width:100px;">
+                            <?php
+                            $yMaxB = (int)date('Y');
+                            for ($y = $yMaxB; $y >= $yMaxB - 15; $y--):
+                            ?>
+                            <option value="<?= $y ?>"<?= $y === $yMaxB ? ' selected' : '' ?>><?= $y ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </label>
+                </div>
+                <div class="btns">
+                    <button type="button" class="btn-guardar" onclick="pasoSiguienteBorrarLiqExp()">Siguiente</button>
+                    <button type="button" class="btn-cerrar" onclick="cerrarModalBorrarLiqExp()">Cerrar</button>
+                </div>
+            </div>
+            <div id="borrarLiqExpPaso2" style="display:none;">
+                <div id="borrarLiqExpConfirmText" style="font-size:12px; line-height:1.5; margin-bottom:16px; padding:12px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; color:#333;"></div>
+                <p style="font-size:11px; color:#721c24; margin:0 0 12px;">¿Confirma eliminar esta liquidación? No se puede deshacer.</p>
+                <div class="btns">
+                    <button type="button" class="btn-guardar" onclick="ejecutarBorrarLiqExp()" style="background:#dc3545;">Sí, eliminar</button>
+                    <button type="button" class="btn-cerrar" onclick="volverPasoBorrarLiqExp()">Volver</button>
+                </div>
             </div>
         </div>
     </div>
@@ -744,6 +772,8 @@ let esPropietarioOInquilino = false;
 let esArrendadorUsuario = false;
 let movScrollData = null;
 let saldoActualCuenta = 0;
+/** Solo usuarios con acceso_nivel === 3 (borrar liquidaciones, etc.) */
+var accesoNivel3 = <?= $nivelAcceso === 3 ? 'true' : 'false' ?>;
 
 // Parsear monto: acepta 24.44 o 24,44 (teclado numérico). Evita que 24.44 se interprete como 2.444.
 function parseMonto(str) {
@@ -852,7 +882,7 @@ function cargarMovimientos(fila, id) {
         document.getElementById("btnWord").style.display = "block";
     }
     var btnBorrarLiq = document.getElementById("btnBorrarLiqExp");
-    if (btnBorrarLiq) btnBorrarLiq.style.display = esConsorcioUsuario ? "inline-block" : "none";
+    if (btnBorrarLiq) btnBorrarLiq.style.display = (esConsorcioUsuario && accesoNivel3) ? "inline-block" : "none";
     
     // Cobro Exp/transferencia y Cobro expensas efvo: solo si es propietario o inquilino. Sueldo/Extras: solo si NO es propietario ni inquilino (y no Caja).
     esPropietarioOInquilino = false;
@@ -1213,31 +1243,78 @@ function guardarPrecioAzucar() {
         });
 }
 
+function borrarLiqExpPeriodoDesdeSelects() {
+    var mes = parseInt(document.getElementById('borrarLiqExpMes').value, 10);
+    var anio = parseInt(document.getElementById('borrarLiqExpAnio').value, 10);
+    if (isNaN(mes) || mes < 1 || mes > 12) return '';
+    if (isNaN(anio) || anio < 2000) return '';
+    return (mes < 10 ? '0' : '') + mes + '/' + anio;
+}
+
 function abrirModalBorrarLiqExp() {
+    if (!accesoNivel3) {
+        alert('Esta acción solo está disponible para usuarios con nivel de acceso 3.');
+        return;
+    }
     var el = document.getElementById('modalBorrarLiqExp');
     if (el) {
         el.classList.add('visible');
         var selCons = document.getElementById('borrarLiqExpConsorcio');
         selCons.value = esConsorcioUsuario && uSel ? String(uSel) : '';
-        document.getElementById('borrarLiqExpPeriodo').value = '';
+        var p1 = document.getElementById('borrarLiqExpPaso1');
+        var p2 = document.getElementById('borrarLiqExpPaso2');
+        if (p1) p1.style.display = '';
+        if (p2) p2.style.display = 'none';
     }
 }
 function cerrarModalBorrarLiqExp() {
     var el = document.getElementById('modalBorrarLiqExp');
     if (el) el.classList.remove('visible');
 }
-function ejecutarBorrarLiqExp() {
+function volverPasoBorrarLiqExp() {
+    var p1 = document.getElementById('borrarLiqExpPaso1');
+    var p2 = document.getElementById('borrarLiqExpPaso2');
+    if (p1) p1.style.display = '';
+    if (p2) p2.style.display = 'none';
+}
+function pasoSiguienteBorrarLiqExp() {
+    if (!accesoNivel3) return;
     var consorcioId = document.getElementById('borrarLiqExpConsorcio').value;
-    var periodo = document.getElementById('borrarLiqExpPeriodo').value.trim();
+    var periodo = borrarLiqExpPeriodoDesdeSelects();
     if (!consorcioId) {
         alert('Seleccioná un consorcio.');
         return;
     }
     if (!periodo) {
-        alert('Ingresá el período (MM/AAAA).');
+        alert('Elegí mes y año válidos.');
         return;
     }
-    if (!confirm('¿Eliminar movimientos LIQ EXPENSAS, LIQ EXP y LIQ EXP EXT del consorcio seleccionado, período ' + periodo + '?')) return;
+    var sel = document.getElementById('borrarLiqExpConsorcio');
+    var nombreCons = '';
+    if (sel && sel.options[sel.selectedIndex]) {
+        nombreCons = sel.options[sel.selectedIndex].text || '';
+    }
+    var html = '<strong>Consorcio:</strong> ' + nombreCons + '<br>' +
+        '<strong>Período (referencia):</strong> ' + periodo + '<br><br>' +
+        'Se eliminarán los movimientos <strong>LIQ EXPENSAS</strong>, <strong>LIQ EXP</strong> y <strong>LIQ EXP EXT</strong> correspondientes a ese consorcio y período.';
+    var box = document.getElementById('borrarLiqExpConfirmText');
+    if (box) box.innerHTML = html;
+    var p1 = document.getElementById('borrarLiqExpPaso1');
+    var p2 = document.getElementById('borrarLiqExpPaso2');
+    if (p1) p1.style.display = 'none';
+    if (p2) p2.style.display = '';
+}
+function ejecutarBorrarLiqExp() {
+    if (!accesoNivel3) {
+        alert('Sin permiso (solo nivel 3).');
+        return;
+    }
+    var consorcioId = document.getElementById('borrarLiqExpConsorcio').value;
+    var periodo = borrarLiqExpPeriodoDesdeSelects();
+    if (!consorcioId || !periodo) {
+        alert('Datos incompletos. Volvé al paso anterior.');
+        return;
+    }
     var fd = new FormData();
     fd.append('consorcio_id', consorcioId);
     fd.append('periodo', periodo);
@@ -1247,6 +1324,7 @@ function ejecutarBorrarLiqExp() {
             if (data && data.ok) {
                 alert(data.msg);
                 cerrarModalBorrarLiqExp();
+                volverPasoBorrarLiqExp();
                 var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
                 if (fila) cargarMovimientos(fila, uSel);
             } else {
@@ -1257,6 +1335,10 @@ function ejecutarBorrarLiqExp() {
 }
 
 function abrirModalBorrarTodasLiqExp() {
+    if (!accesoNivel3) {
+        alert('Esta acción solo está disponible para usuarios con nivel de acceso 3.');
+        return;
+    }
     var el = document.getElementById('modalBorrarTodasLiqExp');
     if (el) {
         el.classList.add('visible');
@@ -1269,6 +1351,10 @@ function cerrarModalBorrarTodasLiqExp() {
     if (el) el.classList.remove('visible');
 }
 function ejecutarBorrarTodasLiqExp() {
+    if (!accesoNivel3) {
+        alert('Sin permiso (solo nivel 3).');
+        return;
+    }
     var consorcioId = document.getElementById('borrarTodasLiqExpConsorcio').value;
     if (!consorcioId) {
         alert('Seleccioná un consorcio.');

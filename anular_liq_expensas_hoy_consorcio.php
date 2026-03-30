@@ -9,6 +9,9 @@
  * movimiento_id MAYOR al del movimiento ancla (p. ej. el COBRO EXPENSA inmediatamente
  * anterior a la liquidación en el libro).
  *
+ * Modo C — liquidación puntual: período + fecha del LIQ EXPENSAS (todos los movimientos
+ * emergentes de esa corrida: LIQ EXP, LIQ EXP EXT, Honorarios, LIQ EXPENSAS).
+ *
  * Uso:
  *   php anular_liq_expensas_hoy_consorcio.php --dry-run
  *   php anular_liq_expensas_hoy_consorcio.php --execute
@@ -16,9 +19,34 @@
  *   php anular_liq_expensas_hoy_consorcio.php --dry-run --despues-de-movimiento=12345
  *   php anular_liq_expensas_hoy_consorcio.php --dry-run --auto-cobro-laprida-mar2026
  *     (localiza el COBRO 30/03/2026 EXP/EFVO 02/2026 DPTO 6° Laprida 430 y usa su movimiento_id como ancla)
+ *   php anular_liq_expensas_hoy_consorcio.php --dry-run --periodo=03/2026 --fecha-liquidacion=2026-03-30
+ *   php anular_liq_expensas_hoy_consorcio.php --dry-run --laprida-liq-30mar2026
+ *     (atajo: 03/2026 @ 30/03/2026 para Laprida 430)
  *
  * Opcional: --consorcio="Laprida 430"
  */
+
+function anular_liq_normalize_periodo(string $s): ?string {
+    $s = preg_replace('/[^0-9\/\-]/', '', $s);
+    if (!preg_match('/^\d{1,2}[\/\-]\d{4}$/', $s)) {
+        return null;
+    }
+    $partes = preg_split('/[\/\-]/', $s);
+
+    return str_pad((string)(int)$partes[0], 2, '0', STR_PAD_LEFT) . '/' . (int)$partes[1];
+}
+
+function anular_liq_fecha_arg_a_iso(string $s): ?string {
+    $s = trim($s);
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $s, $m)) {
+        return sprintf('%04d-%02d-%02d', (int)$m[1], (int)$m[2], (int)$m[3]);
+    }
+    if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $s, $m)) {
+        return sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
+    }
+
+    return null;
+}
 
 if (PHP_SAPI !== 'cli') {
     header('HTTP/1.0 403 Forbidden');
@@ -34,6 +62,9 @@ $solo_hoy = in_array('--solo-hoy', $argv, true);
 $consorcio_buscar = 'Laprida 430';
 $anchor_m_id = null;
 $auto_cobro_laprida_mar2026 = false;
+$periodo_explicit = null;
+$fecha_liq_explicit = null;
+$laprida_liq_30mar2026 = false;
 
 foreach ($argv as $arg) {
     if (strpos($arg, '--consorcio=') === 0) {
@@ -45,12 +76,31 @@ foreach ($argv as $arg) {
     if ($arg === '--auto-cobro-laprida-mar2026') {
         $auto_cobro_laprida_mar2026 = true;
     }
+    if (preg_match('/^--periodo=(.+)$/', $arg, $m)) {
+        $periodo_explicit = trim($m[1], " \t\n\r\0\x0B\"'");
+    }
+    if (preg_match('/^--fecha-liquidacion=(.+)$/', $arg, $m)) {
+        $fecha_liq_explicit = trim($m[1], " \t\n\r\0\x0B\"'");
+    }
+    if ($arg === '--laprida-liq-30mar2026') {
+        $laprida_liq_30mar2026 = true;
+    }
+}
+
+if ($laprida_liq_30mar2026) {
+    if ($periodo_explicit === null) {
+        $periodo_explicit = '03/2026';
+    }
+    if ($fecha_liq_explicit === null) {
+        $fecha_liq_explicit = '2026-03-30';
+    }
 }
 
 if (!$dry_run && !$execute) {
     fwrite(STDERR, "Indique --dry-run (solo listar) o --execute (aplicar borrados).\n");
     fwrite(STDERR, "Por defecto: liquidaciones con fecha ayer u hoy. Opción: --solo-hoy\n");
-    fwrite(STDERR, "O bien: --despues-de-movimiento=ID o --auto-cobro-laprida-mar2026\n");
+    fwrite(STDERR, "O: --despues-de-movimiento=ID | --auto-cobro-laprida-mar2026\n");
+    fwrite(STDERR, "O: --periodo=MM/AAAA --fecha-liquidacion=YYYY-MM-DD | --laprida-liq-30mar2026\n");
     exit(1);
 }
 
@@ -67,6 +117,34 @@ if ($anchor_m_id !== null && $anchor_m_id <= 0) {
 if ($auto_cobro_laprida_mar2026 && $anchor_m_id !== null) {
     fwrite(STDERR, "Use solo uno: --despues-de-movimiento=… o --auto-cobro-laprida-mar2026.\n");
     exit(1);
+}
+
+$tiene_periodo = ($periodo_explicit !== null && $periodo_explicit !== '');
+$tiene_fecha = ($fecha_liq_explicit !== null && $fecha_liq_explicit !== '');
+if ($tiene_periodo !== $tiene_fecha) {
+    fwrite(STDERR, "Use juntos --periodo=MM/AAAA y --fecha-liquidacion= (YYYY-MM-DD o DD/MM/AAAA).\n");
+    exit(1);
+}
+$modo_explicito = $tiene_periodo && $tiene_fecha;
+
+if ($modo_explicito && ($anchor_m_id !== null || $auto_cobro_laprida_mar2026)) {
+    fwrite(STDERR, "No combine --periodo/--fecha-liquidacion con modo ancla COBRO.\n");
+    exit(1);
+}
+
+$ref_explicit_norm = null;
+$fecha_explicit_iso = null;
+if ($modo_explicito) {
+    $ref_explicit_norm = anular_liq_normalize_periodo($periodo_explicit);
+    if ($ref_explicit_norm === null) {
+        fwrite(STDERR, "--periodo inválido (use MM/AAAA, ej. 03/2026).\n");
+        exit(1);
+    }
+    $fecha_explicit_iso = anular_liq_fecha_arg_a_iso($fecha_liq_explicit);
+    if ($fecha_explicit_iso === null) {
+        fwrite(STDERR, "--fecha-liquidacion inválida (YYYY-MM-DD o DD/MM/AAAA).\n");
+        exit(1);
+    }
 }
 
 $hoy = date('Y-m-d');
@@ -118,7 +196,40 @@ $consorcio_esc = mysqli_real_escape_string($conexion, $nombre_consorcio);
 
 echo "Consorcio: id={$consorcio_id} apellido={$row_u['apellido']} consorcio={$nombre_consorcio}\n";
 
-if ($auto_cobro_laprida_mar2026) {
+if ($modo_explicito) {
+    $ref_norm = $ref_explicit_norm;
+    $fecha_dia = $fecha_explicit_iso;
+    $ref_esc = mysqli_real_escape_string($conexion, $ref_norm);
+    $fecha_esc = mysqli_real_escape_string($conexion, $fecha_dia);
+    $res_chk = mysqli_query($conexion, "SELECT movimiento_id, concepto FROM cuentas 
+        WHERE usuario_id = $consorcio_id 
+        AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
+        AND TRIM(referencia) = '$ref_esc' 
+        AND fecha = '$fecha_esc' 
+        ORDER BY movimiento_id ASC");
+    if (!$res_chk) {
+        fwrite(STDERR, 'Error SQL: ' . mysqli_error($conexion) . "\n");
+        exit(1);
+    }
+    $n_chk = 0;
+    echo "Modo: liquidación puntual período {$ref_norm} fecha {$fecha_dia} (LIQ EXPENSAS + cargos emergentes).\n";
+    while ($row = mysqli_fetch_assoc($res_chk)) {
+        $n_chk++;
+        $cprev = $row['concepto'] ?? '';
+        if (function_exists('mb_substr')) {
+            $cprev = mb_substr($cprev, 0, 100);
+        } else {
+            $cprev = substr($cprev, 0, 100);
+        }
+        echo "  — movimiento_id={$row['movimiento_id']} {$cprev}\n";
+    }
+    echo "\n";
+    if ($n_chk === 0) {
+        fwrite(STDERR, "No existe LIQ EXPENSAS en consorcio id={$consorcio_id} para referencia {$ref_norm} y fecha {$fecha_dia}.\n");
+        exit(1);
+    }
+    $pairs = [['referencia' => $ref_norm, 'fecha' => $fecha_dia]];
+} elseif ($auto_cobro_laprida_mar2026) {
     // COBRO indicado por el usuario: 30/03/2026, EXP/EFVO, 02/2026, DPTO 6° Laprida 430
     $sql_cobro = "SELECT movimiento_id, usuario_id, fecha, concepto, comprobante, referencia 
         FROM cuentas 
@@ -154,71 +265,72 @@ if ($auto_cobro_laprida_mar2026) {
     echo "Ancla COBRO: movimiento_id={$anchor_m_id} (siguiente LIQ EXPENSAS del consorcio con id mayor).\n\n";
 }
 
-$modo_anchor = ($anchor_m_id !== null && $anchor_m_id > 0);
+if (!$modo_explicito) {
+    $modo_anchor = ($anchor_m_id !== null && $anchor_m_id > 0);
 
-if ($modo_anchor) {
-    echo "Modo: liquidaciones con LIQ EXPENSAS donde movimiento_id > {$anchor_m_id} (cuenta del consorcio).\n\n";
-} elseif ($solo_hoy) {
-    echo "Rango: solo HOY ({$hoy}) según fecha del servidor.\n\n";
-} else {
-    echo "Rango: desde AYER ({$ayer}) hasta HOY ({$hoy}) inclusive; cuentas.fecha es DATE (sin hora).\n\n";
-}
-
-if ($modo_anchor) {
-    $aid = (int)$anchor_m_id;
-    $res_liq = mysqli_query($conexion, "SELECT movimiento_id, fecha, referencia, concepto, comprobante 
-        FROM cuentas 
-        WHERE usuario_id = $consorcio_id 
-        AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
-        AND movimiento_id > $aid
-        ORDER BY movimiento_id ASC");
-} else {
-    $res_liq = mysqli_query($conexion, "SELECT movimiento_id, fecha, referencia, concepto, comprobante 
-        FROM cuentas 
-        WHERE usuario_id = $consorcio_id 
-        AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
-        AND fecha >= '$fecha_desde_esc' 
-        AND fecha <= '$fecha_hasta_esc'
-        ORDER BY fecha ASC, movimiento_id ASC");
-}
-
-if (!$res_liq) {
-    fwrite(STDERR, 'Error SQL: ' . mysqli_error($conexion) . "\n");
-    exit(1);
-}
-
-$liqs = [];
-while ($l = mysqli_fetch_assoc($res_liq)) {
-    $liqs[] = $l;
-}
-
-if (count($liqs) === 0) {
     if ($modo_anchor) {
-        fwrite(STDERR, "No hay LIQ EXPENSAS en cuenta consorcio con movimiento_id > {$anchor_m_id}.\n");
+        echo "Modo: liquidaciones con LIQ EXPENSAS donde movimiento_id > {$anchor_m_id} (cuenta del consorcio).\n\n";
+    } elseif ($solo_hoy) {
+        echo "Rango: solo HOY ({$hoy}) según fecha del servidor.\n\n";
     } else {
-        fwrite(STDERR, "No hay LIQ EXPENSAS en el rango {$fecha_desde} … {$fecha_hasta} para este consorcio.\n");
+        echo "Rango: desde AYER ({$ayer}) hasta HOY ({$hoy}) inclusive; cuentas.fecha es DATE (sin hora).\n\n";
     }
-    exit(1);
-}
 
-// Pares (período, fecha de movimiento): mismo período puede liquidarse en días distintos
-$pairs = [];
-foreach ($liqs as $l) {
-    $ref = trim((string)($l['referencia'] ?? ''));
-    if ($ref === '') {
-        continue;
+    if ($modo_anchor) {
+        $aid = (int)$anchor_m_id;
+        $res_liq = mysqli_query($conexion, "SELECT movimiento_id, fecha, referencia, concepto, comprobante 
+            FROM cuentas 
+            WHERE usuario_id = $consorcio_id 
+            AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
+            AND movimiento_id > $aid
+            ORDER BY movimiento_id ASC");
+    } else {
+        $res_liq = mysqli_query($conexion, "SELECT movimiento_id, fecha, referencia, concepto, comprobante 
+            FROM cuentas 
+            WHERE usuario_id = $consorcio_id 
+            AND UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' 
+            AND fecha >= '$fecha_desde_esc' 
+            AND fecha <= '$fecha_hasta_esc'
+            ORDER BY fecha ASC, movimiento_id ASC");
     }
-    if (!preg_match('/^\d{1,2}\/\d{4}$/', $ref)) {
-        fwrite(STDERR, "Referencia inesperada en LIQ EXPENSAS: {$ref}\n");
+
+    if (!$res_liq) {
+        fwrite(STDERR, 'Error SQL: ' . mysqli_error($conexion) . "\n");
         exit(1);
     }
-    $partes_r = preg_split('/\//', $ref);
-    $ref_norm = str_pad((string)(int)$partes_r[0], 2, '0', STR_PAD_LEFT) . '/' . (int)$partes_r[1];
-    $fecha_dia = substr($l['fecha'], 0, 10);
-    $key = $ref_norm . '|' . $fecha_dia;
-    $pairs[$key] = ['referencia' => $ref_norm, 'fecha' => $fecha_dia];
+
+    $liqs = [];
+    while ($l = mysqli_fetch_assoc($res_liq)) {
+        $liqs[] = $l;
+    }
+
+    if (count($liqs) === 0) {
+        if ($modo_anchor) {
+            fwrite(STDERR, "No hay LIQ EXPENSAS en cuenta consorcio con movimiento_id > {$anchor_m_id}.\n");
+        } else {
+            fwrite(STDERR, "No hay LIQ EXPENSAS en el rango {$fecha_desde} … {$fecha_hasta} para este consorcio.\n");
+        }
+        exit(1);
+    }
+
+    $pairs = [];
+    foreach ($liqs as $l) {
+        $ref = trim((string)($l['referencia'] ?? ''));
+        if ($ref === '') {
+            continue;
+        }
+        if (!preg_match('/^\d{1,2}\/\d{4}$/', $ref)) {
+            fwrite(STDERR, "Referencia inesperada en LIQ EXPENSAS: {$ref}\n");
+            exit(1);
+        }
+        $partes_r = preg_split('/\//', $ref);
+        $ref_norm = str_pad((string)(int)$partes_r[0], 2, '0', STR_PAD_LEFT) . '/' . (int)$partes_r[1];
+        $fecha_dia = substr($l['fecha'], 0, 10);
+        $key = $ref_norm . '|' . $fecha_dia;
+        $pairs[$key] = ['referencia' => $ref_norm, 'fecha' => $fecha_dia];
+    }
+    $pairs = array_values($pairs);
 }
-$pairs = array_values($pairs);
 
 echo "Lotes a anular (período + fecha de registro): " . count($pairs) . "\n";
 foreach ($pairs as $p) {
