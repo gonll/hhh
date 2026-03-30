@@ -1,6 +1,19 @@
 <?php
 session_start();
+
+/** Scripts que responden JSON por fetch (evitar redirect HTML que rompe r.json()). */
+$scriptApiJson = basename($_SERVER['SCRIPT_NAME'] ?? '');
+$esApiJson = in_array($scriptApiJson, [
+    'eliminar_liq_expensas_periodo.php',
+    'borrar_todos_liq_expensas.php',
+], true);
+
 if (empty($_SESSION['acceso_id']) || !isset($_SESSION['acceso_nivel'])) {
+    if ($esApiJson) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => false, 'msg' => 'Sesión expirada. Inicie sesión de nuevo.']);
+        exit;
+    }
     header('Location: login.php');
     exit;
 }
@@ -15,6 +28,11 @@ if ((int)($_SESSION['acceso_nivel'] ?? -1) === 0) {
         $permitidos_nivel0 = array('partes_desde_cel.php', 'logout.php');
     }
     if (!in_array($script, $permitidos_nivel0)) {
+        if ($esApiJson) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => false, 'msg' => 'Sin permiso para esta acción.']);
+            exit;
+        }
         header('Location: ' . ($es_usuario_zafra ? 'cosecha.php' : 'partes_desde_cel.php'));
         exit;
     }

@@ -599,9 +599,10 @@ if ($nivelAcceso === 3) {
     <div id="modalBorrarLiqExp" class="modal-overlay" onclick="if(event.target===this) cerrarModalBorrarLiqExp()">
         <div class="modal-cobro" onclick="event.stopPropagation()">
             <h3>Borrar liquidación de expensas (por período)</h3>
-            <p style="font-size:11px; color:#666; margin:0 0 12px;">Elimina movimientos LIQ EXPENSAS, LIQ EXP y LIQ EXP EXT del consorcio y período indicados. <strong>Solo nivel 3.</strong></p>
+            <p style="font-size:11px; color:#666; margin:0 0 12px;">Elimina en la cuenta del consorcio: LIQ EXPENSAS y Honorarios (ref. mes siguiente al período), y en propietarios/inquilinos: LIQ EXP y LIQ EXP EXT. Los cobros de expensas (EXP/EFVO, etc.) no se borran. <strong>Solo nivel 3.</strong></p>
             <div id="borrarLiqExpPaso1">
                 <label>Consorcio</label>
+                <p id="borrarLiqExpConsorcioFijoMsg" style="display:none; font-size:10px; color:#555; margin:0 0 6px;">Se usa el consorcio de la cuenta que está viendo (no se puede cambiar desde acá).</p>
                 <select id="borrarLiqExpConsorcio" style="width:100%; padding:8px; margin-bottom:12px;">
                     <option value="">-- Seleccionar consorcio --</option>
                     <?php foreach ($consorcios_lista as $c): ?>
@@ -1251,16 +1252,46 @@ function borrarLiqExpPeriodoDesdeSelects() {
     return (mes < 10 ? '0' : '') + mes + '/' + anio;
 }
 
+function aplicarBorrarLiqExpConsorcioDefecto() {
+    var sel = document.getElementById('borrarLiqExpConsorcio');
+    var nota = document.getElementById('borrarLiqExpConsorcioFijoMsg');
+    if (!sel) return;
+    sel.disabled = false;
+    if (nota) nota.style.display = 'none';
+    if (esConsorcioUsuario && uSel) {
+        var idStr = String(uSel);
+        var optExists = false;
+        for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === idStr) {
+                optExists = true;
+                break;
+            }
+        }
+        if (optExists) {
+            sel.value = idStr;
+            sel.disabled = true;
+            sel.title = 'Consorcio de la cuenta actual';
+            if (nota) nota.style.display = 'block';
+            return;
+        }
+    }
+    sel.value = '';
+    sel.title = '';
+}
+
 function abrirModalBorrarLiqExp() {
     if (!accesoNivel3) {
         alert('Esta acción solo está disponible para usuarios con nivel de acceso 3.');
         return;
     }
+    if (!uSel || !esConsorcioUsuario) {
+        alert('Seleccioná primero la cuenta del consorcio en la lista de usuarios.');
+        return;
+    }
     var el = document.getElementById('modalBorrarLiqExp');
     if (el) {
         el.classList.add('visible');
-        var selCons = document.getElementById('borrarLiqExpConsorcio');
-        selCons.value = esConsorcioUsuario && uSel ? String(uSel) : '';
+        aplicarBorrarLiqExpConsorcioDefecto();
         var p1 = document.getElementById('borrarLiqExpPaso1');
         var p2 = document.getElementById('borrarLiqExpPaso2');
         if (p1) p1.style.display = '';
@@ -1276,6 +1307,7 @@ function volverPasoBorrarLiqExp() {
     var p2 = document.getElementById('borrarLiqExpPaso2');
     if (p1) p1.style.display = '';
     if (p2) p2.style.display = 'none';
+    aplicarBorrarLiqExpConsorcioDefecto();
 }
 function pasoSiguienteBorrarLiqExp() {
     if (!accesoNivel3) return;
@@ -1296,7 +1328,7 @@ function pasoSiguienteBorrarLiqExp() {
     }
     var html = '<strong>Consorcio:</strong> ' + nombreCons + '<br>' +
         '<strong>Período (referencia):</strong> ' + periodo + '<br><br>' +
-        'Se eliminarán los movimientos <strong>LIQ EXPENSAS</strong>, <strong>LIQ EXP</strong> y <strong>LIQ EXP EXT</strong> correspondientes a ese consorcio y período.';
+        'Se eliminarán en el consorcio: <strong>LIQ EXPENSAS</strong> y <strong>Honorarios</strong> (referencia del mes siguiente al período), y en propietarios/inquilinos: <strong>LIQ EXP</strong> y <strong>LIQ EXP EXT</strong>. No se borran cobros (EXP/EFVO).';
     var box = document.getElementById('borrarLiqExpConfirmText');
     if (box) box.innerHTML = html;
     var p1 = document.getElementById('borrarLiqExpPaso1');
@@ -1318,8 +1350,17 @@ function ejecutarBorrarLiqExp() {
     var fd = new FormData();
     fd.append('consorcio_id', consorcioId);
     fd.append('periodo', periodo);
-    fetch('eliminar_liq_expensas_periodo.php', { method: 'POST', body: fd })
-        .then(function(r) { return r.json(); })
+    fetch('eliminar_liq_expensas_periodo.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(function(r) { return r.text(); })
+        .then(function(txt) {
+            var data;
+            try {
+                data = JSON.parse(txt);
+            } catch (e) {
+                throw new Error((txt || '').trim().slice(0, 500) || 'El servidor no devolvió JSON (¿sesión expirada?).');
+            }
+            return data;
+        })
         .then(function(data) {
             if (data && data.ok) {
                 alert(data.msg);
@@ -1331,7 +1372,9 @@ function ejecutarBorrarLiqExp() {
                 alert(data && data.msg ? data.msg : 'No se pudo eliminar.');
             }
         })
-        .catch(function() { alert('Error al borrar.'); });
+        .catch(function(err) {
+            alert('Error al borrar: ' + (err && err.message ? err.message : String(err)));
+        });
 }
 
 function abrirModalBorrarTodasLiqExp() {
@@ -1363,8 +1406,17 @@ function ejecutarBorrarTodasLiqExp() {
     if (!confirm('¿Eliminar TODOS los movimientos de liquidación de expensas (LIQ EXPENSAS, Honorarios, LIQ EXP, LIQ EXP EXT) del consorcio seleccionado? Esta acción no se puede deshacer.')) return;
     var fd = new FormData();
     fd.append('consorcio_id', consorcioId);
-    fetch('borrar_todos_liq_expensas.php', { method: 'POST', body: fd })
-        .then(function(r) { return r.json(); })
+    fetch('borrar_todos_liq_expensas.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(function(r) { return r.text(); })
+        .then(function(txt) {
+            var data;
+            try {
+                data = JSON.parse(txt);
+            } catch (e) {
+                throw new Error((txt || '').trim().slice(0, 500) || 'El servidor no devolvió JSON (¿sesión expirada?).');
+            }
+            return data;
+        })
         .then(function(data) {
             if (data && data.ok) {
                 alert(data.msg);
@@ -1375,7 +1427,9 @@ function ejecutarBorrarTodasLiqExp() {
                 alert(data && data.msg ? data.msg : 'No se pudo eliminar.');
             }
         })
-        .catch(function() { alert('Error al borrar.'); });
+        .catch(function(err) {
+            alert('Error al borrar: ' + (err && err.message ? err.message : String(err)));
+        });
 }
 
 function imprimirMovimientos() {

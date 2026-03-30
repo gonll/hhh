@@ -2,7 +2,7 @@
 include 'db.php';
 include 'verificar_sesion.php';
 
-if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 3) {
+if ((int)($_SESSION['acceso_nivel'] ?? 0) < 3) {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['ok' => false, 'msg' => 'Sin permiso (requiere nivel 3).']);
     exit;
@@ -46,9 +46,12 @@ $eliminados = 0;
 $sql1 = "DELETE FROM cuentas 
     WHERE usuario_id = $consorcio_id 
     AND (UPPER(TRIM(comprobante)) = 'LIQ EXPENSAS' OR UPPER(TRIM(comprobante)) = 'HONORARIOS')";
-if (mysqli_query($conexion, $sql1)) {
-    $eliminados += mysqli_affected_rows($conexion);
+if (!mysqli_query($conexion, $sql1)) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'msg' => 'Error al borrar en consorcio: ' . mysqli_error($conexion)]);
+    exit;
 }
+$eliminados += mysqli_affected_rows($conexion);
 
 // 2. Eliminar TODOS los movimientos de liquidación en cuentas de usuarios.
 //    Buscar por concepto que contenga el identificador del consorcio (ej. "LAPRIDA 430")
@@ -65,9 +68,12 @@ $sql2 = "DELETE FROM cuentas
             OR UPPER(TRIM(concepto)) LIKE 'EXPENSAS EXTRAORDINARIAS,%'
         ))
     )";
-if (mysqli_query($conexion, $sql2)) {
-    $eliminados += mysqli_affected_rows($conexion);
+if (!mysqli_query($conexion, $sql2)) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'msg' => 'Error al borrar cargos: ' . mysqli_error($conexion)]);
+    exit;
 }
+$eliminados += mysqli_affected_rows($conexion);
 
 header('Content-Type: application/json; charset=utf-8');
 echo json_encode([

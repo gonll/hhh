@@ -352,8 +352,11 @@ if ($res_prop) {
         $propiedad_id = (int)$p['propiedad_id'];
         $res_inq = mysqli_query($conexion, "SELECT inquilino1_id FROM alquileres 
             WHERE propiedad_id = $propiedad_id AND estado = 'VIGENTE' LIMIT 1");
-        if ($res_inq && $row_inq = mysqli_fetch_assoc($res_inq) && (int)$row_inq['inquilino1_id'] > 0) {
-            $ids_usuarios[(int)$row_inq['inquilino1_id']] = true;
+        if ($res_inq) {
+            $row_inq = mysqli_fetch_assoc($res_inq);
+            if ($row_inq !== null && is_array($row_inq) && (int)($row_inq['inquilino1_id'] ?? 0) > 0) {
+                $ids_usuarios[(int)$row_inq['inquilino1_id']] = true;
+            }
         }
     }
 }
