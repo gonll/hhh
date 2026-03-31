@@ -197,6 +197,15 @@ while ($prop = mysqli_fetch_assoc($res_prop)) {
 $fecha_actual = date('d/m/Y');
 $mes_actual_nombre = mesNombre(date('n'));
 $anio_actual = date('Y');
+
+// Base para <base href> en ventana/iframe de impresión (rutas relativas del logo, etc.)
+$script_name = $_SERVER['SCRIPT_NAME'] ?? '/';
+$dir_web = rtrim(str_replace('\\', '/', dirname($script_name)), '/');
+if ($dir_web === '') {
+    $dir_web = '/';
+}
+$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $dir_web . '/';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -248,7 +257,16 @@ $anio_actual = date('Y');
         @media print {
             .no-print { display: none !important; }
             body { margin: 0; padding: 0; background: white; }
-            .container { max-width: none; box-shadow: none; padding: 0; }
+            .container {
+                max-width: none;
+                box-shadow: none;
+                padding: 0;
+                background: transparent;
+            }
+            /* Solo el contenido del rectángulo azul (.expensa-container); el resto ya está en .no-print */
+            .expensa-page-a4 {
+                margin-bottom: 0;
+            }
         }
         <?= expensa_hoja_propiedad_css_base() ?>
         <?= expensa_hoja_propiedad_css_a4_print() ?>
@@ -302,10 +320,10 @@ $anio_actual = date('Y');
 </head>
 <body>
     <div class="container">
-        <h1>EXPENSAS - <?= htmlspecialchars(strtoupper($row_u['apellido'])) ?></h1>
+        <h1 class="no-print">EXPENSAS - <?= htmlspecialchars(strtoupper($row_u['apellido'])) ?></h1>
         
         <?php if (isset($_GET['mail_resultado'])): ?>
-            <div style="background: <?= isset($_GET['mail_errores']) ? '#fff3cd' : '#d4edda' ?>; color: <?= isset($_GET['mail_errores']) ? '#856404' : '#155724' ?>; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">
+            <div class="no-print" style="background: <?= isset($_GET['mail_errores']) ? '#fff3cd' : '#d4edda' ?>; color: <?= isset($_GET['mail_errores']) ? '#856404' : '#155724' ?>; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">
                 <strong><?= isset($_GET['mail_errores']) ? '⚠️' : '✓' ?></strong> <?= htmlspecialchars($_GET['mail_resultado']) ?>
                 <?php if (isset($_GET['mail_errores'])): ?>
                     <div style="margin-top: 8px; font-size: 11px;">
@@ -347,6 +365,8 @@ $anio_actual = date('Y');
     </div>
     
     <script>
+    var BASE_HREF_IMPRESION = <?= json_encode($base_href_impresion, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+
     function imprimirExpensa(idx) {
         var expensa = document.getElementById('expensa-' + idx);
         if (!expensa) {
@@ -354,74 +374,98 @@ $anio_actual = date('Y');
             return;
         }
 
-        // Abrir ventana INMEDIATAMENTE (mismo gesto del usuario) para evitar bloqueo de pop-ups
-        var ventana = window.open('', 'VentanaImpresionExpensa', 'width=900,height=700');
-        if (!ventana) {
-            alert('No se pudo abrir la ventana. Permite ventanas emergentes para este sitio e intenta de nuevo.');
-            return;
-        }
-
         var tituloEl = expensa.querySelector('.expensa-title');
-        var propiedad = tituloEl ? tituloEl.textContent.replace('EXPENSA - ', '').trim() : 'Propiedad ' + (idx + 1);
+        var propiedad = 'Propiedad ' + (idx + 1);
+        if (tituloEl) {
+            var tm = tituloEl.textContent.match(/^EXPENSA\s*-\s*(.+?)\s*—\s*Porcentaje:/);
+            propiedad = tm ? tm[1].trim() : tituloEl.textContent.replace(/^EXPENSA\s*-\s*/i, '').split('—')[0].trim();
+        }
 
         if (!confirm('¿Imprimir expensa de ' + propiedad + '?')) {
-            ventana.close();
             return;
         }
 
-        // Crear contenido HTML para la ventana de impresión
         var contenido = expensa.cloneNode(true);
-
-        // Remover botones y elementos no imprimibles
         var elementosNoPrint = contenido.querySelectorAll('.no-print, button');
         for (var i = 0; i < elementosNoPrint.length; i++) {
             var el = elementosNoPrint[i];
             if (el && el.parentNode) el.parentNode.removeChild(el);
         }
 
-        // Crear HTML completo
+        var safeTitle = String(propiedad).replace(/</g, '').replace(/>/g, '');
         var html = '<!DOCTYPE html><html><head>';
         html += '<meta charset="UTF-8">';
-        html += '<title>Expensa - ' + propiedad + '</title>';
+        html += '<base href="' + String(BASE_HREF_IMPRESION).replace(/"/g, '&quot;') + '">';
+        html += '<title>Expensa - ' + safeTitle + '</title>';
         html += '<style>';
         html += '@media print { body { margin: 0; padding: 10px; } @page { size: A4; margin: 18mm 10mm 10mm 10mm; } .expensa-container { transform-origin: top center; } }';
         html += 'body { font-family: Arial, sans-serif; margin: 15px; }';
         html += '.expensa-container { padding: 12px; border: 2px solid #007bff; border-radius: 6px; }';
         html += '.expensa-header { text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #007bff; }';
         html += '.expensa-title { font-size: 14px; font-weight: bold; color: #007bff; margin-bottom: 4px; }';
+        html += '.expensa-row-montos { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 10px; width: 100%; box-sizing: border-box; }';
+        html += '.expensa-header .expensa-title.expensa-row-montos { text-align: left; }';
+        html += '.expensa-title-izq, .expensa-dato-izq { flex: 1 1 180px; min-width: 0; text-align: left; }';
+        html += '.expensa-monto-alineado { font-size: 11px; font-weight: bold; color: #007bff; white-space: nowrap; text-align: right; }';
+        html += '.expensa-montos-der { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 14px; flex: 1 1 200px; }';
+        html += '.expensa-section h3.expensa-row-montos { font-weight: normal; font-size: 11px; }';
         html += '.expensa-info { font-size: 10px; color: #666; margin: 2px 0; }';
         html += '.expensa-section { margin: 6px 0; }';
         html += '.expensa-section h3 { font-size: 11px; color: #333; margin-bottom: 4px; border-bottom: 1px solid #ddd; padding-bottom: 2px; }';
         html += 'table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 9px; }';
         html += 'th { background: #007bff; color: white; padding: 4px 6px; text-align: left; font-weight: bold; }';
         html += 'td { padding: 3px 6px; border-bottom: 1px solid #eee; }';
-        html += '.total-box { background: #e7f3ff; padding: 10px; border-radius: 4px; margin-top: 8px; text-align: right; }';
-        html += '.total-box strong { font-size: 12px; color: #007bff; }';
-        html += '@media print { .expensa-header { margin-bottom: 4px; padding-bottom: 4px; } .expensa-title { font-size: 11px !important; } .expensa-info { font-size: 8px !important; } .expensa-section { margin: 4px 0 !important; } .expensa-section h3 { font-size: 9px !important; } table { font-size: 7px !important; } th, td { padding: 2px 4px !important; } .total-box { padding: 6px !important; } .total-box strong { font-size: 10px !important; } }';
+        html += '@media print { .expensa-header { margin-bottom: 4px; padding-bottom: 4px; } .expensa-title { font-size: 11px !important; } .expensa-title-izq, .expensa-dato-izq { font-size: 10px !important; } .expensa-monto-alineado { font-size: 8px !important; white-space: normal !important; } .expensa-info { font-size: 8px !important; } .expensa-section { margin: 4px 0 !important; } .expensa-section h3 { font-size: 9px !important; } .expensa-section h3.expensa-row-montos { font-size: 9px !important; } table { font-size: 7px !important; } th, td { padding: 2px 4px !important; } }';
         html += '</style>';
         html += '</head><body>';
         html += contenido.innerHTML;
         html += '</body></html>';
 
-        ventana.document.open();
-        ventana.document.write(html);
-        ventana.document.close();
+        // iframe en la misma página: evita pop-ups y mantiene el diálogo de impresión (user activation)
+        var iframe = document.createElement('iframe');
+        iframe.setAttribute('aria-hidden', 'true');
+        iframe.setAttribute('style', 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden');
+        document.body.appendChild(iframe);
 
-        setTimeout(function() {
-            var cont = ventana.document.querySelector('.expensa-container');
+        var win = iframe.contentWindow;
+        var doc = win.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        function aplicarEscalaYImprimir() {
+            var cont = doc.querySelector('.expensa-container');
             if (cont) {
                 var altoPx = cont.scrollHeight;
                 var altoMm = altoPx * 0.264583;
                 if (altoMm > 270) {
                     var escala = 270 / altoMm;
-                    cont.style.zoom = escala;
                     cont.style.transformOrigin = 'top center';
-                    if (!('zoom' in cont.style)) cont.style.transform = 'scale(' + escala + ')';
+                    if ('zoom' in cont.style) {
+                        cont.style.zoom = escala;
+                    } else {
+                        cont.style.transform = 'scale(' + escala + ')';
+                    }
                 }
             }
-            ventana.focus();
-            ventana.print();
-        }, 500);
+            try {
+                win.focus();
+                win.print();
+            } finally {
+                setTimeout(function() {
+                    if (iframe.parentNode) {
+                        iframe.parentNode.removeChild(iframe);
+                    }
+                }, 1000);
+            }
+        }
+
+        // Un microtask + rAF basta para layout; evita setTimeout largo que rompe la impresión en algunos navegadores
+        queueMicrotask(function() {
+            requestAnimationFrame(function() {
+                requestAnimationFrame(aplicarEscalaYImprimir);
+            });
+        });
     }
 
     function seguirExpensa(idx) {

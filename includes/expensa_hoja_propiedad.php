@@ -22,19 +22,33 @@ function expensa_hoja_propiedad_fragmento_html(array $p) {
     ?>
             <img src="<?= htmlspecialchars($logo_src) ?>" alt="Logo" class="expensa-logo" width="36" height="36" style="width:36px;height:36px;margin-bottom:8px;display:block;">
             <div class="expensa-header">
-                <div class="expensa-title">EXPENSA - <?= htmlspecialchars($expensa['propiedad']) ?> - Porcentaje: <?= number_format($expensa['porcentaje'], 2, ',', '.') ?>%</div>
+                <div class="expensa-title expensa-row-montos">
+                    <span class="expensa-title-izq">EXPENSA - <?= htmlspecialchars($expensa['propiedad']) ?> — Porcentaje: <?= number_format($expensa['porcentaje'], 2, ',', '.') ?>%</span>
+                    <span class="expensa-monto-alineado">MONTO TOTAL A PAGAR: $ <?= number_format((float)($expensa['monto'] ?? 0), 2, ',', '.') ?></span>
+                </div>
                 <div class="expensa-info">Consorcio: <?= htmlspecialchars(strtoupper(trim($nombre_consorcio))) ?></div>
                 <div class="expensa-info">Mes liquidado: <?= $ultimo_mes_liq ? htmlspecialchars($ultimo_mes_liq) : 'Desde inicio' ?></div>
                 <div class="expensa-info">Fecha: <?= htmlspecialchars($fecha_actual) ?></div>
             </div>
 
             <div class="expensa-section">
-                <h3>PROPIETARIO: <strong><?= htmlspecialchars($expensa['propietario']) ?></strong></h3>
+                <h3 class="expensa-row-montos">
+                    <span class="expensa-dato-izq">PROPIETARIO: <strong><?= htmlspecialchars($expensa['propietario']) ?></strong></span>
+                    <span class="expensa-montos-der">
+                        <span class="expensa-monto-alineado">MONTO A PAGAR EXTRAORDINARIA: $ <?= number_format((float)($expensa['monto_extraordinaria'] ?? 0), 2, ',', '.') ?></span>
+                        <?php if (empty($expensa['inquilino'])): ?>
+                        <span class="expensa-monto-alineado">MONTO A PAGAR ORDINARIA: $ <?= number_format((float)($expensa['monto_ordinaria'] ?? 0), 2, ',', '.') ?></span>
+                        <?php endif; ?>
+                    </span>
+                </h3>
             </div>
 
             <?php if (!empty($expensa['inquilino'])): ?>
             <div class="expensa-section">
-                <h3>INQUILINO: <strong><?= htmlspecialchars($expensa['inquilino']) ?></strong></h3>
+                <h3 class="expensa-row-montos">
+                    <span class="expensa-dato-izq">INQUILINO: <strong><?= htmlspecialchars($expensa['inquilino']) ?></strong></span>
+                    <span class="expensa-monto-alineado">MONTO A PAGAR ORDINARIA: $ <?= number_format((float)($expensa['monto_ordinaria'] ?? 0), 2, ',', '.') ?></span>
+                </h3>
             </div>
             <?php endif; ?>
 
@@ -93,15 +107,6 @@ function expensa_hoja_propiedad_fragmento_html(array $p) {
                 </table>
                 </div>
             </div>
-
-            <div class="expensa-section expensa-section-total">
-                <h3>MONTO A PAGAR</h3>
-                <div class="total-box">
-                    <strong>MONTO A PAGAR EXTRAORDINARIA: $ <?= number_format((float)($expensa['monto_extraordinaria'] ?? 0), 2, ',', '.') ?></strong><br>
-                    <strong>MONTO A PAGAR ORDINARIA: $ <?= number_format((float)($expensa['monto_ordinaria'] ?? 0), 2, ',', '.') ?></strong><br>
-                    <strong>MONTO A PAGAR: $ <?= number_format((float)($expensa['monto'] ?? 0), 2, ',', '.') ?></strong>
-                </div>
-            </div>
     <?php
     return ob_get_clean();
 }
@@ -131,6 +136,51 @@ function expensa_hoja_propiedad_css_base() {
             font-weight: bold;
             color: #007bff;
             margin-bottom: 4px;
+        }
+        .expensa-row-montos {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 6px 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .expensa-header .expensa-title.expensa-row-montos {
+            text-align: left;
+        }
+        .expensa-title-izq {
+            flex: 1 1 220px;
+            min-width: 0;
+            text-align: left;
+        }
+        .expensa-dato-izq {
+            flex: 1 1 180px;
+            min-width: 0;
+            text-align: left;
+        }
+        .expensa-monto-alineado {
+            font-size: 11px;
+            font-weight: bold;
+            color: #007bff;
+            white-space: nowrap;
+            flex: 0 1 auto;
+            text-align: right;
+        }
+        .expensa-montos-der {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: baseline;
+            gap: 8px 14px;
+            flex: 1 1 200px;
+        }
+        .expensa-section h3.expensa-row-montos {
+            font-weight: normal;
+            font-size: 12px;
+        }
+        .expensa-section h3.expensa-row-montos strong {
+            font-weight: bold;
         }
         .expensa-info {
             font-size: 11px;
@@ -217,8 +267,11 @@ function expensa_hoja_propiedad_css_a4_print() {
             table { font-size: 7px !important; }
             th, td { padding: 2px 4px !important; font-size: 7px !important; }
             .expensa-title { font-size: 11px !important; }
+            .expensa-title-izq, .expensa-dato-izq { font-size: 10px !important; }
+            .expensa-monto-alineado { font-size: 8px !important; white-space: normal !important; }
             .expensa-info { font-size: 8px !important; }
             .expensa-section h3 { font-size: 9px !important; }
+            .expensa-section h3.expensa-row-montos { font-size: 9px !important; }
             .total-box { padding: 6px !important; }
             .total-box strong { font-size: 10px !important; }
             .expensa-logo { width: 32px !important; height: 32px !important; }
