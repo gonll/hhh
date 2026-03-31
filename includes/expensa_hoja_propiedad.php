@@ -1,5 +1,20 @@
 <?php
 /**
+ * Texto de concepto para la hoja de expensa (impresión/mail): mantiene COBRO EXPENSA, depto/propiedad, período, etc.
+ * y omite el nombre de quien pagó (sufijo " - PAGÓ ..." / " - PAGO ..." grabado en cuentas del consorcio).
+ */
+if (!function_exists('expensa_concepto_publico_impresion')) {
+    function expensa_concepto_publico_impresion($concepto) {
+        $c = trim((string)$concepto);
+        if ($c === '') {
+            return '';
+        }
+        $c = preg_replace('/\s*-\s*PAG(O|Ó)\s+.+$/iu', '', $c);
+        return trim($c);
+    }
+}
+
+/**
  * Hoja única de expensa por propiedad (misma vista en pantalla, impresión y mail).
  *
  * @param array $p expensa, movimientos, total_ingresos, total_egresos_ordinarias,
@@ -69,7 +84,7 @@ function expensa_hoja_propiedad_fragmento_html(array $p) {
                         <?php foreach ($movimientos as $mov): ?>
                         <tr>
                             <td><?= date('d/m/Y', strtotime($mov['fecha'])) ?></td>
-                            <td><?= htmlspecialchars($mov['concepto']) ?></td>
+                            <td><?= htmlspecialchars(expensa_concepto_publico_impresion($mov['concepto'])) ?></td>
                             <td><?= htmlspecialchars($mov['comprobante']) ?></td>
                             <td><?= htmlspecialchars($mov['referencia']) ?></td>
                             <td style="text-align: right; <?= $mov['monto'] >= 0 ? 'color: #28a745;' : 'color: #dc3545;' ?>">
