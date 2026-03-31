@@ -54,3 +54,28 @@ function pdf_informe_res_ok($conexion, $res, $ctx) {
     }
     return $res;
 }
+
+/** Texto seguro para Cell (sin saltos que rompan filas). */
+function pdf_txt_celda($s) {
+    $s = (string) $s;
+    $s = str_replace(["\r", "\n", "\t"], ' ', $s);
+    return trim($s);
+}
+
+/** Trunca para una sola línea en tabla (UTF-8). */
+function pdf_truncar_linea($s, $maxLen) {
+    $s = pdf_txt_celda($s);
+    if ($maxLen < 4) {
+        return $s;
+    }
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        if (mb_strlen($s, 'UTF-8') <= $maxLen) {
+            return $s;
+        }
+        return mb_substr($s, 0, $maxLen - 1, 'UTF-8') . '…';
+    }
+    if (strlen($s) <= $maxLen) {
+        return $s;
+    }
+    return substr($s, 0, $maxLen - 1) . '…';
+}
