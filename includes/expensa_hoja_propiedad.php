@@ -70,14 +70,14 @@ function expensa_hoja_propiedad_fragmento_html(array $p) {
             <div class="expensa-section expensa-section-movimientos">
                 <h3>DETALLE DE MOVIMIENTOS</h3>
                 <div class="expensa-tabla-wrap">
-                <table>
+                <table class="expensa-tabla-movimientos">
                     <thead>
                         <tr>
                             <th style="width: 12%;">Fecha</th>
                             <th style="width: 40%;">Concepto</th>
                             <th style="width: 15%;">Comprobante</th>
                             <th style="width: 13%;">Referencia</th>
-                            <th style="width: 20%; text-align: right;">Monto</th>
+                            <th class="expensa-col-monto-th" style="width: 20%;">Monto</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -87,7 +87,7 @@ function expensa_hoja_propiedad_fragmento_html(array $p) {
                             <td><?= htmlspecialchars(expensa_concepto_publico_impresion($mov['concepto'])) ?></td>
                             <td><?= htmlspecialchars($mov['comprobante']) ?></td>
                             <td><?= htmlspecialchars($mov['referencia']) ?></td>
-                            <td style="text-align: right; <?= $mov['monto'] >= 0 ? 'color: #28a745;' : 'color: #dc3545;' ?>">
+                            <td class="expensa-col-monto">
                                 <?= $mov['monto'] >= 0 ? '+' : '' ?>$ <?= number_format($mov['monto'], 2, ',', '.') ?>
                             </td>
                         </tr>
@@ -96,25 +96,25 @@ function expensa_hoja_propiedad_fragmento_html(array $p) {
                     <tfoot>
                         <tr style="background: #f8f9fa;">
                             <td colspan="4" style="text-align: right; font-weight: bold;">Total Ingresos:</td>
-                            <td style="text-align: right; color: #28a745; font-weight: bold;">
+                            <td class="expensa-col-monto">
                                 $ <?= number_format($total_ingresos, 2, ',', '.') ?>
                             </td>
                         </tr>
                         <tr style="background: #f8f9fa;">
                             <td colspan="4" style="text-align: right; font-weight: bold;">Gastado en exp ordinarias:</td>
-                            <td style="text-align: right; color: #dc3545; font-weight: bold;">
+                            <td class="expensa-col-monto">
                                 $ <?= number_format($total_egresos_ordinarias, 2, ',', '.') ?>
                             </td>
                         </tr>
                         <tr style="background: #f8f9fa;">
                             <td colspan="4" style="text-align: right; font-weight: bold;">Gastado en extraordinarias:</td>
-                            <td style="text-align: right; color: #dc3545; font-weight: bold;">
+                            <td class="expensa-col-monto">
                                 $ <?= number_format($total_egresos_extraordinarias, 2, ',', '.') ?>
                             </td>
                         </tr>
                         <tr style="background: #fff3cd;">
                             <td colspan="4" style="text-align: right; font-weight: bold;">Total Expensas:</td>
-                            <td style="text-align: right; color: #856404; font-weight: bold; font-size: 14px;">
+                            <td class="expensa-col-monto expensa-col-monto-total">
                                 $ <?= number_format($total_expensas, 2, ',', '.') ?>
                             </td>
                         </tr>
@@ -235,6 +235,18 @@ function expensa_hoja_propiedad_css_base() {
             padding: 3px 6px;
             border-bottom: 1px solid #eee;
         }
+        .expensa-tabla-movimientos th.expensa-col-monto-th {
+            text-align: right;
+        }
+        .expensa-tabla-movimientos td.expensa-col-monto,
+        .expensa-tabla-movimientos tfoot td.expensa-col-monto {
+            text-align: right;
+            color: #000;
+            font-weight: bold;
+        }
+        .expensa-tabla-movimientos tfoot td.expensa-col-monto-total {
+            font-size: 14px;
+        }
         .total-box {
             background: #e7f3ff;
             padding: 10px;
@@ -281,6 +293,14 @@ function expensa_hoja_propiedad_css_a4_print() {
             }
             table { font-size: 7px !important; }
             th, td { padding: 2px 4px !important; font-size: 7px !important; }
+            .expensa-tabla-movimientos td.expensa-col-monto,
+            .expensa-tabla-movimientos tfoot td.expensa-col-monto {
+                color: #000 !important;
+                font-weight: bold !important;
+            }
+            .expensa-tabla-movimientos tfoot td.expensa-col-monto-total {
+                font-size: 8px !important;
+            }
             .expensa-title { font-size: 11px !important; }
             .expensa-title-izq, .expensa-dato-izq { font-size: 10px !important; }
             .expensa-monto-alineado { font-size: 8px !important; white-space: normal !important; }
