@@ -1,6 +1,7 @@
 /**
  * Informe (impresión, envío WhatsApp, PDF) para movimientos azúcar / operaciones operador.
- * PDF: carga html2pdf.js desde CDN la primera vez.
+ * PDF operador / movimientos por operación: jsPDF + autoTable en el navegador (datos JSON).
+ * Otros informes: html2pdf.js desde CDN.
  */
 (function (global) {
     'use strict';
@@ -141,68 +142,282 @@
         return css;
     }
 
-    /** Evita fallos si la página está en subcarpeta o el navegador resuelve mal rutas relativas. */
-    function urlPdfRelativaAbsoluta(urlRel) {
-        try {
-            return new URL(urlRel, window.location.href).href;
-        } catch (e) {
-            return urlRel;
-        }
+    /** Formato moneda para tablas PDF (cliente). */
+    function fmtMoneyPdf(n) {
+        var x = Number(n) || 0;
+        var sign = x < 0 ? '-' : '';
+        return (
+            '$ ' +
+            sign +
+            Math.abs(x).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        );
     }
 
-    /**
-     * Descarga PDF desde scripts PHP (TCPDF).
-     * No confiar solo en Content-Type: muchos servidores envían tipo incorrecto o vacío con PDF válido.
-     * Se valida la firma binaria %PDF al inicio del archivo.
-     */
-    function fetchPdfInformeServidor(urlRel) {
-        var url = urlPdfRelativaAbsoluta(urlRel);
-        return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
-            .then(function (r) {
-                if (!r.ok) {
-                    return r.text().then(function (txt) {
-                        var msg = 'Error ' + r.status + ' al generar el PDF.';
-                        if (txt) {
-                            var t = txt.trim();
-                            if (t.length < 500 && t.indexOf('<') === -1) msg += ' ' + t;
-                        }
-                        throw new Error(msg);
-                    });
+    /** Carga jsPDF y jspdf-autotable desde CDN (una vez). */
+    function cargarJspdfAutotable(callback) {
+        function ready() {
+            try {
+                if (global.jspdf && global.jspdf.jsPDF) {
+                    var d = new global.jspdf.jsPDF();
+                    return typeof d.autoTable === 'function';
                 }
-                return r.blob();
-            })
-            .then(function (blob) {
-                if (!blob || blob.size < 64) {
-                    throw new Error('PDF_VACIO');
+            } catch (e) {}
+            return false;
+        }
+        if (ready()) {
+            callback(null);
+            return;
+        }
+        if (document.querySelector('script[data-informe-autotable]')) {
+            var n = 0;
+            var t = setInterval(function () {
+                n++;
+                if (ready()) {
+                    clearInterval(t);
+                    callback(null);
+                } else if (n > 200) {
+                    clearInterval(t);
+                    callback(new Error('TIMEOUT_JSPDF'));
                 }
-                var head = blob.slice(0, 16);
-                return head.arrayBuffer().then(function (buf) {
-                    var a = new Uint8Array(buf);
-                    var i = 0;
-                    if (a.length >= 3 && a[0] === 0xef && a[1] === 0xbb && a[2] === 0xbf) {
-                        i = 3;
-                    }
-                    while (i < a.length && (a[i] === 9 || a[i] === 10 || a[i] === 13 || a[i] === 32)) {
-                        i++;
-                    }
-                    var esPdf =
-                        i + 3 < a.length &&
-                        a[i] === 0x25 &&
-                        a[i + 1] === 0x50 &&
-                        a[i + 2] === 0x44 &&
-                        a[i + 3] === 0x46;
-                    if (esPdf) {
-                        return blob;
-                    }
-                    return blob.slice(0, 3000).text().then(function (txt) {
-                        var low = (txt || '').toLowerCase();
-                        if (low.indexOf('login') !== -1 || low.indexOf('<html') !== -1 || low.indexOf('<!doctype') !== -1) {
-                            throw new Error('SESION');
+            }, 50);
+            return;
+        }
+        function loadAutotable() {
+            if (ready()) {
+                callback(null);
+                return;
+            }
+            var s2 = document.createElement('script');
+            s2.setAttribute('data-informe-autotable', '1');
+            s2.src =
+                'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+            s2.crossOrigin = 'anonymous';
+            s2.onload = function () {
+                if (ready()) {
+                    callback(null);
+                } else {
+                    callback(new Error('AUTOTABLE'));
+                }
+            };
+            s2.onerror = function () {
+                callback(new Error('LOAD_AUTOTABLE'));
+            };
+            document.head.appendChild(s2);
+        }
+        if (global.jspdf && global.jspdf.jsPDF) {
+            loadAutotable();
+            return;
+        }
+        if (document.querySelector('script[data-informe-jspdf]')) {
+            var n2 = 0;
+            var t2 = setInterval(function () {
+                n2++;
+                if (global.jspdf && global.jspdf.jsPDF) {
+                    clearInterval(t2);
+                    loadAutotable();
+                } else if (n2 > 200) {
+                    clearInterval(t2);
+                    callback(new Error('TIMEOUT_JSPDF'));
+                }
+            }, 50);
+            return;
+        }
+        var s1 = document.createElement('script');
+        s1.setAttribute('data-informe-jspdf', '1');
+        s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        s1.crossOrigin = 'anonymous';
+        s1.onload = loadAutotable;
+        s1.onerror = function () {
+            callback(new Error('LOAD_JSPDF'));
+        };
+        document.head.appendChild(s1);
+    }
+
+    function generarBlobPdfOperadorCliente(operadorId) {
+        return new Promise(function (resolve, reject) {
+            cargarJspdfAutotable(function (err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                var urlFetch = 'obtener_operaciones_operador.php?operador_id=' + encodeURIComponent(operadorId);
+                fetch(urlFetch, { credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (r) {
+                        if (!r.ok) {
+                            return r.text().then(function () {
+                                throw new Error('Error ' + r.status + ' al obtener datos del informe.');
+                            });
                         }
-                        throw new Error('INVALID_PDF');
-                    });
-                });
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (!data || !data.ok) {
+                            throw new Error((data && data.error) || 'Sin datos del operador.');
+                        }
+                        var doc = new global.jspdf.jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(16);
+                        doc.text('Informe', 14, 18);
+                        doc.setFontSize(11);
+                        doc.text('Operaciones del operador', 14, 26);
+                        doc.setFontSize(9);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text('Generado: ' + fechaGeneracion(), 14, 33);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('Operador: ' + (data.operador_nombre || ''), 14, 40);
+                        var body = [];
+                        var ops = data.operaciones || [];
+                        var total = 0;
+                        ops.forEach(function (op) {
+                            var sal = parseFloat(op.saldo) || 0;
+                            total += sal;
+                            body.push([String(op.operacion), op.vendida_a || '—', fmtMoneyPdf(sal)]);
+                        });
+                        if (body.length) {
+                            body.push([
+                                {
+                                    content: 'TOTAL:',
+                                    colSpan: 2,
+                                    styles: { halign: 'right', fontStyle: 'bold' }
+                                },
+                                {
+                                    content: fmtMoneyPdf(total),
+                                    styles: { fontStyle: 'bold', halign: 'right' }
+                                }
+                            ]);
+                        }
+                        doc.autoTable({
+                            head: [['Operación', 'Vendida a', 'Saldo']],
+                            body: body.length ? body : [['—', 'Sin operaciones', '—']],
+                            startY: 46,
+                            styles: { fontSize: 9, cellPadding: 2 },
+                            headStyles: { fillColor: [44, 82, 130], textColor: 255 },
+                            margin: { left: 14, right: 14 }
+                        });
+                        var pageCount = doc.internal.getNumberOfPages();
+                        doc.setPage(pageCount);
+                        doc.setFontSize(8);
+                        doc.setTextColor(120);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text(
+                            'Documento generado desde el sistema · Uso interno',
+                            14,
+                            doc.internal.pageSize.height - 10
+                        );
+                        resolve(doc.output('blob'));
+                    })
+                    .catch(reject);
             });
+        });
+    }
+
+    function generarBlobPdfMovOpCliente(operacion) {
+        return new Promise(function (resolve, reject) {
+            cargarJspdfAutotable(function (err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                var urlFetch =
+                    'obtener_movimientos_operacion_json.php?operacion=' + encodeURIComponent(operacion);
+                fetch(urlFetch, { credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (r) {
+                        if (!r.ok) {
+                            return r.text().then(function () {
+                                throw new Error('Error ' + r.status + ' al obtener movimientos.');
+                            });
+                        }
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (!data || !data.ok) {
+                            throw new Error((data && data.error) || 'Sin datos de la operación.');
+                        }
+                        var doc = new global.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(14);
+                        doc.text('Informe', 14, 14);
+                        doc.setFontSize(10);
+                        doc.text('Movimientos de pago — Operación ' + String(data.operacion || operacion), 14, 22);
+                        doc.setFontSize(8);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text('Generado: ' + fechaGeneracion(), 14, 28);
+                        var movs = data.movimientos || [];
+                        var total = parseFloat(data.total_operacion) || 0;
+                        var body = [];
+                        movs.forEach(function (m) {
+                            body.push([
+                                m.fecha,
+                                m.concepto,
+                                m.comprobante,
+                                m.referencia,
+                                m.usuario,
+                                fmtMoneyPdf(m.monto),
+                                fmtMoneyPdf(m.saldo_acumulado)
+                            ]);
+                        });
+                        if (body.length) {
+                            body.push([
+                                {
+                                    content: 'TOTAL OPERACIÓN:',
+                                    colSpan: 6,
+                                    styles: { halign: 'right', fontStyle: 'bold' }
+                                },
+                                {
+                                    content: fmtMoneyPdf(total),
+                                    styles: { fontStyle: 'bold', halign: 'right' }
+                                }
+                            ]);
+                        }
+                        doc.autoTable({
+                            head: [
+                                [
+                                    'Fecha',
+                                    'Concepto',
+                                    'Comprobante',
+                                    'Referencia',
+                                    'Usuario',
+                                    'Monto',
+                                    'Saldo acum.'
+                                ]
+                            ],
+                            body: body.length
+                                ? body
+                                : [
+                                      [
+                                          '—',
+                                          'Sin movimientos para esta operación',
+                                          '',
+                                          '',
+                                          '',
+                                          '',
+                                          ''
+                                      ]
+                                  ],
+                            startY: 34,
+                            styles: { fontSize: 7, cellPadding: 1.5 },
+                            headStyles: { fillColor: [44, 82, 130], textColor: 255 },
+                            columnStyles: {
+                                0: { cellWidth: 22 },
+                                5: { halign: 'right', cellWidth: 26 },
+                                6: { halign: 'right', cellWidth: 26 }
+                            },
+                            margin: { left: 14, right: 14 }
+                        });
+                        var pageCount = doc.internal.getNumberOfPages();
+                        doc.setPage(pageCount);
+                        doc.setFontSize(7);
+                        doc.setTextColor(120);
+                        doc.text(
+                            'Documento generado desde el sistema · Uso interno',
+                            14,
+                            doc.internal.pageSize.height - 8
+                        );
+                        resolve(doc.output('blob'));
+                    })
+                    .catch(reject);
+            });
+        });
     }
 
     function imprimirPdfBlob(blob) {
@@ -235,6 +450,12 @@
 
     function alertarErrorPdfServidor(err) {
         var m = err && err.message ? String(err.message) : '';
+        if (m === 'LOAD_JSPDF' || m === 'LOAD_AUTOTABLE' || m === 'AUTOTABLE' || m === 'TIMEOUT_JSPDF') {
+            alert(
+                'No se pudo cargar el generador de PDF en el navegador. Compruebe la conexión a internet e intente de nuevo.'
+            );
+            return;
+        }
         if (m === 'SESION') {
             alert('La sesión expiró o no tiene permiso. Inicie sesión de nuevo y vuelva a intentar.');
             return;
@@ -248,30 +469,29 @@
         alert(m || 'No se pudo completar la operación.');
     }
 
-    /** Informe operaciones operador: PDF generado en servidor desde BD (no html2canvas). */
+    /** Informe operaciones operador: PDF en el navegador (jsPDF + datos JSON). */
     function operadorIdDelWrapExport(wrap) {
         if (!wrap || wrap.getAttribute('data-informe-tipo') !== 'operador') return 0;
         var id = parseInt(wrap.getAttribute('data-operador-id'), 10);
         return id > 0 ? id : 0;
     }
 
-    function urlPdfOperadorServidor(operadorId, inline) {
-        var u = 'pdf_operaciones_operador.php?operador_id=' + encodeURIComponent(operadorId);
-        if (inline) u += '&disposition=inline';
-        return u;
-    }
-
     function azucarDescargarPdfOperadorServidor(operadorId) {
-        fetchPdfInformeServidor(urlPdfOperadorServidor(operadorId, false))
+        generarBlobPdfOperadorCliente(operadorId)
             .then(function (blob) {
-                var fname = 'operaciones_operador_' + operadorId + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+                var fname =
+                    'operaciones_operador_' +
+                    operadorId +
+                    '_' +
+                    new Date().toISOString().slice(0, 10) +
+                    '.pdf';
                 descargarBlobPdf(blob, fname);
             })
             .catch(alertarErrorPdfServidor);
     }
 
     function azucarImprimirPdfOperadorServidor(operadorId) {
-        fetchPdfInformeServidor(urlPdfOperadorServidor(operadorId, true))
+        generarBlobPdfOperadorCliente(operadorId)
             .then(function (blob) {
                 imprimirPdfBlob(blob);
             })
@@ -281,15 +501,20 @@
     }
 
     function azucarWhatsappPdfOperadorServidor(operadorId, titulo) {
-        fetchPdfInformeServidor(urlPdfOperadorServidor(operadorId, false))
+        generarBlobPdfOperadorCliente(operadorId)
             .then(function (blob) {
-                var fname = 'operaciones_operador_' + operadorId + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+                var fname =
+                    'operaciones_operador_' +
+                    operadorId +
+                    '_' +
+                    new Date().toISOString().slice(0, 10) +
+                    '.pdf';
                 compartirPdfPorWhatsapp(blob, fname, titulo);
             })
             .catch(alertarErrorPdfServidor);
     }
 
-    /** Movimientos de pago por operación: PDF desde BD (pdf_movimientos_operacion.php). */
+    /** Movimientos de pago por operación: PDF en el navegador. */
     function esInformeMovPagoOpWrap(wrap) {
         return wrap && wrap.getAttribute('data-informe-tipo') === 'mov_pago_op';
     }
@@ -300,23 +525,22 @@
         return o > 0 ? o : 0;
     }
 
-    function urlPdfMovimientosOperacionServidor(operacion, inline) {
-        var u = 'pdf_movimientos_operacion.php?operacion=' + encodeURIComponent(operacion);
-        if (inline) u += '&disposition=inline';
-        return u;
-    }
-
     function azucarDescargarPdfMovOpServidor(operacion) {
-        fetchPdfInformeServidor(urlPdfMovimientosOperacionServidor(operacion, false))
+        generarBlobPdfMovOpCliente(operacion)
             .then(function (blob) {
-                var fname = 'movimientos_operacion_' + operacion + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+                var fname =
+                    'movimientos_operacion_' +
+                    operacion +
+                    '_' +
+                    new Date().toISOString().slice(0, 10) +
+                    '.pdf';
                 descargarBlobPdf(blob, fname);
             })
             .catch(alertarErrorPdfServidor);
     }
 
     function azucarImprimirPdfMovOpServidor(operacion) {
-        fetchPdfInformeServidor(urlPdfMovimientosOperacionServidor(operacion, true))
+        generarBlobPdfMovOpCliente(operacion)
             .then(function (blob) {
                 imprimirPdfBlob(blob);
             })
@@ -326,9 +550,14 @@
     }
 
     function azucarWhatsappPdfMovOpServidor(operacion, titulo) {
-        fetchPdfInformeServidor(urlPdfMovimientosOperacionServidor(operacion, false))
+        generarBlobPdfMovOpCliente(operacion)
             .then(function (blob) {
-                var fname = 'movimientos_operacion_' + operacion + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+                var fname =
+                    'movimientos_operacion_' +
+                    operacion +
+                    '_' +
+                    new Date().toISOString().slice(0, 10) +
+                    '.pdf';
                 compartirPdfPorWhatsapp(blob, fname, titulo);
             })
             .catch(alertarErrorPdfServidor);
