@@ -1,0 +1,649 @@
+/**
+ * Informe (impresión, envío WhatsApp, PDF) para movimientos azúcar / operaciones operador.
+ * PDF: carga html2pdf.js desde CDN la primera vez.
+ */
+(function (global) {
+    'use strict';
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
+    function fechaGeneracion() {
+        return new Date().toLocaleString('es-AR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function informeCss() {
+        return [
+            'body{margin:0;padding:0;background:#fff;}',
+            '.informe-root{max-width:210mm;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;font-size:11px;background:#fff;}',
+            '.informe-banda{background:linear-gradient(135deg,#1a365d 0%,#2c5282 100%);color:#fff;padding:20px 24px;margin:0;border-radius:4px 4px 0 0;}',
+            '.informe-banda h1{margin:0;font-size:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase;}',
+            '.informe-banda .informe-sub{margin:10px 0 0;font-size:14px;font-weight:600;line-height:1.35;}',
+            '.informe-meta{margin:14px 24px 8px;font-size:10px;color:#4a5568;border-bottom:2px solid #e2e8f0;padding-bottom:10px;}',
+            '.informe-linea-operador{margin:0 0 12px;font-size:12px;color:#2d3748;}',
+            '.informe-tabla-wrap{margin:0 24px 16px;padding:8px 0 0;}',
+            'table.informe-tabla{width:100%;border-collapse:collapse;font-size:10px;}',
+            'table.informe-tabla th,table.informe-tabla td{border:1px solid #cbd5e0;padding:7px 9px;vertical-align:top;}',
+            'table.informe-tabla th{background:#2c5282;color:#fff;font-weight:600;}',
+            'table.informe-tabla tbody tr:nth-child(even) td{background:#f7fafc;}',
+            'table.informe-tabla .al-cen{text-align:center;}',
+            'table.informe-tabla .al-der{text-align:right;font-family:Consolas,monospace;}',
+            'table.informe-tabla .al-izq{text-align:left;}',
+            '.informe-pie{margin:18px 24px 12px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:9px;color:#718096;text-align:center;}',
+            '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}'
+        ].join('');
+    }
+
+    /** Estilos extra para informe operaciones operador: A4, 3 columnas (Operación, Vendida a, Saldo). Sirve para PDF e impresión. */
+    function informeCssOperadorPdf() {
+        return [
+            '@page{size:A4 portrait;margin:12mm;}',
+            '.informe-root.informe-pdf-operador{max-width:794px;width:794px;box-sizing:border-box;padding:0;background:#fff;}',
+            '.informe-root.informe-pdf-operador .informe-banda{padding:18px 20px;border-radius:0;}',
+            '.informe-root.informe-pdf-operador .informe-meta{margin:12px 18px 10px;font-size:10px;}',
+            '.informe-root.informe-pdf-operador .informe-linea-operador{margin:0 18px 14px;font-size:12px;font-weight:600;color:#1a202c;padding:10px 12px;background:#edf2f7;border-left:4px solid #2c5282;border-radius:2px;}',
+            '.informe-root.informe-pdf-operador .informe-tabla-wrap{margin:0 18px 14px;padding:0;overflow:visible;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla{table-layout:fixed;width:100%;max-width:100%;border-collapse:collapse;font-size:11px;line-height:1.35;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla col.col-op{width:20%;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla col.col-vend{width:48%;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla col.col-saldo{width:32%;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla thead{display:table-header-group;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla th{font-size:11px;padding:10px 12px;text-transform:none;letter-spacing:0.02em;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla td{padding:8px 12px;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla th,.informe-root.informe-pdf-operador table.informe-tabla td{box-sizing:border-box;overflow:visible;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla tbody tr:nth-child(even) td{background:#f1f5f9;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla tbody tr:last-child td{background:#e2e8f0;font-weight:700;border-top:2px solid #2c5282;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla tbody tr:last-child td[colspan]{background:#e2e8f0;}',
+            '.informe-root.informe-pdf-operador .informe-pie{margin:14px 18px 8px;font-size:9px;}',
+            '@media print{',
+            'html,body{margin:0;padding:0;width:100%;background:#fff;}',
+            'body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
+            '.informe-root.informe-pdf-operador{max-width:100%;width:100%;min-height:0;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla thead{display:table-header-group;}',
+            '.informe-root.informe-pdf-operador table.informe-tabla tr{page-break-inside:avoid;}',
+            '.informe-root.informe-pdf-operador .informe-banda{break-inside:avoid;}',
+            '}'
+        ].join('');
+    }
+
+    function esInformeOperadorWrap(wrapEl) {
+        return wrapEl && wrapEl.getAttribute && wrapEl.getAttribute('data-informe-tipo') === 'operador';
+    }
+
+    function cloneTableHtml(wrapEl) {
+        var wrap = wrapEl.cloneNode(true);
+        wrap.querySelectorAll('a').forEach(function (a) {
+            a.parentNode.replaceChild(document.createTextNode(a.textContent.trim()), a);
+        });
+        var extraHtml = '';
+        var extraEl = wrap.querySelector('.informe-linea-operador');
+        if (extraEl) {
+            extraHtml = extraEl.outerHTML;
+            extraEl.remove();
+        }
+        var t = wrap.querySelector('table');
+        if (!t) {
+            return extraHtml + '<p style="padding:16px;">Sin datos para el informe.</p>';
+        }
+        t.classList.add('informe-tabla');
+        if (esInformeOperadorWrap(wrapEl)) {
+            if (!t.querySelector('colgroup')) {
+                var cg = document.createElement('colgroup');
+                var c1 = document.createElement('col');
+                c1.className = 'col-op';
+                c1.style.width = '20%';
+                var c2 = document.createElement('col');
+                c2.className = 'col-vend';
+                c2.style.width = '48%';
+                var c3 = document.createElement('col');
+                c3.className = 'col-saldo';
+                c3.style.width = '32%';
+                cg.appendChild(c1);
+                cg.appendChild(c2);
+                cg.appendChild(c3);
+                t.insertBefore(cg, t.firstChild);
+            }
+            var thOp = t.querySelector('thead th');
+            if (thOp && /^\s*Op\s*$/i.test((thOp.textContent || '').trim())) {
+                thOp.textContent = 'Operación';
+            }
+        }
+        return extraHtml + t.outerHTML;
+    }
+
+    function buildHtmlDocument(titulo, tableHtml, docOpts) {
+        docOpts = docOpts || {};
+        var rootClass = 'informe-root' + (docOpts.isOperador ? ' informe-pdf-operador' : '');
+        return (
+            '<div class="' + rootClass + '">' +
+            '<div class="informe-banda"><h1>Informe</h1><div class="informe-sub">' + escHtml(titulo) + '</div></div>' +
+            '<div class="informe-meta"><strong>Generado:</strong> ' + escHtml(fechaGeneracion()) + '</div>' +
+            '<div class="informe-tabla-wrap">' + tableHtml + '</div>' +
+            '<div class="informe-pie">Documento generado desde el sistema · Uso interno</div>' +
+            '</div>'
+        );
+    }
+
+    function informeStyleTag(docOpts) {
+        var css = informeCss();
+        if (docOpts && docOpts.isOperador) {
+            css += informeCssOperadorPdf();
+        }
+        return css;
+    }
+
+    /** Informe operaciones operador: PDF generado en servidor desde BD (no html2canvas). */
+    function operadorIdDelWrapExport(wrap) {
+        if (!wrap || wrap.getAttribute('data-informe-tipo') !== 'operador') return 0;
+        var id = parseInt(wrap.getAttribute('data-operador-id'), 10);
+        return id > 0 ? id : 0;
+    }
+
+    function urlPdfOperadorServidor(operadorId, inline) {
+        var u = 'pdf_operaciones_operador.php?operador_id=' + encodeURIComponent(operadorId);
+        if (inline) u += '&disposition=inline';
+        return u;
+    }
+
+    function azucarDescargarPdfOperadorServidor(operadorId) {
+        fetch(urlPdfOperadorServidor(operadorId, false), { credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error();
+                return r.blob();
+            })
+            .then(function (blob) {
+                var fname = 'operaciones_operador_' + operadorId + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+                descargarBlobPdf(blob, fname);
+            })
+            .catch(function () {
+                alert('No se pudo generar el PDF. Compruebe la sesión e intente de nuevo.');
+            });
+    }
+
+    function azucarImprimirPdfOperadorServidor(operadorId) {
+        fetch(urlPdfOperadorServidor(operadorId, true), { credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error();
+                return r.blob();
+            })
+            .then(function (blob) {
+                var u = URL.createObjectURL(blob);
+                var iframe = document.createElement('iframe');
+                iframe.setAttribute('aria-hidden', 'true');
+                iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+                iframe.src = u;
+                document.body.appendChild(iframe);
+                iframe.onload = function () {
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                    } catch (e) {}
+                    setTimeout(function () {
+                        URL.revokeObjectURL(u);
+                        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+                    }, 2500);
+                };
+            })
+            .catch(function () {
+                alert('No se pudo abrir el informe para imprimir.');
+            });
+    }
+
+    function azucarWhatsappPdfOperadorServidor(operadorId, titulo) {
+        fetch(urlPdfOperadorServidor(operadorId, false), { credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error();
+                return r.blob();
+            })
+            .then(function (blob) {
+                var fname = 'operaciones_operador_' + operadorId + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+                compartirPdfPorWhatsapp(blob, fname, titulo);
+            })
+            .catch(function () {
+                alert('No se pudo generar el PDF para WhatsApp.');
+            });
+    }
+
+    /** Movimientos de pago por operación: PDF desde BD (pdf_movimientos_operacion.php). */
+    function esInformeMovPagoOpWrap(wrap) {
+        return wrap && wrap.getAttribute('data-informe-tipo') === 'mov_pago_op';
+    }
+
+    function operacionDelWrapMovOp(wrap) {
+        if (!esInformeMovPagoOpWrap(wrap)) return 0;
+        var o = parseInt(wrap.getAttribute('data-operacion'), 10);
+        return o > 0 ? o : 0;
+    }
+
+    function urlPdfMovimientosOperacionServidor(operacion, inline) {
+        var u = 'pdf_movimientos_operacion.php?operacion=' + encodeURIComponent(operacion);
+        if (inline) u += '&disposition=inline';
+        return u;
+    }
+
+    function azucarDescargarPdfMovOpServidor(operacion) {
+        fetch(urlPdfMovimientosOperacionServidor(operacion, false), { credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error();
+                return r.blob();
+            })
+            .then(function (blob) {
+                var fname = 'movimientos_operacion_' + operacion + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+                descargarBlobPdf(blob, fname);
+            })
+            .catch(function () {
+                alert('No se pudo generar el PDF. Compruebe la sesión e intente de nuevo.');
+            });
+    }
+
+    function azucarImprimirPdfMovOpServidor(operacion) {
+        fetch(urlPdfMovimientosOperacionServidor(operacion, true), { credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error();
+                return r.blob();
+            })
+            .then(function (blob) {
+                var u = URL.createObjectURL(blob);
+                var iframe = document.createElement('iframe');
+                iframe.setAttribute('aria-hidden', 'true');
+                iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+                iframe.src = u;
+                document.body.appendChild(iframe);
+                iframe.onload = function () {
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                    } catch (e) {}
+                    setTimeout(function () {
+                        URL.revokeObjectURL(u);
+                        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+                    }, 2500);
+                };
+            })
+            .catch(function () {
+                alert('No se pudo abrir el informe para imprimir.');
+            });
+    }
+
+    function azucarWhatsappPdfMovOpServidor(operacion, titulo) {
+        fetch(urlPdfMovimientosOperacionServidor(operacion, false), { credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error();
+                return r.blob();
+            })
+            .then(function (blob) {
+                var fname = 'movimientos_operacion_' + operacion + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+                compartirPdfPorWhatsapp(blob, fname, titulo);
+            })
+            .catch(function () {
+                alert('No se pudo generar el PDF para WhatsApp.');
+            });
+    }
+
+    function azucarImprimirInforme(wrapId, titulo) {
+        var wrap = document.getElementById(wrapId);
+        if (!wrap) return;
+        if (esInformeOperadorWrap(wrap)) {
+            var oidImp = operadorIdDelWrapExport(wrap);
+            if (oidImp > 0) {
+                azucarImprimirPdfOperadorServidor(oidImp);
+                return;
+            }
+            alert('No se identificó el operador. Cierre el informe y vuelva a abrirlo desde Operaciones del operador.');
+            return;
+        }
+        if (esInformeMovPagoOpWrap(wrap)) {
+            var opImp = operacionDelWrapMovOp(wrap);
+            if (opImp > 0) {
+                azucarImprimirPdfMovOpServidor(opImp);
+                return;
+            }
+            alert('No se identificó la operación. Cierre el modal y vuelva a abrirlo desde la columna OP.');
+            return;
+        }
+        var docOpts = { isOperador: esInformeOperadorWrap(wrap) };
+        var inner = cloneTableHtml(wrap);
+        var full = buildHtmlDocument(titulo, inner, docOpts);
+        var iframe = document.createElement('iframe');
+        iframe.setAttribute('aria-hidden', 'true');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+        document.body.appendChild(iframe);
+        var doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe</title><style>' +
+                informeStyleTag(docOpts) +
+                '</style></head><body>' +
+                full +
+                '</body></html>'
+        );
+        doc.close();
+        iframe.onload = function () {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } finally {
+                setTimeout(function () {
+                    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+                }, 1800);
+            }
+        };
+    }
+
+    function cargarHtml2Pdf(callback) {
+        if (typeof global.html2pdf === 'function') {
+            callback(global.html2pdf);
+            return;
+        }
+        var existing = document.querySelector('script[data-informe-html2pdf]');
+        if (existing) {
+            var n = 0;
+            var t = setInterval(function () {
+                n++;
+                if (typeof global.html2pdf === 'function') {
+                    clearInterval(t);
+                    callback(global.html2pdf);
+                } else if (n > 200) {
+                    clearInterval(t);
+                    alert('No se pudo cargar el generador de PDF.');
+                }
+            }, 50);
+            return;
+        }
+        var s = document.createElement('script');
+        s.setAttribute('data-informe-html2pdf', '1');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        s.crossOrigin = 'anonymous';
+        s.onload = function () {
+            if (typeof global.html2pdf === 'function') {
+                callback(global.html2pdf);
+            }
+        };
+        s.onerror = function () {
+            alert('No se pudo cargar el generador de PDF. Compruebe la conexión a internet.');
+        };
+        document.head.appendChild(s);
+    }
+
+    function slugNombreArchivo(base) {
+        var s = String(base || 'informe').replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_|_$/g, '');
+        return s || 'informe';
+    }
+
+    /** Crea el nodo oculto con el mismo HTML que usa Descargar PDF (A4, estilos operador si aplica). */
+    function armarHolderExportPdf(wrapEl, titulo) {
+        var docOpts = { isOperador: esInformeOperadorWrap(wrapEl) };
+        var inner = cloneTableHtml(wrapEl);
+        var full = buildHtmlDocument(titulo, inner, docOpts);
+        var holder = document.createElement('div');
+        /* No usar left:-9999px: html2canvas recorta el ancho y pierde columnas. Fuera de vista abajo, sin opacidad (no afecta al canvas). */
+        holder.style.cssText =
+            'position:fixed;left:0;top:120vh;width:794px;max-width:794px;background:#fff;overflow:visible;z-index:1000;pointer-events:none;box-sizing:border-box;';
+        holder.innerHTML = full;
+        document.body.appendChild(holder);
+        var root = holder.querySelector('.informe-root');
+        return { holder: holder, root: root, docOpts: docOpts };
+    }
+
+    function opcionesHtml2Pdf(docOpts, filenameBase) {
+        var isOperador = docOpts.isOperador;
+        var fname = slugNombreArchivo(filenameBase) + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+        var html2canvasOpts = {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            letterRendering: true,
+            windowWidth: 794,
+            scrollY: 0,
+            scrollX: 0,
+            allowTaint: false,
+            backgroundColor: '#ffffff'
+        };
+        if (isOperador) {
+            html2canvasOpts.onclone = function (clonedDoc) {
+                var root = clonedDoc.querySelector('.informe-root.informe-pdf-operador');
+                if (root) {
+                    root.style.width = '794px';
+                    root.style.maxWidth = '794px';
+                    root.style.marginLeft = '0';
+                    root.style.marginRight = '0';
+                    root.style.transform = 'none';
+                    root.style.position = 'relative';
+                    root.style.left = '0';
+                    root.style.top = '0';
+                }
+            };
+        }
+        return {
+            opts: {
+                margin: isOperador ? [10, 12, 12, 12] : [12, 12, 14, 12],
+                filename: fname,
+                image: { type: 'jpeg', quality: 0.96 },
+                html2canvas: html2canvasOpts,
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+                pagebreak: {
+                    mode: ['css', 'legacy'],
+                    avoid: isOperador ? ['tr', '.informe-banda', '.informe-linea-operador'] : ['tr', '.informe-banda']
+                }
+            },
+            filename: fname
+        };
+    }
+
+    function quitarHolderSiExiste(holder) {
+        if (holder && holder.parentNode) holder.parentNode.removeChild(holder);
+    }
+
+    function descargarBlobPdf(blob, fname) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = fname;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () {
+            URL.revokeObjectURL(url);
+        }, 2000);
+    }
+
+    /** Si el navegador permite compartir archivos, abre el selector (p. ej. WhatsApp con el PDF). Si no, descarga y abre wa.me con texto para adjuntar. */
+    function compartirPdfPorWhatsapp(blob, fname, titulo) {
+        var tituloLimpio = String(titulo).replace(/\*/g, '');
+        var textoCorto = 'Informe: ' + tituloLimpio + '\n' + fechaGeneracion();
+        var archivo;
+        try {
+            archivo = new File([blob], fname, { type: 'application/pdf', lastModified: Date.now() });
+        } catch (e1) {
+            archivo = blob;
+        }
+
+        function puedeCompartirArchivo(f) {
+            try {
+                if (typeof File === 'undefined' || !(f instanceof File)) {
+                    return false;
+                }
+                return (
+                    navigator.share &&
+                    typeof navigator.canShare === 'function' &&
+                    navigator.canShare({ files: [f] })
+                );
+            } catch (e2) {
+                return false;
+            }
+        }
+
+        function abrirWhatsappConInstruccionesAdjunto() {
+            var msg =
+                '*Informe (PDF)*\n\n' +
+                tituloLimpio +
+                '\n' +
+                fechaGeneracion() +
+                '\n\n' +
+                'Adjunte el archivo PDF que se descargó (mismo formato que el botón Descargar PDF).';
+            window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+        }
+
+        if (puedeCompartirArchivo(archivo)) {
+            navigator
+                .share({
+                    files: [archivo],
+                    title: tituloLimpio,
+                    text: textoCorto
+                })
+                .catch(function (err) {
+                    if (err && err.name === 'AbortError') {
+                        return;
+                    }
+                    descargarBlobPdf(blob, fname);
+                    abrirWhatsappConInstruccionesAdjunto();
+                });
+            return;
+        }
+
+        descargarBlobPdf(blob, fname);
+        abrirWhatsappConInstruccionesAdjunto();
+    }
+
+    /** Texto plano (solo si falla la generación del PDF). */
+    function whatsappInformeTextoPlano(wrap, titulo) {
+        var lines = [];
+        lines.push('*INFORME*');
+        lines.push('*' + String(titulo).replace(/\*/g, '') + '*');
+        lines.push('Generado: ' + fechaGeneracion());
+        lines.push('');
+        var opLine = wrap.querySelector('.informe-linea-operador');
+        if (opLine) {
+            lines.push(opLine.textContent.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim());
+            lines.push('');
+        }
+        lines.push('────────────────────────');
+        var table = wrap.querySelector('table');
+        if (table) {
+            table.querySelectorAll('tr').forEach(function (tr) {
+                var parts = [];
+                tr.querySelectorAll('th, td').forEach(function (c) {
+                    parts.push(c.textContent.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim());
+                });
+                lines.push(parts.join(' | '));
+            });
+        }
+        lines.push('────────────────────────');
+        var text = lines.join('\n');
+        if (text.length > 4000) text = text.slice(0, 3990) + '…';
+        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    }
+
+    function azucarPdfInforme(wrapId, titulo, filenameBase) {
+        var wrap = document.getElementById(wrapId);
+        if (!wrap) return;
+        if (esInformeOperadorWrap(wrap)) {
+            var oidPdf = operadorIdDelWrapExport(wrap);
+            if (oidPdf > 0) {
+                azucarDescargarPdfOperadorServidor(oidPdf);
+                return;
+            }
+            alert('No se identificó el operador. Cierre el informe y vuelva a abrirlo desde Operaciones del operador.');
+            return;
+        }
+        if (esInformeMovPagoOpWrap(wrap)) {
+            var opPdf = operacionDelWrapMovOp(wrap);
+            if (opPdf > 0) {
+                azucarDescargarPdfMovOpServidor(opPdf);
+                return;
+            }
+            alert('No se identificó la operación. Cierre el modal y vuelva a abrirlo desde la columna OP.');
+            return;
+        }
+        var built = armarHolderExportPdf(wrap, titulo);
+        if (!built.root) {
+            quitarHolderSiExiste(built.holder);
+            return;
+        }
+        cargarHtml2Pdf(function (html2pdf) {
+            var po = opcionesHtml2Pdf(built.docOpts, filenameBase);
+            var run = html2pdf().set(po.opts).from(built.root).save();
+            if (run && typeof run.then === 'function') {
+                run
+                    .then(function () {
+                        quitarHolderSiExiste(built.holder);
+                    })
+                    .catch(function () {
+                        quitarHolderSiExiste(built.holder);
+                        alert('No se pudo generar el PDF. Use Imprimir y elija Guardar como PDF.');
+                    });
+            } else {
+                setTimeout(function () {
+                    quitarHolderSiExiste(built.holder);
+                }, 4000);
+            }
+        });
+    }
+
+    /**
+     * Genera el mismo PDF que "Descargar PDF" y lo envía por WhatsApp:
+     * en móviles con Web Share API suele abrir WhatsApp con el archivo; en PC descarga el PDF y abre WhatsApp con mensaje para adjuntarlo.
+     */
+    function azucarWhatsappInforme(wrapId, titulo, filenameBase) {
+        var wrap = document.getElementById(wrapId);
+        if (!wrap) return;
+        filenameBase = filenameBase || 'informe';
+        if (esInformeOperadorWrap(wrap)) {
+            var oidWa = operadorIdDelWrapExport(wrap);
+            if (oidWa > 0) {
+                azucarWhatsappPdfOperadorServidor(oidWa, titulo);
+                return;
+            }
+            alert('No se identificó el operador. Cierre el informe y vuelva a abrirlo desde Operaciones del operador.');
+            return;
+        }
+        if (esInformeMovPagoOpWrap(wrap)) {
+            var opWa = operacionDelWrapMovOp(wrap);
+            if (opWa > 0) {
+                azucarWhatsappPdfMovOpServidor(opWa, titulo);
+                return;
+            }
+            alert('No se identificó la operación. Cierre el modal y vuelva a abrirlo desde la columna OP.');
+            return;
+        }
+        var built = armarHolderExportPdf(wrap, titulo);
+        if (!built.root) {
+            quitarHolderSiExiste(built.holder);
+            return;
+        }
+        cargarHtml2Pdf(function (html2pdf) {
+            var po = opcionesHtml2Pdf(built.docOpts, filenameBase);
+            var prom = html2pdf().set(po.opts).from(built.root).outputPdf('blob');
+            if (!prom || typeof prom.then !== 'function') {
+                quitarHolderSiExiste(built.holder);
+                alert('No se pudo preparar el PDF para WhatsApp.');
+                whatsappInformeTextoPlano(wrap, titulo);
+                return;
+            }
+            prom
+                .then(function (blob) {
+                    quitarHolderSiExiste(built.holder);
+                    compartirPdfPorWhatsapp(blob, po.filename, titulo);
+                })
+                .catch(function () {
+                    quitarHolderSiExiste(built.holder);
+                    alert('No se pudo generar el PDF. Se abrirá WhatsApp con el texto del informe.');
+                    whatsappInformeTextoPlano(wrap, titulo);
+                });
+        });
+    }
+
+    global.azucarImprimirInforme = azucarImprimirInforme;
+    global.azucarWhatsappInforme = azucarWhatsappInforme;
+    global.azucarPdfInforme = azucarPdfInforme;
+})(typeof window !== 'undefined' ? window : this);

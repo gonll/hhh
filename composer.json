@@ -3,6 +3,7 @@
     "description": "Sistema HHH",
     "require": {
         "smalot/pdfparser": "^2.0",
-        "google/apiclient": "^2.0"
+        "google/apiclient": "^2.0",
+        "tecnickcom/tcpdf": "^6.11"
     }
 }

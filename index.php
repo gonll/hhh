@@ -717,7 +717,7 @@ if ($nivelAcceso === 3) {
     <div id="modalMovimientosOperacion" class="modal-overlay" onclick="if(event.target===this) cerrarModalMovimientosOperacion()">
         <div class="modal-cobro" onclick="event.stopPropagation()" style="max-width:90%; max-height:90vh; overflow:auto; width:auto;">
             <h3 id="modalMovimientosOperacionTitulo">Movimientos de pago - Operación N° <span id="modalOpNumero"></span></h3>
-            <div id="wrapImpresionMovOp" style="margin-bottom:15px;">
+            <div id="wrapImpresionMovOp" data-informe-tipo="mov_pago_op" data-operacion="" style="margin-bottom:15px;">
                 <table style="width:100%; border-collapse:collapse; font-size:11px;">
                     <thead>
                         <tr style="background:#007bff; color:white;">
@@ -735,9 +735,17 @@ if ($nivelAcceso === 3) {
                     </tbody>
                 </table>
             </div>
+            <div style="margin-bottom: 12px;">
+                <button type="button" class="btn-guardar" onclick="togglePanelInformeMovOpIndex()">Informe</button>
+                <div id="panelInformeAccionesMovOpIndex" style="display: none; margin-top: 10px; padding: 12px 14px; background: #f0f4f8; border-radius: 6px; border: 1px solid #c3d0e0;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                        <button type="button" class="btn-guardar" onclick="azucarImprimirInforme('wrapImpresionMovOp', azucarTituloModalMovOpIndex())" title="Imprimir">🖨️ Imprimir</button>
+                        <button type="button" class="btn-guardar" onclick="azucarPdfInforme('wrapImpresionMovOp', azucarTituloModalMovOpIndex(), 'mov_pago_operacion')" title="Descargar PDF">📄 Descargar PDF</button>
+                        <button type="button" class="btn-guardar" onclick="azucarWhatsappInforme('wrapImpresionMovOp', azucarTituloModalMovOpIndex(), 'mov_pago_operacion')" title="Enviar por WhatsApp (PDF)">Enviar</button>
+                    </div>
+                </div>
+            </div>
             <div class="btns">
-                <button type="button" class="btn-guardar" onclick="azucarImprimirWrapIndex('wrapImpresionMovOp', azucarTituloModalMovOpIndex())" title="Imprimir movimientos">🖨️ Imprimir</button>
-                <button type="button" class="btn-guardar" onclick="azucarWhatsappWrapIndex('wrapImpresionMovOp', azucarTituloModalMovOpIndex())" title="Enviar por WhatsApp">WhatsApp</button>
                 <button type="button" class="btn-cerrar" onclick="cerrarModalMovimientosOperacion()">Cerrar</button>
             </div>
         </div>
@@ -767,6 +775,7 @@ if ($nivelAcceso === 3) {
         </div>
     </div>
 
+<script src="informe_azucar.js"></script>
 <script>
 let uSel = null; 
 let tipo = ''; 
@@ -2464,69 +2473,24 @@ function guardar() {
     }
 })();
 
-    function escAzucarIdx(s) {
-        var d = document.createElement('div');
-        d.textContent = s == null ? '' : String(s);
-        return d.innerHTML;
-    }
     function azucarTituloModalMovOpIndex() {
         var h = document.getElementById('modalMovimientosOperacionTitulo');
         return h ? h.innerText.replace(/\s+/g, ' ').trim() : 'Movimientos de pago';
     }
-    function azucarCloneParaImprimirIndex(wrapEl) {
-        var clone = wrapEl.cloneNode(true);
-        clone.querySelectorAll('a').forEach(function(a) {
-            a.parentNode.replaceChild(document.createTextNode(a.textContent.trim()), a);
-        });
-        return clone.innerHTML;
-    }
-    function azucarImprimirWrapIndex(wrapId, titulo) {
-        var wrap = document.getElementById(wrapId);
-        if (!wrap) return;
-        var inner = azucarCloneParaImprimirIndex(wrap);
-        var iframe = document.createElement('iframe');
-        iframe.setAttribute('aria-hidden', 'true');
-        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-        document.body.appendChild(iframe);
-        var doc = iframe.contentWindow.document;
-        var css = 'body{font-family:Arial,sans-serif;padding:14px;margin:0;}h2{font-size:14px;margin:0 0 12px 0;}table{border-collapse:collapse;width:100%;font-size:11px;}th,td{border:1px solid #444;padding:5px;}th{background:#007bff;color:#fff;}';
-        doc.open();
-        doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + css + '</style></head><body><h2>' + escAzucarIdx(titulo) + '</h2>' + inner + '</body></html>');
-        doc.close();
-        iframe.onload = function() {
-            try {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-            } finally {
-                setTimeout(function() {
-                    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                }, 1500);
-            }
-        };
-    }
-    function azucarWhatsappWrapIndex(wrapId, titulo) {
-        var wrap = document.getElementById(wrapId);
-        if (!wrap) return;
-        var table = wrap.querySelector('table');
-        var lines = [titulo, ''];
-        if (table) {
-            table.querySelectorAll('tr').forEach(function(tr) {
-                var parts = [];
-                tr.querySelectorAll('th, td').forEach(function(c) {
-                    parts.push(c.textContent.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim());
-                });
-                lines.push(parts.join(' | '));
-            });
-        }
-        var text = lines.join('\n');
-        if (text.length > 4000) text = text.slice(0, 3990) + '…';
-        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    function togglePanelInformeMovOpIndex() {
+        var p = document.getElementById('panelInformeAccionesMovOpIndex');
+        if (!p) return;
+        p.style.display = (p.style.display === 'none' || !p.style.display) ? 'block' : 'none';
     }
 
     function abrirModalMovimientosOperacion(operacion) {
         if (!operacion) return;
         document.getElementById('modalOpNumero').textContent = operacion;
+        var wrapMovOp = document.getElementById('wrapImpresionMovOp');
+        if (wrapMovOp) wrapMovOp.setAttribute('data-operacion', String(parseInt(operacion, 10) || 0));
         document.getElementById('modalMovimientosOperacion').classList.add('visible');
+        var panelInf = document.getElementById('panelInformeAccionesMovOpIndex');
+        if (panelInf) panelInf.style.display = 'none';
         var tbody = document.getElementById('tablaMovimientosOperacion');
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:gray;">Cargando...</td></tr>';
         fetch('obtener_movimientos_operacion.php?operacion=' + encodeURIComponent(operacion))
