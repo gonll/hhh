@@ -141,6 +141,113 @@
         return css;
     }
 
+    /** Evita fallos si la página está en subcarpeta o el navegador resuelve mal rutas relativas. */
+    function urlPdfRelativaAbsoluta(urlRel) {
+        try {
+            return new URL(urlRel, window.location.href).href;
+        } catch (e) {
+            return urlRel;
+        }
+    }
+
+    /**
+     * Descarga PDF desde scripts PHP (TCPDF).
+     * No confiar solo en Content-Type: muchos servidores envían tipo incorrecto o vacío con PDF válido.
+     * Se valida la firma binaria %PDF al inicio del archivo.
+     */
+    function fetchPdfInformeServidor(urlRel) {
+        var url = urlPdfRelativaAbsoluta(urlRel);
+        return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+            .then(function (r) {
+                if (!r.ok) {
+                    return r.text().then(function (txt) {
+                        var msg = 'Error ' + r.status + ' al generar el PDF.';
+                        if (txt) {
+                            var t = txt.trim();
+                            if (t.length < 500 && t.indexOf('<') === -1) msg += ' ' + t;
+                        }
+                        throw new Error(msg);
+                    });
+                }
+                return r.blob();
+            })
+            .then(function (blob) {
+                if (!blob || blob.size < 64) {
+                    throw new Error('PDF_VACIO');
+                }
+                var head = blob.slice(0, 16);
+                return head.arrayBuffer().then(function (buf) {
+                    var a = new Uint8Array(buf);
+                    var i = 0;
+                    if (a.length >= 3 && a[0] === 0xef && a[1] === 0xbb && a[2] === 0xbf) {
+                        i = 3;
+                    }
+                    while (i < a.length && (a[i] === 9 || a[i] === 10 || a[i] === 13 || a[i] === 32)) {
+                        i++;
+                    }
+                    var esPdf =
+                        i + 3 < a.length &&
+                        a[i] === 0x25 &&
+                        a[i + 1] === 0x50 &&
+                        a[i + 2] === 0x44 &&
+                        a[i + 3] === 0x46;
+                    if (esPdf) {
+                        return blob;
+                    }
+                    return blob.slice(0, 3000).text().then(function (txt) {
+                        var low = (txt || '').toLowerCase();
+                        if (low.indexOf('login') !== -1 || low.indexOf('<html') !== -1 || low.indexOf('<!doctype') !== -1) {
+                            throw new Error('SESION');
+                        }
+                        throw new Error('INVALID_PDF');
+                    });
+                });
+            });
+    }
+
+    function imprimirPdfBlob(blob) {
+        var u = URL.createObjectURL(blob);
+        var w = window.open(u);
+        if (!w) {
+            URL.revokeObjectURL(u);
+            alert(
+                'El navegador bloqueó la ventana emergente. Permita ventanas para este sitio o use Descargar PDF e imprima desde el archivo.'
+            );
+            return;
+        }
+        var intentarPrint = function () {
+            try {
+                w.focus();
+                if (typeof w.print === 'function') w.print();
+            } catch (e) {}
+        };
+        try {
+            w.addEventListener('load', function () {
+                setTimeout(intentarPrint, 400);
+            });
+        } catch (e1) {}
+        setTimeout(intentarPrint, 700);
+        setTimeout(intentarPrint, 1800);
+        setTimeout(function () {
+            URL.revokeObjectURL(u);
+        }, 180000);
+    }
+
+    function alertarErrorPdfServidor(err) {
+        var m = err && err.message ? String(err.message) : '';
+        if (m === 'SESION') {
+            alert('La sesión expiró o no tiene permiso. Inicie sesión de nuevo y vuelva a intentar.');
+            return;
+        }
+        if (m === 'INVALID_PDF' || m === 'PDF_VACIO') {
+            alert(
+                'El servidor no devolvió un PDF válido. En el servidor ejecute composer install (carpeta vendor) y compruebe que no haya advertencias PHP antes del PDF.'
+            );
+            return;
+        }
+        alert(m || 'No se pudo completar la operación.');
+    }
+
     /** Informe operaciones operador: PDF generado en servidor desde BD (no html2canvas). */
     function operadorIdDelWrapExport(wrap) {
         if (!wrap || wrap.getAttribute('data-informe-tipo') !== 'operador') return 0;
@@ -155,62 +262,31 @@
     }
 
     function azucarDescargarPdfOperadorServidor(operadorId) {
-        fetch(urlPdfOperadorServidor(operadorId, false), { credentials: 'same-origin' })
-            .then(function (r) {
-                if (!r.ok) throw new Error();
-                return r.blob();
-            })
+        fetchPdfInformeServidor(urlPdfOperadorServidor(operadorId, false))
             .then(function (blob) {
                 var fname = 'operaciones_operador_' + operadorId + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
                 descargarBlobPdf(blob, fname);
             })
-            .catch(function () {
-                alert('No se pudo generar el PDF. Compruebe la sesión e intente de nuevo.');
-            });
+            .catch(alertarErrorPdfServidor);
     }
 
     function azucarImprimirPdfOperadorServidor(operadorId) {
-        fetch(urlPdfOperadorServidor(operadorId, true), { credentials: 'same-origin' })
-            .then(function (r) {
-                if (!r.ok) throw new Error();
-                return r.blob();
-            })
+        fetchPdfInformeServidor(urlPdfOperadorServidor(operadorId, true))
             .then(function (blob) {
-                var u = URL.createObjectURL(blob);
-                var iframe = document.createElement('iframe');
-                iframe.setAttribute('aria-hidden', 'true');
-                iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-                iframe.src = u;
-                document.body.appendChild(iframe);
-                iframe.onload = function () {
-                    try {
-                        iframe.contentWindow.focus();
-                        iframe.contentWindow.print();
-                    } catch (e) {}
-                    setTimeout(function () {
-                        URL.revokeObjectURL(u);
-                        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                    }, 2500);
-                };
+                imprimirPdfBlob(blob);
             })
-            .catch(function () {
-                alert('No se pudo abrir el informe para imprimir.');
+            .catch(function (err) {
+                alertarErrorPdfServidor(err);
             });
     }
 
     function azucarWhatsappPdfOperadorServidor(operadorId, titulo) {
-        fetch(urlPdfOperadorServidor(operadorId, false), { credentials: 'same-origin' })
-            .then(function (r) {
-                if (!r.ok) throw new Error();
-                return r.blob();
-            })
+        fetchPdfInformeServidor(urlPdfOperadorServidor(operadorId, false))
             .then(function (blob) {
                 var fname = 'operaciones_operador_' + operadorId + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
                 compartirPdfPorWhatsapp(blob, fname, titulo);
             })
-            .catch(function () {
-                alert('No se pudo generar el PDF para WhatsApp.');
-            });
+            .catch(alertarErrorPdfServidor);
     }
 
     /** Movimientos de pago por operación: PDF desde BD (pdf_movimientos_operacion.php). */
@@ -231,62 +307,31 @@
     }
 
     function azucarDescargarPdfMovOpServidor(operacion) {
-        fetch(urlPdfMovimientosOperacionServidor(operacion, false), { credentials: 'same-origin' })
-            .then(function (r) {
-                if (!r.ok) throw new Error();
-                return r.blob();
-            })
+        fetchPdfInformeServidor(urlPdfMovimientosOperacionServidor(operacion, false))
             .then(function (blob) {
                 var fname = 'movimientos_operacion_' + operacion + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
                 descargarBlobPdf(blob, fname);
             })
-            .catch(function () {
-                alert('No se pudo generar el PDF. Compruebe la sesión e intente de nuevo.');
-            });
+            .catch(alertarErrorPdfServidor);
     }
 
     function azucarImprimirPdfMovOpServidor(operacion) {
-        fetch(urlPdfMovimientosOperacionServidor(operacion, true), { credentials: 'same-origin' })
-            .then(function (r) {
-                if (!r.ok) throw new Error();
-                return r.blob();
-            })
+        fetchPdfInformeServidor(urlPdfMovimientosOperacionServidor(operacion, true))
             .then(function (blob) {
-                var u = URL.createObjectURL(blob);
-                var iframe = document.createElement('iframe');
-                iframe.setAttribute('aria-hidden', 'true');
-                iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-                iframe.src = u;
-                document.body.appendChild(iframe);
-                iframe.onload = function () {
-                    try {
-                        iframe.contentWindow.focus();
-                        iframe.contentWindow.print();
-                    } catch (e) {}
-                    setTimeout(function () {
-                        URL.revokeObjectURL(u);
-                        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                    }, 2500);
-                };
+                imprimirPdfBlob(blob);
             })
-            .catch(function () {
-                alert('No se pudo abrir el informe para imprimir.');
+            .catch(function (err) {
+                alertarErrorPdfServidor(err);
             });
     }
 
     function azucarWhatsappPdfMovOpServidor(operacion, titulo) {
-        fetch(urlPdfMovimientosOperacionServidor(operacion, false), { credentials: 'same-origin' })
-            .then(function (r) {
-                if (!r.ok) throw new Error();
-                return r.blob();
-            })
+        fetchPdfInformeServidor(urlPdfMovimientosOperacionServidor(operacion, false))
             .then(function (blob) {
                 var fname = 'movimientos_operacion_' + operacion + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
                 compartirPdfPorWhatsapp(blob, fname, titulo);
             })
-            .catch(function () {
-                alert('No se pudo generar el PDF para WhatsApp.');
-            });
+            .catch(alertarErrorPdfServidor);
     }
 
     function azucarImprimirInforme(wrapId, titulo) {

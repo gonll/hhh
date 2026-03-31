@@ -1,4 +1,5 @@
 <?php
+ob_start();
 /**
  * PDF vectorial (TCPDF) — Informe operaciones del operador.
  * Misma lógica de datos que obtener_operaciones_operador.php (no captura HTML/imagen).
@@ -126,4 +127,7 @@ if (count($operaciones) === 0) {
 
 $fname = 'operaciones_operador_' . $operador_id . '_' . date('Y-m-d') . '.pdf';
 $disposition = isset($_GET['disposition']) && $_GET['disposition'] === 'inline' ? 'I' : 'D';
+if (ob_get_level() > 0) {
+    ob_end_clean();
+}
 $pdf->Output($fname, $disposition);

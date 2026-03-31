@@ -1,4 +1,5 @@
 <?php
+ob_start();
 /**
  * PDF vectorial (TCPDF) — Informe movimientos de pago por operación.
  * Misma lógica que obtener_movimientos_operacion.php (cuentas con referencia OP N° X).
@@ -132,4 +133,7 @@ if (count($movimientos) === 0) {
 
 $fname = 'movimientos_operacion_' . $operacion . '_' . date('Y-m-d') . '.pdf';
 $disposition = isset($_GET['disposition']) && $_GET['disposition'] === 'inline' ? 'I' : 'D';
+if (ob_get_level() > 0) {
+    ob_end_clean();
+}
 $pdf->Output($fname, $disposition);
