@@ -266,9 +266,9 @@ if ($nivelAcceso === 3) {
             </div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="font-size:11px; margin:0;">USUARIOS</h2>
+            <h2 style="font-size:11px; margin:0;">PERSONAS</h2>
             <?php if (!$soloLectura): ?>
-                <a href="registro.php" style="background:#28a745; color:white; padding:2px 6px; border-radius:3px; font-size:9px; text-decoration:none; font-weight:bold;">+ NUEVO</a>
+                <a href="registro.php" style="background:#28a745; color:white; padding:2px 6px; border-radius:3px; font-size:9px; text-decoration:none; font-weight:bold;">+ NUEVA PERSONA</a>
             <?php endif; ?>
         </div>
         <input type="text" id="txtBuscador" placeholder="🔍 BUSCAR (EJ: HERR HU)..." onkeyup="filtrar()" style="width:100%; font-size:10px; margin-top:5px; padding:5px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">

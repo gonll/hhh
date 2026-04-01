@@ -10,7 +10,7 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Nuevo Usuario</title>
+    <title>Nueva persona</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .caja { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 300px; text-align: center; }
@@ -25,7 +25,7 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
         <?php $volver = isset($_GET['volver']) ? trim($_GET['volver']) : 'index.php'; $volver_enc = htmlspecialchars($volver); ?>
         <form action="procesar.php" method="POST" onsubmit="return validarNombre()">
             <?php if ($volver !== 'index.php') { ?><input type="hidden" name="volver" value="<?= htmlspecialchars($volver) ?>"><?php } ?>
-            <h2 style="margin-top:0;">NUEVO USUARIO</h2>
+            <h2 style="margin-top:0;">NUEVA PERSONA</h2>
             <div id="alertaConsorcio" style="display:none; background:#d1ecf1; color:#0c5460; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px; border:1px solid #bee5eb;">
                 ℹ️ El nombre "Consorcio" está reservado para usuarios consorcio.
             </div>
