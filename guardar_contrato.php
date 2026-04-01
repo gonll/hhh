@@ -72,9 +72,11 @@ try {
     }
     $inq2_param = $inq2_id ?: null;
     $cod2_param = $cod2_id ?: null;
+    /* 12 params: i×6 + s×4 (destino, inicio, fin, firma) + d×2. Cadena correcta: iiii iisssdds.
+     * Si faltaba una 's', fecha_fin se enlazaba como 'd' y PHP convertía la fecha a float → 2028 → error DATE. */
     mysqli_stmt_bind_param(
         $stmtAlq,
-        'iiiiiissddds',
+        'iiiiiisssdds',
         $propiedad_id,
         $inq1_id,
         $inq2_param,
