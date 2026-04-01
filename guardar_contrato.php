@@ -20,10 +20,31 @@ $cod1_id       = (int)$_POST['cod1_id'];
 $cod2_id       = isset($_POST['cod2_id']) && $_POST['cod2_id'] !== '' ? (int)$_POST['cod2_id'] : null;
 $plazo         = (int)$_POST['plazo'];
 $destino       = mysqli_real_escape_string($conexion, $_POST['destino']);
-$fecha_inicio  = mysqli_real_escape_string($conexion, $_POST['fecha_inicio']);
-$fecha_fin     = mysqli_real_escape_string($conexion, $_POST['fecha_fin']);
+$fecha_inicio  = trim((string)($_POST['fecha_inicio'] ?? ''));
+$fecha_fin     = trim((string)($_POST['fecha_fin'] ?? ''));
 $precio        = (float)$_POST['precio'];
-$fecha_firma   = mysqli_real_escape_string($conexion, $_POST['fecha_firma']);
+$fecha_firma   = trim((string)($_POST['fecha_firma'] ?? ''));
+
+if (!fecha_valida_ymd($fecha_inicio)) {
+    echo 'Fecha de inicio inválida. Use el calendario o el formato AAAA-MM-DD.';
+    exit;
+}
+if (!fecha_valida_ymd($fecha_firma)) {
+    echo 'Fecha de firma inválida.';
+    exit;
+}
+$recalculada = calcular_fecha_fin_alquiler_ymd($fecha_inicio, $plazo);
+if (!fecha_valida_ymd($fecha_fin)) {
+    $fecha_fin = $recalculada;
+}
+if (!$fecha_fin || !fecha_valida_ymd($fecha_fin)) {
+    echo 'No se pudo determinar la fecha fin del contrato. Revise plazo y fecha de inicio.';
+    exit;
+}
+
+$fecha_inicio  = mysqli_real_escape_string($conexion, $fecha_inicio);
+$fecha_fin     = mysqli_real_escape_string($conexion, $fecha_fin);
+$fecha_firma   = mysqli_real_escape_string($conexion, $fecha_firma);
 // El depósito de garantía siempre será 1.5 veces el precio del alquiler
 $deposito      = round($precio * 1.5, 2);
 $nom_prop_raw   = isset($_POST['nom_prop']) ? trim($_POST['nom_prop']) : '';

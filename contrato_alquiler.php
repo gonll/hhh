@@ -244,6 +244,14 @@ function validarYEnviar() {
         alert("COMPLETE CAMPOS OBLIGATORIOS"); return;
     }
 
+    recalcularFechaFin();
+    d.fecha_fin = document.getElementById('fecha_fin').value;
+    d.fecha_inicio = document.getElementById('fecha_inicio').value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d.fecha_fin) || !/^\d{4}-\d{2}-\d{2}$/.test(d.fecha_inicio)) {
+        alert('Las fechas de inicio y fin deben estar completas (AAAA-MM-DD). Revise Fecha inicio y plazo.');
+        return;
+    }
+
     fetch('guardar_contrato.php', { method: 'POST', body: new URLSearchParams(d) })
     .then(r => r.text()).then(res => {
         if (res.trim() === "OK") {
@@ -265,6 +273,10 @@ document.addEventListener('keydown', function(e) {
         window.location.href = 'index.php';
     }
 }, true);
+
+document.addEventListener('DOMContentLoaded', function () {
+    recalcularFechaFin();
+});
 </script>
 <?php include 'timeout_sesion_inc.php'; ?>
 </body>
