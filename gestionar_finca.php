@@ -39,6 +39,7 @@ if (!$res_check || mysqli_num_rows($res_check) == 0) {
         cambio_aceite TINYINT(1) DEFAULT 0,
         en_cc TINYINT(1) DEFAULT 0,
         observaciones TEXT NULL,
+        finca VARCHAR(200) NULL,
         fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         fecha_modificacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -62,6 +63,10 @@ if (!$res_check || mysqli_num_rows($res_check) == 0) {
             mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN `$col` {$cols_def[$col]} AFTER `$after`");
         }
     }
+}
+$r_finca_col = mysqli_query($conexion, "SHOW COLUMNS FROM pdt LIKE 'finca'");
+if (!$r_finca_col || mysqli_num_rows($r_finca_col) == 0) {
+    mysqli_query($conexion, "ALTER TABLE pdt ADD COLUMN finca VARCHAR(200) NULL");
 }
 
 // Tabla gasoil: + carga sisterna, - consumo tractor
@@ -142,6 +147,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ? (float)$_POST['cant_gasoil'] : NULL;
         $cambio_aceite = ($tipo_horas === 'Horas tractos' && isset($_POST['cambio_aceite'])) ? 1 : 0;
         $observaciones = mysqli_real_escape_string($conexion, trim($_POST['observaciones'] ?? ''));
+        $finca_sel = trim($_POST['finca_sel'] ?? '');
+        $finca_nueva = trim($_POST['finca_nueva'] ?? '');
+        $finca_raw = ($finca_sel === '__otro__') ? $finca_nueva : $finca_sel;
+        $finca_esc = $finca_raw !== '' ? mysqli_real_escape_string($conexion, $finca_raw) : '';
 
         // Validar campos obligatorios (todos menos observaciones)
         $error_campo = '';
@@ -157,6 +166,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($cant_gasoil === NULL) {
                 $error_campo = 'Cant Gasoil es obligatorio cuando el tipo de trabajo es Horas tractos.';
             }
+        }
+        if ($error_campo === '' && $finca_sel === '__otro__' && $finca_nueva === '') {
+            $error_campo = 'Escriba el nombre de la nueva finca o elija una de la lista.';
         }
         if ($error_campo !== '') {
             $mensaje = 'Falta dato o corregir.';
@@ -174,7 +186,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $sql = "UPDATE pdt SET usuario_id = $usuario_id, tipo_horas = '$tipo_horas', tractor = " . 
                    ($tractor ? "'$tractor'" : "NULL") . ", fecha = '$fecha', horas = $horas, " .
-                   "cant_gasoil = " . ($cant_gasoil !== NULL ? $cant_gasoil : "NULL") . ", cambio_aceite = $cambio_aceite, en_cc = $en_cc_actual, observaciones = '$observaciones' WHERE id = $pdt_id";
+                   "cant_gasoil = " . ($cant_gasoil !== NULL ? $cant_gasoil : "NULL") . ", cambio_aceite = $cambio_aceite, en_cc = $en_cc_actual, observaciones = '$observaciones', finca = " .
+                   ($finca_esc !== '' ? "'$finca_esc'" : "NULL") . " WHERE id = $pdt_id";
             if (mysqli_query($conexion, $sql)) {
                 // Sincronizar gasoil cisterna: al modificar el parte, actualizar el movimiento en gasoil
                 if ($tipo_horas !== 'Horas tractos' || $cant_gasoil === NULL || $cant_gasoil <= 0) {
@@ -192,14 +205,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mensaje = 'Parte guardado.';
                 $preseleccionar_usuario_id = $usuario_id;
                 $_SESSION['pdt_ultimo_tractor'] = $tipo_horas === 'Horas tractos' ? $tractor_post : 'Horas Comunes';
+                if ($finca_esc !== '') {
+                    $_SESSION['pdt_ultima_finca'] = $finca_raw;
+                }
             } else {
                 $mensaje = 'Falta dato o corregir.';
             }
         } else {
             // Alta - en_cc siempre empieza en 0
-            $sql = "INSERT INTO pdt (usuario_id, tipo_horas, tractor, fecha, horas, cant_gasoil, cambio_aceite, en_cc, observaciones) 
+            $sql = "INSERT INTO pdt (usuario_id, tipo_horas, tractor, fecha, horas, cant_gasoil, cambio_aceite, en_cc, observaciones, finca) 
                     VALUES ($usuario_id, '$tipo_horas', " . ($tractor ? "'$tractor'" : "NULL") . ", '$fecha', $horas, " .
-                    ($cant_gasoil !== NULL ? $cant_gasoil : "NULL") . ", $cambio_aceite, 0, '$observaciones')";
+                    ($cant_gasoil !== NULL ? $cant_gasoil : "NULL") . ", $cambio_aceite, 0, '$observaciones', " .
+                    ($finca_esc !== '' ? "'$finca_esc'" : "NULL") . ")";
             if (mysqli_query($conexion, $sql)) {
                 $pdt_id_nuevo = (int)mysqli_insert_id($conexion);
                 if ($tipo_horas === 'Horas tractos' && $cant_gasoil !== NULL && $cant_gasoil > 0) {
@@ -210,6 +227,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mensaje = 'Parte guardado.';
                 $preseleccionar_usuario_id = $usuario_id;
                 $_SESSION['pdt_ultimo_tractor'] = $tipo_horas === 'Horas tractos' ? $tractor_post : 'Horas Comunes';
+                if ($finca_esc !== '') {
+                    $_SESSION['pdt_ultima_finca'] = $finca_raw;
+                }
             } else {
                 $mensaje = 'Falta dato o corregir.';
             }
@@ -311,10 +331,57 @@ if (!empty($_SESSION['pdt_ultimo_tractor'])) {
     }
 }
 
+// Fincas: mismas opciones que hoja de ruta cosecha + las que ya figuran en PDT
+$fincas_fijas = ['Finca 6', 'Finca 4', 'Finca 7', 'Finca 5', 'Finca 2', 'Finca 10', 'Finca 11', 'Finca 47', 'Finca 29'];
+$fincas_lista = $fincas_fijas;
+$r_fincas_c = mysqli_query($conexion, "SELECT DISTINCT finca FROM cosecha_hojas_ruta WHERE finca != '' AND finca IS NOT NULL ORDER BY finca");
+if ($r_fincas_c) {
+    while ($row = mysqli_fetch_assoc($r_fincas_c)) {
+        $fn = trim($row['finca'] ?? '');
+        if ($fn !== '' && !in_array($fn, $fincas_lista, true)) {
+            $fincas_lista[] = $fn;
+        }
+    }
+}
+$r_fincas_p = mysqli_query($conexion, "SELECT DISTINCT finca FROM pdt WHERE finca IS NOT NULL AND TRIM(finca) != '' ORDER BY finca");
+if ($r_fincas_p) {
+    while ($row = mysqli_fetch_assoc($r_fincas_p)) {
+        $fn = trim($row['finca'] ?? '');
+        if ($fn !== '' && !in_array($fn, $fincas_lista, true)) {
+            $fincas_lista[] = $fn;
+        }
+    }
+}
+
+$finca_default = '';
+if (!empty($_SESSION['pdt_ultima_finca'])) {
+    $finca_default = trim((string)$_SESSION['pdt_ultima_finca']);
+}
+if ($finca_default === '') {
+    $r_uf = mysqli_query($conexion, "SELECT finca FROM pdt WHERE finca IS NOT NULL AND TRIM(finca) != '' ORDER BY id DESC LIMIT 1");
+    if ($r_uf && $rw = mysqli_fetch_assoc($r_uf)) {
+        $finca_default = trim((string)($rw['finca'] ?? ''));
+    }
+}
+if ($finca_default === '' && count($fincas_lista) > 0) {
+    $finca_default = $fincas_lista[0];
+}
+
+$finca_actual = $pdt_edit ? trim((string)($pdt_edit['finca'] ?? '')) : $finca_default;
+if ($finca_actual === '' && count($fincas_lista) > 0) {
+    $finca_actual = $fincas_lista[0];
+}
+if ($finca_actual !== '' && !in_array($finca_actual, $fincas_lista, true)) {
+    $fincas_lista[] = $finca_actual;
+}
+$es_otra_finca = ($finca_actual !== '' && !in_array($finca_actual, $fincas_fijas, true));
+$finca_sel_val = $es_otra_finca ? '__otro__' : $finca_actual;
+$finca_nueva_val = $es_otra_finca ? $finca_actual : '';
+
 // Obtener lista de PDTs (siempre 200 registros, igual en servidor y PC)
 // IMPORTANTE: subir esta versión al servidor para que muestre todos los registros
 $lista_pdt = [];
-$sql_lista = "SELECT p.id, p.usuario_id, p.tipo_horas, p.tractor, p.fecha, p.horas, p.cant_gasoil, p.cambio_aceite, p.en_cc, p.observaciones, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 200";
+$sql_lista = "SELECT p.id, p.usuario_id, p.tipo_horas, p.tractor, p.fecha, p.horas, p.cant_gasoil, p.cambio_aceite, p.en_cc, p.observaciones, p.finca, u.apellido AS usuario_nombre FROM pdt p INNER JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC, p.id DESC LIMIT 200";
 $res_lista = mysqli_query($conexion, $sql_lista);
 if ($res_lista) {
     while ($row = mysqli_fetch_assoc($res_lista)) {
@@ -464,7 +531,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         th { background: #007bff; color: white; padding: 6px 6px; text-align: left; font-size: 11px; }
         td { padding: 5px 6px; border-bottom: 1px solid #eee; font-size: 11px; }
         tr:hover { background: #f8f9fa; }
-        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 740px; }
+        .tabla-listado-pdt { table-layout: fixed; width: 100%; min-width: 820px; }
         .tabla-listado-pdt th, .tabla-listado-pdt td { text-align: left; }
         /* Columnas de datos: ellipsis en personal/tractor para evitar que nombres largos rompan el layout */
         .tabla-listado-pdt td.col-personal, .tabla-listado-pdt td.col-tractor { min-width: 80px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -473,7 +540,11 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
         .tabla-listado-pdt td.col-tipo, .tabla-listado-pdt th.col-tipo { width: 100px; min-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-tractor, .tabla-listado-pdt th.col-tractor { width: 80px; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tabla-listado-pdt td.col-horas, .tabla-listado-pdt th.col-horas { width: 55px; min-width: 55px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .tabla-listado-pdt td.col-observaciones, .tabla-listado-pdt th.col-observaciones { width: 180px; min-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tabla-listado-pdt td.col-finca, .tabla-listado-pdt th.col-finca { width: 88px; min-width: 88px; max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tabla-listado-pdt td.col-observaciones, .tabla-listado-pdt th.col-observaciones { width: 120px; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .form-group-finca { flex: 0 0 auto; min-width: 130px; max-width: 190px; }
+        .form-group-finca select { font-size: 10px; height: 28px; padding: 2px 4px; }
+        .form-group-finca #fincaOtroWrap input { font-size: 10px; height: 26px; }
         .tabla-listado-pdt td.col-acciones, .tabla-listado-pdt th.col-acciones { overflow: visible; width: 220px; min-width: 220px; background: #fff !important; }
         .tabla-listado-pdt th.col-acciones { background: #007bff !important; }
         .tabla-listado-pdt td.col-acciones { background: #fff !important; }
@@ -545,7 +616,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 90px; min-width: 90px; }
             .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { width: 75px; min-width: 75px; }
             .tabla-listado-pdt th.col-horas, .tabla-listado-pdt td.col-horas { width: 50px; min-width: 50px; }
-            .tabla-listado-pdt th.col-observaciones, .tabla-listado-pdt td.col-observaciones { width: 150px; min-width: 150px; }
+            .tabla-listado-pdt th.col-finca, .tabla-listado-pdt td.col-finca { width: 80px; min-width: 80px; max-width: 80px; }
+            .tabla-listado-pdt th.col-observaciones, .tabla-listado-pdt td.col-observaciones { width: 110px; min-width: 110px; }
             .acciones-botones { flex-wrap: wrap !important; }
             .acciones-botones .btn { font-size: 11px; padding: 6px 10px; }
             .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 180px; }
@@ -563,7 +635,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             .tabla-listado-pdt th.col-tipo, .tabla-listado-pdt td.col-tipo { width: 80px; min-width: 80px; }
             .tabla-listado-pdt th.col-tractor, .tabla-listado-pdt td.col-tractor { width: 70px; min-width: 70px; }
             .tabla-listado-pdt th.col-horas, .tabla-listado-pdt td.col-horas { width: 45px; min-width: 45px; }
-            .tabla-listado-pdt th.col-observaciones, .tabla-listado-pdt td.col-observaciones { width: 120px; min-width: 120px; }
+            .tabla-listado-pdt th.col-finca, .tabla-listado-pdt td.col-finca { width: 72px; min-width: 72px; max-width: 72px; }
+            .tabla-listado-pdt th.col-observaciones, .tabla-listado-pdt td.col-observaciones { width: 95px; min-width: 95px; }
             .tabla-listado-pdt th.col-acciones, .tabla-listado-pdt td.col-acciones { min-width: 150px; }
             #formCargaGasoilSisterna form { flex-direction: column; align-items: stretch; }
         }
@@ -756,6 +829,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         actualizarResumenCCNo(id);
                         if(window.filtrarGridPorUsuarioPdt) window.filtrarGridPorUsuarioPdt(id);
                         if(window.actualizarResumenHorasUsuarioPdt) window.actualizarResumenHorasUsuarioPdt();
+                        var sF = document.getElementById('selFinca');
+                        if (sF) { try { sF.focus(); } catch (e) {} }
                     }
                     r.onclick = function(e){
                         var el = findItem(e.target, r);
@@ -791,6 +866,18 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
             </div>
             
             <div class="form-row">
+                <div class="form-group form-group-finca">
+                    <label>Finca</label>
+                    <select name="finca_sel" id="selFinca" tabindex="0" onchange="var w=document.getElementById('fincaOtroWrap');if(w)w.style.display=(this.value==='__otro__')?'block':'none';">
+                        <?php foreach ($fincas_lista as $fn): ?>
+                        <option value="<?= htmlspecialchars($fn) ?>" <?= (!$es_otra_finca && $finca_actual === $fn) ? 'selected' : '' ?>><?= htmlspecialchars($fn) ?></option>
+                        <?php endforeach; ?>
+                        <option value="__otro__" <?= $es_otra_finca ? 'selected' : '' ?>>+ Nueva finca</option>
+                    </select>
+                    <div id="fincaOtroWrap" style="display:<?= $es_otra_finca ? 'block' : 'none' ?>; margin-top: 4px;">
+                        <input type="text" name="finca_nueva" id="fincaNueva" placeholder="Nueva finca" value="<?= htmlspecialchars($finca_nueva_val) ?>" style="width:100%; box-sizing:border-box;">
+                    </div>
+                </div>
                 <div class="form-group" id="tractorGroup">
                     <label>Horas Comunes / Tractor *</label>
                     <select name="tractor" id="tractor" tabindex="-1" required>
@@ -894,7 +981,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <col style="width:100px">
                 <col style="width:80px">
                 <col style="width:55px">
-                <col style="width:180px">
+                <col style="width:88px">
+                <col style="width:120px">
                 <col style="width:220px">
             </colgroup>
             <thead>
@@ -904,6 +992,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <th class="col-tipo">Tipo</th>
                     <th class="col-tractor">Tractor</th>
                     <th class="col-horas">Horas</th>
+                    <th class="col-finca">Finca</th>
                     <th class="col-observaciones">Observaciones</th>
                     <th class="col-acciones">Acciones</th>
                 </tr>
@@ -934,7 +1023,17 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         $nom_show = (string)$nom; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($nom_show) > 20) { $nom_show = mb_substr($nom_show, 0, 20) . '…'; } elseif (strlen($nom_show) > 20) { $nom_show = substr($nom_show, 0, 20) . '…'; }
                         $tipo_show = (string)$tipo; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($tipo_show) > 15) { $tipo_show = mb_substr($tipo_show, 0, 15) . '…'; } elseif (strlen($tipo_show) > 15) { $tipo_show = substr($tipo_show, 0, 15) . '…'; }
                         $tractor_show = (string)$tractor; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($tractor_show) > 10) { $tractor_show = mb_substr($tractor_show, 0, 10) . '…'; } elseif (strlen($tractor_show) > 10) { $tractor_show = substr($tractor_show, 0, 10) . '…'; }
-                        $obs_show = (string)$obs_raw; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($obs_show) > 30) { $obs_show = mb_substr($obs_show, 0, 30) . '…'; } elseif (strlen($obs_show) > 30) { $obs_show = substr($obs_show, 0, 30) . '…'; }
+                        $finca_raw = trim((string)$p('finca', ''));
+                        if ($finca_raw === '') {
+                            $finca_show = '—';
+                        } elseif (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($finca_raw) > 12) {
+                            $finca_show = htmlspecialchars(mb_substr($finca_raw, 0, 12)) . '…';
+                        } elseif (strlen($finca_raw) > 12) {
+                            $finca_show = htmlspecialchars(substr($finca_raw, 0, 12)) . '…';
+                        } else {
+                            $finca_show = htmlspecialchars($finca_raw);
+                        }
+                        $obs_show = (string)$obs_raw; if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($obs_show) > 22) { $obs_show = mb_substr($obs_show, 0, 22) . '…'; } elseif (strlen($obs_show) > 22) { $obs_show = substr($obs_show, 0, 22) . '…'; }
                         $fecha_pdt = $fechaRaw ? substr($fechaRaw, 0, 10) : '';
                         $hoy = date('Y-m-d');
                         $ayer = date('Y-m-d', strtotime('-1 day'));
@@ -947,6 +1046,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                             <td class="col-tipo" title="<?= $tipo ?>"><?= $tipo_show ?></td>
                             <td class="col-tractor" title="<?= $tractor ?>"><?= $tractor_show ?></td>
                             <td class="col-horas" title="<?= number_format($horas, 2, ',', '.') ?>"><?= $horas_show ?></td>
+                            <td class="col-finca" title="<?= htmlspecialchars($finca_raw) ?>"><?= $finca_show ?></td>
                             <td class="col-observaciones" title="<?= htmlspecialchars($obs_raw) ?>"><?php if ($tiene_obs): ?><span class="obs-text-hidden" style="display:none"><?= htmlspecialchars($obs_raw) ?></span><?php endif; ?><?= htmlspecialchars($obs_show) ?></td>
                             <td class="col-acciones">
                                 <div style="display: flex; justify-content: flex-end; width: 100%;">
@@ -974,7 +1074,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="7" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
+                        <td colspan="8" style="text-align: center; padding: 15px; color: #666; font-size: 11px;">No hay partes diarios de trabajo registrados.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
@@ -1129,6 +1229,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 const nombreUsuarioSel = document.getElementById('nombreUsuarioSel');
                 const tractorGroup = document.getElementById('tractorGroup');
                 const tractorSelect = document.getElementById('tractor');
+                const selFinca = document.getElementById('selFinca');
                 function esHorasTractor() { return tractorSelect && tractorSelect.value !== '' && tractorSelect.value !== 'Horas Comunes'; }
                 
                 // Verificar que los elementos críticos existan (no retornar, solo registrar error)
@@ -1292,9 +1393,12 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 // Guardar valores cuando cambian (tractor siempre para persistir último elegido)
                 function guardarValores() {
                     if (!tractorSelect || !fechaInput) return;
+                    const fincaNuevaEl = document.getElementById('fincaNueva');
                     const valores = {
                         tractor: tractorSelect.value || 'Horas Comunes',
                         fecha: fechaInput.value,
+                        finca_sel: selFinca ? selFinca.value : '',
+                        finca_nueva: fincaNuevaEl ? fincaNuevaEl.value : '',
                         cant_gasoil: cantGasoilInput ? cantGasoilInput.value : '',
                         cambio_aceite: cambioAceiteInput ? (cambioAceiteInput.checked ? '1' : '0') : '0'
                     };
@@ -1389,6 +1493,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
                 if (cantGasoilInput) cantGasoilInput.addEventListener('blur', guardarValores);
                 if (cambioAceiteInput) cambioAceiteInput.addEventListener('change', guardarValores);
+                if (selFinca) selFinca.addEventListener('change', guardarValores);
+                var fincaNuevaInp = document.getElementById('fincaNueva');
+                if (fincaNuevaInp) fincaNuevaInp.addEventListener('blur', guardarValores);
                 
                 // Guardar valores al enviar el formulario
                 var formPDT = document.getElementById('formPDT');
@@ -1400,7 +1507,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 
                 // Navegación con Enter entre campos hasta el botón Guardar (secuencia: fecha, cantidad, observaciones, cant gasoil, cambio aceite, guardar)
                 if (btnGuardar && buscador && tractorSelect) {
-                    const camposOrden = [buscador, tractorSelect, fechaInput, horasInput, observacionesTextarea, cantGasoilInput, cambioAceiteInput, btnGuardar].filter(c => c !== null);
+                    const camposOrden = [buscador, selFinca, tractorSelect, fechaInput, horasInput, observacionesTextarea, cantGasoilInput, cambioAceiteInput, btnGuardar].filter(c => c !== null);
                     
                     camposOrden.forEach((campo, index) => {
                         if (!campo) return;
@@ -1414,7 +1521,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                                     const primerItem = resultados.querySelector('.usuario-item');
                                     if (primerItem) {
                                         primerItem.click();
-                                        setTimeout(() => { if (tractorSelect) tractorSelect.focus(); }, 100);
+                                        setTimeout(() => { if (selFinca) selFinca.focus(); else if (tractorSelect) tractorSelect.focus(); }, 100);
                                         return;
                                     }
                                 }
@@ -1437,7 +1544,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     resultados.addEventListener('keydown', function(e) {
                         if (e.key === 'Enter' && e.target.classList.contains('usuario-item')) {
                             e.target.click();
-                            setTimeout(() => { if (tractorSelect) tractorSelect.focus(); }, 100);
+                            setTimeout(() => { if (selFinca) selFinca.focus(); else if (tractorSelect) tractorSelect.focus(); }, 100);
                         }
                     });
                 }
@@ -1460,8 +1567,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 }
 
                 var enfocarTipoTrabajo = <?= (!empty($preseleccionar_usuario_id) && !$pdt_edit) ? 'true' : 'false' ?>;
-                if (enfocarTipoTrabajo && tractorSelect) {
-                    tractorSelect.focus();
+                if (enfocarTipoTrabajo) {
+                    if (selFinca) selFinca.focus();
+                    else if (tractorSelect) tractorSelect.focus();
                 }
 
                 // Mostrar etiquetas CC=NO del usuario seleccionado (si hay)
