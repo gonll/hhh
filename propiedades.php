@@ -2,6 +2,8 @@
 include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/config_clave_borrado.php';
+require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
+propiedades_asegurar_columnas($conexion);
 $sql = "SELECT p.*, u.apellido as nombre_inquilino, a.fecha_inicio as inicio, a.fecha_fin as vencimiento 
         FROM propiedades p 
         LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
@@ -44,11 +46,14 @@ if ($r_consorcios) {
         .col-consorcio { width: 15%; }
         .col-porcentaje { width: 8%; }
         .col-padron { width: 8%; }
-        .col-detalle { width: 13%; }
-        .col-estado { width: 12%; }
-        .col-inicio { width: 9%; }
-        .col-vencimiento { width: 9%; }
-        .col-acciones { width: 18%; }
+        .col-detalle { width: 11%; }
+        .col-verfm { width: 10%; }
+        .col-estado { width: 11%; }
+        .col-inicio { width: 8%; }
+        .col-vencimiento { width: 8%; }
+        .col-acciones { width: 17%; }
+        .link-ver-prop { font-size: 8px; font-weight: bold; color: #007bff; text-decoration: none; margin: 0 3px; text-transform: uppercase; }
+        .link-ver-prop:hover { text-decoration: underline; }
 
         /* ALINEACIÓN DE BOTONES */
         .flex-acciones { 
@@ -126,6 +131,7 @@ if ($r_consorcios) {
                 <th class="col-porcentaje">%</th>
                 <th class="col-padron">Padrón</th>
                 <th class="col-detalle">Detalle Técnico</th>
+                <th class="col-verfm">Fotos / Mapa</th>
                 <th class="col-estado">Inquilino / Estado</th>
                 <th class="col-inicio">Inicio</th>
                 <th class="col-vencimiento">Vencimiento</th>
@@ -137,6 +143,8 @@ if ($r_consorcios) {
                 $alquilada = !empty($f['nombre_inquilino']);
                 $inicio = !empty($f['inicio']) ? date('d/m/Y', strtotime($f['inicio'])) : '-';
                 $venc = !empty($f['vencimiento']) ? date('d/m/Y', strtotime($f['vencimiento'])) : '-';
+                $n_fotos = count(propiedades_fotos_desde_json($f['fotos_json'] ?? null));
+                $pid = (int)$f['propiedad_id'];
             ?>
             <tr class="fila-propiedad" data-id="<?= $f['propiedad_id'] ?>" onclick="seleccionarPropiedad(<?= $f['propiedad_id'] ?>, this, event)">
                 <td class="al-izq"><?= $f['propiedad'] ?></td>
@@ -144,6 +152,10 @@ if ($r_consorcios) {
                 <td class="al-cen" style="font-weight:bold; color:#007bff;"><?= $f['porcentaje'] !== null ? number_format($f['porcentaje'], 3, ',', '.') . '%' : '-' ?></td>
                 <td class="al-cen"><?= $f['padron'] ?></td>
                 <td class="al-cen" style="font-size: 8px; color: #777; white-space: nowrap;"><?= substr($f['detalle'],0,30) ?>...</td>
+                <td class="al-cen">
+                    <a href="ver_propiedad.php?id=<?= $pid ?>" class="link-ver-prop" title="Ver fotos" onclick="event.stopPropagation();">Fotos<?= $n_fotos > 0 ? '('.$n_fotos.')' : '' ?></a>
+                    <a href="ver_propiedad.php?id=<?= $pid ?>#mapa" class="link-ver-prop" title="Ver ubicación" onclick="event.stopPropagation();">Mapa</a>
+                </td>
                 <td class="al-cen">
                     <?= $alquilada ? "<span class='inquilino-nombre'>{$f['nombre_inquilino']}</span>" : "<span class='disponible'>DISPONIBLE</span>" ?>
                 </td>

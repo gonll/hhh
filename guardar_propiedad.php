@@ -1,6 +1,9 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
+propiedades_asegurar_columnas($conexion);
+
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: propiedades.php?msg=sin_permiso');
     exit;
@@ -11,14 +14,25 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['propiedad'])) {
 }
 
 $propietario_id = (int)($_POST['propietario_id'] ?? 0);
-$propiedad      = mysqli_real_escape_string($conexion, trim($_POST['propiedad'] ?? ''));
-$ciudad         = mysqli_real_escape_string($conexion, trim($_POST['ciudad'] ?? ''));
-$consorcio      = mysqli_real_escape_string($conexion, trim($_POST['consorcio'] ?? ''));
+$propiedad      = trim($_POST['propiedad'] ?? '');
+$ciudad         = trim($_POST['ciudad'] ?? '');
+$consorcio      = trim($_POST['consorcio'] ?? '');
 $porcentaje_raw = trim($_POST['porcentaje'] ?? '');
 $porcentaje_raw = str_replace(',', '.', $porcentaje_raw);
 $porcentaje     = $porcentaje_raw !== '' ? (float)$porcentaje_raw : null;
-$padron         = mysqli_real_escape_string($conexion, trim($_POST['padron'] ?? ''));
-$detalle        = mysqli_real_escape_string($conexion, trim($_POST['detalle'] ?? ''));
+$padron         = trim($_POST['padron'] ?? '');
+$detalle        = trim($_POST['detalle'] ?? '');
+
+$mapa_lat = null;
+$mapa_lng = null;
+if (isset($_POST['mapa_lat']) && trim((string)$_POST['mapa_lat']) !== '') {
+    $mapa_lat = (float)str_replace(',', '.', trim($_POST['mapa_lat']));
+}
+if (isset($_POST['mapa_lng']) && trim((string)$_POST['mapa_lng']) !== '') {
+    $mapa_lng = (float)str_replace(',', '.', trim($_POST['mapa_lng']));
+}
+$mapa_enlace_raw = trim($_POST['mapa_enlace'] ?? '');
+$mapa_enlace = $mapa_enlace_raw === '' ? null : $mapa_enlace_raw;
 
 if ($propiedad === '' || $propietario_id <= 0) {
     header('Location: nueva_propiedad.php?error=1');
@@ -40,31 +54,42 @@ if ($padron !== '') {
     }
 }
 
-$porcentaje_sql = $porcentaje !== null ? $porcentaje : 'NULL';
-$ciudad_sql     = $ciudad === '' ? 'NULL' : "'$ciudad'";
+$ciudad_param = ($ciudad === '') ? null : $ciudad;
+$consorcio_param = $consorcio;
+$porcentaje_param = ($porcentaje !== null) ? $porcentaje : null;
+$padron_param = $padron;
+$detalle_param = $detalle;
+$mapa_enlace_param = $mapa_enlace;
+$fotos_null = null;
 
-$sql = "INSERT INTO propiedades (propietario_id, propiedad, ciudad, consorcio, porcentaje, padron, detalle) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)";
+$sql = "INSERT INTO propiedades (propietario_id, propiedad, ciudad, consorcio, porcentaje, padron, detalle, mapa_lat, mapa_lng, mapa_enlace, fotos_json) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 $stmt_ins = mysqli_prepare($conexion, $sql);
 if ($stmt_ins) {
-    // ciudad_sql y porcentaje_sql pueden ser NULL literales; armamos variables PHP coherentes
-    $ciudad_param = ($ciudad === '') ? null : $ciudad;
-    $porcentaje_param = ($porcentaje !== null) ? $porcentaje : null;
     mysqli_stmt_bind_param(
         $stmt_ins,
-        'isssdds',
+        'isssdssddss',
         $propietario_id,
         $propiedad,
         $ciudad_param,
-        $consorcio,
+        $consorcio_param,
         $porcentaje_param,
-        $padron,
-        $detalle
+        $padron_param,
+        $detalle_param,
+        $mapa_lat,
+        $mapa_lng,
+        $mapa_enlace_param,
+        $fotos_null
     );
 }
 
 if ($stmt_ins && mysqli_stmt_execute($stmt_ins)) {
+    $nuevo_id = (int)mysqli_insert_id($conexion);
     mysqli_stmt_close($stmt_ins);
+    $nuevas = propiedades_procesar_subida_fotos($nuevo_id, 'fotos');
+    if (count($nuevas) > 0) {
+        propiedades_guardar_json_fotos($conexion, $nuevo_id, $nuevas);
+    }
     header('Location: propiedades.php?ok=1');
     exit;
 }

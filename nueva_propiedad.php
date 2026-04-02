@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
+propiedades_asegurar_columnas($conexion);
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=solo_lectura');
     exit;
@@ -50,6 +52,14 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
         .fila-doble > div { flex: 0 0 100px; }
         .fila-doble label { margin: 6px 0 3px; }
         .fila-doble input { width: 100%; }
+        .mapa-caja { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; margin-top: 6px; }
+        .mapa-caja p { font-size: 9px; color: #666; margin: 0 0 8px; line-height: 1.35; }
+        .fila-map-btn { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+        .btn-mapa { background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: bold; }
+        .btn-mapa:hover { background: #5a6268; }
+        input[type="file"] { font-size: 10px; text-transform: none; }
+        .mini-coord { display: flex; gap: 8px; margin-top: 6px; }
+        .mini-coord input { text-transform: none; }
     </style>
 </head>
 <body>
@@ -59,7 +69,7 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
     <?php if (isset($_GET['error']) && ($_GET['error'] === '1' || $_GET['error'] === 'padron_duplicado')): ?>
     <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Falta dato o corregir.</div>
     <?php endif; ?>
-    <form class="form-nav-enter" action="guardar_propiedad.php" method="POST" onsubmit="return validarPropietario()">
+    <form class="form-nav-enter" action="guardar_propiedad.php" method="POST" enctype="multipart/form-data" onsubmit="return validarPropietario()">
         <label>Propiedad *</label>
         <input type="text" name="propiedad" required autofocus placeholder="Ej: DEPTO 1A">
 
@@ -94,6 +104,30 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
         
         <label>Detalle técnico</label>
         <textarea id="detalle" name="detalle" placeholder="Descripción del inmueble"></textarea>
+
+        <label>Fotos (opcional)</label>
+        <input type="file" name="fotos[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple>
+        <span style="font-size:9px; color:#666;">Buscar archivos de imagen en su equipo. Máx. 5 MB por foto.</span>
+
+        <label>Ubicación en mapa (Google Maps)</label>
+        <div class="mapa-caja">
+            <p>Abra <a href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps</a>, busque el lugar, use <strong>Compartir</strong> y pegue aquí el enlace. Luego pulse <strong>Extraer coordenadas</strong>. También puede pegar coordenadas manualmente abajo.</p>
+            <input type="text" id="mapa_enlace" name="mapa_enlace" placeholder="Pegar enlace de Google Maps (opcional)" style="text-transform:none;">
+            <div class="fila-map-btn">
+                <button type="button" class="btn-mapa" onclick="extraerCoordsDeEnlaceMaps()">Extraer coordenadas del enlace</button>
+                <button type="button" class="btn-mapa" onclick="window.open('https://www.google.com/maps','_blank')">Abrir Google Maps</button>
+            </div>
+            <div class="mini-coord">
+                <div style="flex:1;">
+                    <label style="margin-top:6px;">Latitud</label>
+                    <input type="text" id="mapa_lat" name="mapa_lat" placeholder="-26.8241" inputmode="decimal" style="text-transform:none;">
+                </div>
+                <div style="flex:1;">
+                    <label style="margin-top:6px;">Longitud</label>
+                    <input type="text" id="mapa_lng" name="mapa_lng" placeholder="-65.2226" inputmode="decimal" style="text-transform:none;">
+                </div>
+            </div>
+        </div>
         
         <div class="btns">
             <button type="submit">GUARDAR</button>
@@ -133,6 +167,33 @@ function validarPropietario() {
         return false;
     }
     return true;
+}
+function extraerCoordsDeEnlaceMaps() {
+    var raw = (document.getElementById('mapa_enlace').value || '').trim();
+    var lat = null, lng = null;
+    if (raw) {
+        var m = raw.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)(?:,|\b)/);
+        if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
+        if (lat == null || isNaN(lat)) {
+            m = raw.match(/[?&]q=(-?\d+\.?\d*)[+,](-?\d+\.?\d*)/);
+            if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
+        }
+        if (lat == null || isNaN(lat)) {
+            m = raw.match(/3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+            if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
+        }
+        if (lat == null || isNaN(lat)) {
+            m = raw.match(/ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+            if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
+        }
+    }
+    if (lat != null && !isNaN(lat) && lng != null && !isNaN(lng)) {
+        document.getElementById('mapa_lat').value = String(lat);
+        document.getElementById('mapa_lng').value = String(lng);
+        alert('Coordenadas detectadas. Revise latitud y longitud antes de guardar.');
+    } else {
+        alert('No se pudieron leer coordenadas del enlace. Pegue un enlace de compartir de Google Maps o escriba latitud y longitud a mano.');
+    }
 }
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {

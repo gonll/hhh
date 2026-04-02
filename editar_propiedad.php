@@ -2,6 +2,8 @@
 include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/config_clave_borrado.php';
+require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
+propiedades_asegurar_columnas($conexion);
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=solo_lectura');
     exit;
@@ -19,6 +21,7 @@ if (!$prop) {
     echo "Propiedad no encontrada.";
     exit;
 }
+$fotos_existentes = propiedades_fotos_desde_json($prop['fotos_json'] ?? null);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -45,6 +48,17 @@ if (!$prop) {
         .btn-detalle { background: #17a2b8; color: white; padding: 4px 8px; font-size: 10px; margin-right: 6px; margin-bottom: 4px; border: none; border-radius: 4px; cursor: pointer; }
         .btn-detalle:hover { background: #138496; }
         .carga-rapida { margin-bottom: 6px; }
+        .mapa-caja { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; margin-top: 6px; }
+        .mapa-caja p { font-size: 9px; color: #666; margin: 0 0 8px; line-height: 1.35; }
+        .fila-map-btn { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+        .btn-mapa { background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: bold; }
+        .btn-mapa:hover { background: #5a6268; }
+        input[type="file"] { font-size: 10px; text-transform: none; }
+        .mini-coord { display: flex; gap: 8px; margin-top: 6px; }
+        .mini-coord input { text-transform: none; }
+        .galeria-mini { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+        .galeria-mini img { width: 72px; height: 72px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; }
+        .link-ver { font-size: 10px; margin-bottom: 8px; display: inline-block; }
     </style>
 </head>
 <body>
@@ -55,7 +69,8 @@ if (!$prop) {
     <?php if (isset($_GET['error']) && $_GET['error'] === 'padron_duplicado'): ?>
     <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Falta dato o corregir.</div>
     <?php endif; ?>
-    <form class="form-nav-enter" action="actualizar_propiedad.php" method="POST">
+    <a href="ver_propiedad.php?id=<?= (int)$prop['propiedad_id'] ?>" class="link-ver" target="_blank" rel="noopener">Ver fotos y ubicación en pantalla completa</a>
+    <form class="form-nav-enter" action="actualizar_propiedad.php" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="propiedad_id" value="<?= $prop['propiedad_id'] ?>">
         
         <label>Propiedad</label>
@@ -87,6 +102,45 @@ if (!$prop) {
         
         <label>Detalle técnico</label>
         <textarea id="detalle" name="detalle"><?= htmlspecialchars($prop['detalle'] ?? '') ?></textarea>
+
+        <?php if (count($fotos_existentes) > 0): ?>
+        <label>Fotos actuales</label>
+        <div class="galeria-mini">
+            <?php foreach ($fotos_existentes as $rel):
+                $rel = str_replace(['..', '\\'], '', $rel);
+                if ($rel === '' || strpos($rel, 'uploads/propiedades/') !== 0) {
+                    continue;
+                }
+                $src = htmlspecialchars($rel, ENT_QUOTES, 'UTF-8');
+            ?>
+            <a href="<?= $src ?>" target="_blank" rel="noopener"><img src="<?= $src ?>" alt=""></a>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
+        <label>Agregar más fotos (opcional)</label>
+        <input type="file" name="fotos[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple>
+        <span style="font-size:9px; color:#666;">Se suman a las existentes. Máx. 5 MB por archivo.</span>
+
+        <label>Ubicación en mapa (Google Maps)</label>
+        <div class="mapa-caja">
+            <p>Abra <a href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps</a>, busque el lugar, use <strong>Compartir</strong> y pegue el enlace. Luego pulse <strong>Extraer coordenadas</strong>.</p>
+            <input type="text" id="mapa_enlace" name="mapa_enlace" value="<?= htmlspecialchars($prop['mapa_enlace'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Enlace de Google Maps (opcional)" style="text-transform:none;">
+            <div class="fila-map-btn">
+                <button type="button" class="btn-mapa" onclick="extraerCoordsDeEnlaceMaps()">Extraer coordenadas del enlace</button>
+                <button type="button" class="btn-mapa" onclick="window.open('https://www.google.com/maps','_blank')">Abrir Google Maps</button>
+            </div>
+            <div class="mini-coord">
+                <div style="flex:1;">
+                    <label style="margin-top:6px;">Latitud</label>
+                    <input type="text" id="mapa_lat" name="mapa_lat" value="<?= isset($prop['mapa_lat']) && $prop['mapa_lat'] !== null && $prop['mapa_lat'] !== '' ? htmlspecialchars((string)$prop['mapa_lat']) : '' ?>" placeholder="-26.8241" inputmode="decimal" style="text-transform:none;">
+                </div>
+                <div style="flex:1;">
+                    <label style="margin-top:6px;">Longitud</label>
+                    <input type="text" id="mapa_lng" name="mapa_lng" value="<?= isset($prop['mapa_lng']) && $prop['mapa_lng'] !== null && $prop['mapa_lng'] !== '' ? htmlspecialchars((string)$prop['mapa_lng']) : '' ?>" placeholder="-65.2226" inputmode="decimal" style="text-transform:none;">
+                </div>
+            </div>
+        </div>
         
         <div class="btns">
             <button type="submit">GUARDAR CAMBIOS</button>
@@ -96,6 +150,33 @@ if (!$prop) {
 </div>
 
 <script>
+function extraerCoordsDeEnlaceMaps() {
+    var raw = (document.getElementById('mapa_enlace').value || '').trim();
+    var lat = null, lng = null;
+    if (raw) {
+        var m = raw.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)(?:,|\b)/);
+        if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
+        if (lat == null || isNaN(lat)) {
+            m = raw.match(/[?&]q=(-?\d+\.?\d*)[+,](-?\d+\.?\d*)/);
+            if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
+        }
+        if (lat == null || isNaN(lat)) {
+            m = raw.match(/3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+            if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
+        }
+        if (lat == null || isNaN(lat)) {
+            m = raw.match(/ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+            if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]); }
+        }
+    }
+    if (lat != null && !isNaN(lat) && lng != null && !isNaN(lng)) {
+        document.getElementById('mapa_lat').value = String(lat);
+        document.getElementById('mapa_lng').value = String(lng);
+        alert('Coordenadas detectadas. Revise latitud y longitud antes de guardar.');
+    } else {
+        alert('No se pudieron leer coordenadas del enlace. Pegue un enlace de compartir de Google Maps o escriba latitud y longitud a mano.');
+    }
+}
 window.addEventListener('DOMContentLoaded', function() {
     var esNivel3 = <?= $esNivel3 ? 'true' : 'false' ?>;
     if (esNivel3) {
