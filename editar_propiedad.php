@@ -66,7 +66,9 @@ $fotos_existentes = propiedades_fotos_desde_json($prop['fotos_json'] ?? null);
 <?php $esNivel3 = isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3; ?>
 <div class="card" id="formularioEditar" style="display:<?= $esNivel3 ? 'block' : 'none' ?>;">
     <h2>Editar datos de la propiedad</h2>
-    <?php if (isset($_GET['error']) && $_GET['error'] === 'padron_duplicado'): ?>
+    <?php if (isset($_GET['error']) && $_GET['error'] === 'migracion'): ?>
+    <div style="background:#fff3cd; color:#856404; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">La base de datos del servidor no tiene las columnas para fotos y mapa. Ejecute el SQL de migración con un usuario MySQL con permisos (ver mensaje en «nueva propiedad» o documentación del sistema).</div>
+    <?php elseif (isset($_GET['error']) && $_GET['error'] === 'padron_duplicado'): ?>
     <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Falta dato o corregir.</div>
     <?php endif; ?>
     <a href="ver_propiedad.php?id=<?= (int)$prop['propiedad_id'] ?>" class="link-ver" target="_blank" rel="noopener">Ver fotos y ubicación en pantalla completa</a>
@@ -111,7 +113,8 @@ $fotos_existentes = propiedades_fotos_desde_json($prop['fotos_json'] ?? null);
                 if ($rel === '' || strpos($rel, 'uploads/propiedades/') !== 0) {
                     continue;
                 }
-                $src = htmlspecialchars($rel, ENT_QUOTES, 'UTF-8');
+                $url = propiedades_url_publica($rel);
+                $src = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
             ?>
             <a href="<?= $src ?>" target="_blank" rel="noopener"><img src="<?= $src ?>" alt=""></a>
             <?php endforeach; ?>

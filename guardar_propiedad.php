@@ -2,7 +2,6 @@
 include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
-propiedades_asegurar_columnas($conexion);
 
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: propiedades.php?msg=sin_permiso');
@@ -10,6 +9,13 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['propiedad'])) {
     header('Location: propiedades.php');
+    exit;
+}
+
+propiedades_asegurar_columnas($conexion);
+if (!propiedades_columna_existe($conexion, 'mapa_lat') || !propiedades_columna_existe($conexion, 'fotos_json')) {
+    error_log('guardar_propiedad: faltan columnas mapa/fotos en la tabla propiedades (permiso ALTER o ejecutar SQL manual).');
+    header('Location: nueva_propiedad.php?error=migracion');
     exit;
 }
 
@@ -88,10 +94,18 @@ if ($stmt_ins && mysqli_stmt_execute($stmt_ins)) {
     mysqli_stmt_close($stmt_ins);
     $nuevas = propiedades_procesar_subida_fotos($nuevo_id, 'fotos');
     if (count($nuevas) > 0) {
-        propiedades_guardar_json_fotos($conexion, $nuevo_id, $nuevas);
+        if (!propiedades_guardar_json_fotos($conexion, $nuevo_id, $nuevas)) {
+            error_log('guardar_propiedad: no se pudo guardar fotos_json id=' . $nuevo_id . ' err=' . mysqli_error($conexion));
+        }
     }
     header('Location: propiedades.php?ok=1');
     exit;
 }
-echo "Falta dato o corregir.";
+if ($stmt_ins) {
+    error_log('guardar_propiedad execute: ' . mysqli_stmt_error($stmt_ins));
+    mysqli_stmt_close($stmt_ins);
+} else {
+    error_log('guardar_propiedad prepare: ' . mysqli_error($conexion));
+}
+header('Location: nueva_propiedad.php?error=1');
 exit;

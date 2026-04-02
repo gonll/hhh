@@ -2,7 +2,6 @@
 include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
-propiedades_asegurar_columnas($conexion);
 
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: propiedades.php?msg=sin_permiso');
@@ -12,6 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['propiedad_id'])) {
     header('Location: propiedades.php');
     exit;
 }
+
+propiedades_asegurar_columnas($conexion);
 
 $id        = (int)$_POST['propiedad_id'];
 $propiedad = trim($_POST['propiedad'] ?? '');
@@ -36,6 +37,12 @@ $mapa_enlace = $mapa_enlace_raw === '' ? null : $mapa_enlace_raw;
 
 if ($id <= 0 || $propiedad === '') {
     header('Location: propiedades.php');
+    exit;
+}
+
+if (!propiedades_columna_existe($conexion, 'mapa_lat') || !propiedades_columna_existe($conexion, 'fotos_json')) {
+    error_log('actualizar_propiedad: faltan columnas mapa/fotos.');
+    header('Location: editar_propiedad.php?id=' . $id . '&error=migracion');
     exit;
 }
 
@@ -99,10 +106,14 @@ if (mysqli_stmt_execute($stmt)) {
     $nuevas = propiedades_procesar_subida_fotos($id, 'fotos');
     if (count($nuevas) > 0) {
         $todas = array_merge($existentes, $nuevas);
-        propiedades_guardar_json_fotos($conexion, $id, $todas);
+        if (!propiedades_guardar_json_fotos($conexion, $id, $todas)) {
+            error_log('actualizar_propiedad: fotos_json id=' . $id . ' err=' . mysqli_error($conexion));
+        }
     }
     header('Location: propiedades.php?ok=1');
 } else {
-    echo "Falta dato o corregir.";
+    error_log('actualizar_propiedad execute: ' . mysqli_stmt_error($stmt));
+    mysqli_stmt_close($stmt);
+    header('Location: editar_propiedad.php?id=' . $id . '&error=1');
 }
 exit;

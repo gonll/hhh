@@ -10,7 +10,10 @@ if ($id <= 0) {
     exit;
 }
 
-$res = mysqli_query($conexion, "SELECT propiedad, ciudad, consorcio, padron, detalle, mapa_lat, mapa_lng, mapa_enlace, fotos_json FROM propiedades WHERE propiedad_id = " . $id . " LIMIT 1");
+$res = mysqli_query($conexion, "SELECT * FROM propiedades WHERE propiedad_id = " . $id . " LIMIT 1");
+if (!$res) {
+    error_log('ver_propiedad SELECT: ' . mysqli_error($conexion));
+}
 $prop = $res ? mysqli_fetch_assoc($res) : null;
 if (!$prop) {
     header('Location: propiedades.php');
@@ -71,7 +74,8 @@ if ($tieneMapa) {
                 if ($rel === '' || strpos($rel, 'uploads/propiedades/') !== 0) {
                     continue;
                 }
-                $src = htmlspecialchars($rel, ENT_QUOTES, 'UTF-8');
+                $url = propiedades_url_publica($rel);
+                $src = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
             ?>
             <a href="<?= $src ?>" target="_blank" rel="noopener"><img src="<?= $src ?>" alt="Foto propiedad"></a>
             <?php endforeach; ?>
