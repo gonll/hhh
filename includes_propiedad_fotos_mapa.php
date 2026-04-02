@@ -13,12 +13,94 @@ if (!defined('HHH_ROOT')) {
 function propiedades_url_publica($rel) {
     $rel = str_replace(['..', '\\'], '', (string) $rel);
     $rel = ltrim($rel, '/');
-    $base = dirname($_SERVER['SCRIPT_NAME'] ?? '');
-    $base = str_replace('\\', '/', (string) $base);
+    $script = $_SERVER['SCRIPT_NAME'] ?? '';
+    $base = dirname(str_replace('\\', '/', (string) $script));
     if ($base === '/' || $base === '' || $base === '.') {
         return '/' . $rel;
     }
     return rtrim($base, '/') . '/' . $rel;
+}
+
+/**
+ * Respaldo si no hay columnas en BD: coordenadas y enlace en disco.
+ */
+function propiedades_guardar_mapa_disco($propiedad_id, $lat, $lng, $enlace) {
+    $propiedad_id = (int) $propiedad_id;
+    if ($propiedad_id <= 0) {
+        return false;
+    }
+    $dir = HHH_ROOT . '/uploads/propiedades/' . $propiedad_id;
+    if (!is_dir($dir)) {
+        if (!@mkdir($dir, 0755, true) && !is_dir($dir)) {
+            return false;
+        }
+    }
+    $data = [
+        'lat' => $lat,
+        'lng' => $lng,
+        'enlace' => $enlace,
+    ];
+    return (bool) @file_put_contents($dir . '/mapa.json', json_encode($data, JSON_UNESCAPED_UNICODE));
+}
+
+function propiedades_leer_mapa_disco($propiedad_id) {
+    $propiedad_id = (int) $propiedad_id;
+    if ($propiedad_id <= 0) {
+        return null;
+    }
+    $f = HHH_ROOT . '/uploads/propiedades/' . $propiedad_id . '/mapa.json';
+    if (!is_readable($f)) {
+        return null;
+    }
+    $j = json_decode((string) @file_get_contents($f), true);
+    return is_array($j) ? $j : null;
+}
+
+/**
+ * Lista imágenes en carpeta (respaldo si fotos_json vacío o sin columna).
+ */
+function propiedades_listar_fotos_disco($propiedad_id) {
+    $propiedad_id = (int) $propiedad_id;
+    if ($propiedad_id <= 0) {
+        return [];
+    }
+    $dir = HHH_ROOT . '/uploads/propiedades/' . $propiedad_id;
+    if (!is_dir($dir)) {
+        return [];
+    }
+    $ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    $out = [];
+    foreach (scandir($dir) as $fn) {
+        if ($fn === '.' || $fn === '..' || $fn === 'mapa.json') {
+            continue;
+        }
+        $low = strtolower(pathinfo($fn, PATHINFO_EXTENSION));
+        if (!in_array($low, $ext, true)) {
+            continue;
+        }
+        $out[] = 'uploads/propiedades/' . $propiedad_id . '/' . $fn;
+    }
+    sort($out);
+    return $out;
+}
+
+/**
+ * Combina rutas en BD con archivos en disco (sin duplicar).
+ */
+function propiedades_fotos_unificadas($propiedad_id, $fotos_json) {
+    $desde_db = propiedades_fotos_desde_json($fotos_json);
+    $desde_disco = propiedades_listar_fotos_disco($propiedad_id);
+    $seen = [];
+    $merged = [];
+    foreach (array_merge($desde_db, $desde_disco) as $p) {
+        $p = str_replace(['..', '\\'], '', (string) $p);
+        if ($p === '' || isset($seen[$p])) {
+            continue;
+        }
+        $seen[$p] = true;
+        $merged[] = $p;
+    }
+    return $merged;
 }
 
 function propiedades_columna_existe($conexion, $columna) {
@@ -26,9 +108,16 @@ function propiedades_columna_existe($conexion, $columna) {
     if ($columna === '') {
         return false;
     }
-    $q = "SHOW COLUMNS FROM propiedades LIKE '" . mysqli_real_escape_string($conexion, $columna) . "'";
+    $col = mysqli_real_escape_string($conexion, $columna);
+    $q = "SELECT 1 FROM information_schema.COLUMNS 
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'propiedades' AND COLUMN_NAME = '" . $col . "' LIMIT 1";
     $r = mysqli_query($conexion, $q);
-    return $r && mysqli_num_rows($r) > 0;
+    if ($r && mysqli_num_rows($r) > 0) {
+        return true;
+    }
+    $q2 = "SHOW COLUMNS FROM propiedades LIKE '" . $col . "'";
+    $r2 = mysqli_query($conexion, $q2);
+    return $r2 && mysqli_num_rows($r2) > 0;
 }
 
 /**

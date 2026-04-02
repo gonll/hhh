@@ -13,11 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['propiedad'])) {
 }
 
 propiedades_asegurar_columnas($conexion);
-if (!propiedades_columna_existe($conexion, 'mapa_lat') || !propiedades_columna_existe($conexion, 'fotos_json')) {
-    error_log('guardar_propiedad: faltan columnas mapa/fotos en la tabla propiedades (permiso ALTER o ejecutar SQL manual).');
-    header('Location: nueva_propiedad.php?error=migracion');
-    exit;
-}
+$tiene_media = propiedades_columna_existe($conexion, 'mapa_lat') && propiedades_columna_existe($conexion, 'fotos_json');
 
 $propietario_id = (int)($_POST['propietario_id'] ?? 0);
 $propiedad      = trim($_POST['propiedad'] ?? '');
@@ -68,39 +64,66 @@ $detalle_param = $detalle;
 $mapa_enlace_param = $mapa_enlace;
 $fotos_null = null;
 
-$sql = "INSERT INTO propiedades (propietario_id, propiedad, ciudad, consorcio, porcentaje, padron, detalle, mapa_lat, mapa_lng, mapa_enlace, fotos_json) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-$stmt_ins = mysqli_prepare($conexion, $sql);
-if ($stmt_ins) {
-    mysqli_stmt_bind_param(
-        $stmt_ins,
-        'isssdssddss',
-        $propietario_id,
-        $propiedad,
-        $ciudad_param,
-        $consorcio_param,
-        $porcentaje_param,
-        $padron_param,
-        $detalle_param,
-        $mapa_lat,
-        $mapa_lng,
-        $mapa_enlace_param,
-        $fotos_null
-    );
+$stmt_ins = null;
+if ($tiene_media) {
+    $sql = "INSERT INTO propiedades (propietario_id, propiedad, ciudad, consorcio, porcentaje, padron, detalle, mapa_lat, mapa_lng, mapa_enlace, fotos_json) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt_ins = mysqli_prepare($conexion, $sql);
+    if ($stmt_ins) {
+        mysqli_stmt_bind_param(
+            $stmt_ins,
+            'isssdssddss',
+            $propietario_id,
+            $propiedad,
+            $ciudad_param,
+            $consorcio_param,
+            $porcentaje_param,
+            $padron_param,
+            $detalle_param,
+            $mapa_lat,
+            $mapa_lng,
+            $mapa_enlace_param,
+            $fotos_null
+        );
+    }
+} else {
+    $sql = "INSERT INTO propiedades (propietario_id, propiedad, ciudad, consorcio, porcentaje, padron, detalle) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)";
+    $stmt_ins = mysqli_prepare($conexion, $sql);
+    if ($stmt_ins) {
+        mysqli_stmt_bind_param(
+            $stmt_ins,
+            'isssdss',
+            $propietario_id,
+            $propiedad,
+            $ciudad_param,
+            $consorcio_param,
+            $porcentaje_param,
+            $padron_param,
+            $detalle_param
+        );
+    }
 }
 
 if ($stmt_ins && mysqli_stmt_execute($stmt_ins)) {
     $nuevo_id = (int)mysqli_insert_id($conexion);
     mysqli_stmt_close($stmt_ins);
+
     $nuevas = propiedades_procesar_subida_fotos($nuevo_id, 'fotos');
-    if (count($nuevas) > 0) {
+    if ($tiene_media && count($nuevas) > 0) {
         if (!propiedades_guardar_json_fotos($conexion, $nuevo_id, $nuevas)) {
-            error_log('guardar_propiedad: no se pudo guardar fotos_json id=' . $nuevo_id . ' err=' . mysqli_error($conexion));
+            error_log('guardar_propiedad: fotos_json id=' . $nuevo_id . ' err=' . mysqli_error($conexion));
         }
     }
+
+    if (!$tiene_media && ($mapa_lat !== null || $mapa_lng !== null || $mapa_enlace !== null)) {
+        propiedades_guardar_mapa_disco($nuevo_id, $mapa_lat, $mapa_lng, $mapa_enlace);
+    }
+
     header('Location: propiedades.php?ok=1');
     exit;
 }
+
 if ($stmt_ins) {
     error_log('guardar_propiedad execute: ' . mysqli_stmt_error($stmt_ins));
     mysqli_stmt_close($stmt_ins);

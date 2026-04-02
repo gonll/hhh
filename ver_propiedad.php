@@ -20,9 +20,19 @@ if (!$prop) {
     exit;
 }
 
-$fotos = propiedades_fotos_desde_json($prop['fotos_json'] ?? null);
+$fotos = propiedades_fotos_unificadas($id, $prop['fotos_json'] ?? null);
 $lat = isset($prop['mapa_lat']) && $prop['mapa_lat'] !== null && $prop['mapa_lat'] !== '' ? (float)$prop['mapa_lat'] : null;
 $lng = isset($prop['mapa_lng']) && $prop['mapa_lng'] !== null && $prop['mapa_lng'] !== '' ? (float)$prop['mapa_lng'] : null;
+$diskMap = propiedades_leer_mapa_disco($id);
+if (($lat === null || $lng === null) && is_array($diskMap)) {
+    if (isset($diskMap['lat'], $diskMap['lng']) && $diskMap['lat'] !== null && $diskMap['lng'] !== '') {
+        $lat = (float)$diskMap['lat'];
+        $lng = (float)$diskMap['lng'];
+    }
+    if (empty($prop['mapa_enlace']) && !empty($diskMap['enlace'])) {
+        $prop['mapa_enlace'] = $diskMap['enlace'];
+    }
+}
 $tieneMapa = ($lat !== null && $lng !== null);
 if ($tieneMapa) {
     $dl = 0.012;

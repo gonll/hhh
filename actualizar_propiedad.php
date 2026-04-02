@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['propiedad_id'])) {
 }
 
 propiedades_asegurar_columnas($conexion);
+$tiene_media = propiedades_columna_existe($conexion, 'mapa_lat') && propiedades_columna_existe($conexion, 'fotos_json');
 
 $id        = (int)$_POST['propiedad_id'];
 $propiedad = trim($_POST['propiedad'] ?? '');
@@ -40,12 +41,6 @@ if ($id <= 0 || $propiedad === '') {
     exit;
 }
 
-if (!propiedades_columna_existe($conexion, 'mapa_lat') || !propiedades_columna_existe($conexion, 'fotos_json')) {
-    error_log('actualizar_propiedad: faltan columnas mapa/fotos.');
-    header('Location: editar_propiedad.php?id=' . $id . '&error=migracion');
-    exit;
-}
-
 if ($padron !== '') {
     $stmt_ex = mysqli_prepare($conexion, "SELECT propiedad_id FROM propiedades WHERE padron = ? AND propiedad_id != ? LIMIT 1");
     if ($stmt_ex) {
@@ -65,50 +60,84 @@ $ciudad_param = ($ciudad === '') ? null : $ciudad;
 $porcentaje_param = ($porcentaje !== null) ? $porcentaje : null;
 $mapa_enlace_param = $mapa_enlace;
 
-$sql = "UPDATE propiedades SET 
-        propiedad = ?, 
-        ciudad = ?, 
-        consorcio = ?, 
-        porcentaje = ?, 
-        padron = ?, 
-        detalle = ?,
-        mapa_lat = ?,
-        mapa_lng = ?,
-        mapa_enlace = ?
-        WHERE propiedad_id = ?";
-$stmt = mysqli_prepare($conexion, $sql);
+$stmt = null;
+if ($tiene_media) {
+    $sql = "UPDATE propiedades SET 
+            propiedad = ?, 
+            ciudad = ?, 
+            consorcio = ?, 
+            porcentaje = ?, 
+            padron = ?, 
+            detalle = ?,
+            mapa_lat = ?,
+            mapa_lng = ?,
+            mapa_enlace = ?
+            WHERE propiedad_id = ?";
+    $stmt = mysqli_prepare($conexion, $sql);
+    if ($stmt) {
+        mysqli_stmt_bind_param(
+            $stmt,
+            'sssdssddsi',
+            $propiedad,
+            $ciudad_param,
+            $consorcio,
+            $porcentaje_param,
+            $padron,
+            $detalle,
+            $mapa_lat,
+            $mapa_lng,
+            $mapa_enlace_param,
+            $id
+        );
+    }
+} else {
+    $sql = "UPDATE propiedades SET 
+            propiedad = ?, 
+            ciudad = ?, 
+            consorcio = ?, 
+            porcentaje = ?, 
+            padron = ?, 
+            detalle = ?
+            WHERE propiedad_id = ?";
+    $stmt = mysqli_prepare($conexion, $sql);
+    if ($stmt) {
+        mysqli_stmt_bind_param(
+            $stmt,
+            'sssdssi',
+            $propiedad,
+            $ciudad_param,
+            $consorcio,
+            $porcentaje_param,
+            $padron,
+            $detalle,
+            $id
+        );
+    }
+}
+
 if (!$stmt) {
-    echo "Error al preparar.";
+    error_log('actualizar_propiedad prepare: ' . mysqli_error($conexion));
+    header('Location: editar_propiedad.php?id=' . $id . '&error=1');
     exit;
 }
-mysqli_stmt_bind_param(
-    $stmt,
-    'sssdssddsi',
-    $propiedad,
-    $ciudad_param,
-    $consorcio,
-    $porcentaje_param,
-    $padron,
-    $detalle,
-    $mapa_lat,
-    $mapa_lng,
-    $mapa_enlace_param,
-    $id
-);
 
 if (mysqli_stmt_execute($stmt)) {
     mysqli_stmt_close($stmt);
-    $existentes = [];
-    $r0 = mysqli_query($conexion, "SELECT fotos_json FROM propiedades WHERE propiedad_id = " . (int)$id . " LIMIT 1");
-    if ($r0 && $row0 = mysqli_fetch_assoc($r0)) {
-        $existentes = propiedades_fotos_desde_json($row0['fotos_json'] ?? null);
-    }
     $nuevas = propiedades_procesar_subida_fotos($id, 'fotos');
-    if (count($nuevas) > 0) {
-        $todas = array_merge($existentes, $nuevas);
-        if (!propiedades_guardar_json_fotos($conexion, $id, $todas)) {
-            error_log('actualizar_propiedad: fotos_json id=' . $id . ' err=' . mysqli_error($conexion));
+    if ($tiene_media) {
+        $existentes = [];
+        $r0 = mysqli_query($conexion, "SELECT fotos_json FROM propiedades WHERE propiedad_id = " . (int)$id . " LIMIT 1");
+        if ($r0 && $row0 = mysqli_fetch_assoc($r0)) {
+            $existentes = propiedades_fotos_desde_json($row0['fotos_json'] ?? null);
         }
+        if (count($nuevas) > 0) {
+            $todas = array_merge($existentes, $nuevas);
+            if (!propiedades_guardar_json_fotos($conexion, $id, $todas)) {
+                error_log('actualizar_propiedad: fotos_json id=' . $id . ' err=' . mysqli_error($conexion));
+            }
+        }
+    } else {
+        propiedades_guardar_mapa_disco($id, $mapa_lat, $mapa_lng, $mapa_enlace);
     }
     header('Location: propiedades.php?ok=1');
 } else {

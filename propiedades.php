@@ -143,7 +143,7 @@ if ($r_consorcios) {
                 $alquilada = !empty($f['nombre_inquilino']);
                 $inicio = !empty($f['inicio']) ? date('d/m/Y', strtotime($f['inicio'])) : '-';
                 $venc = !empty($f['vencimiento']) ? date('d/m/Y', strtotime($f['vencimiento'])) : '-';
-                $n_fotos = count(propiedades_fotos_desde_json($f['fotos_json'] ?? null));
+                $n_fotos = count(propiedades_fotos_unificadas((int)$f['propiedad_id'], $f['fotos_json'] ?? null));
                 $pid = (int)$f['propiedad_id'];
             ?>
             <tr class="fila-propiedad" data-id="<?= $f['propiedad_id'] ?>" onclick="seleccionarPropiedad(<?= $f['propiedad_id'] ?>, this, event)">

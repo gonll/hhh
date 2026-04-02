@@ -21,7 +21,20 @@ if (!$prop) {
     echo "Propiedad no encontrada.";
     exit;
 }
-$fotos_existentes = propiedades_fotos_desde_json($prop['fotos_json'] ?? null);
+$fotos_existentes = propiedades_fotos_unificadas($id, $prop['fotos_json'] ?? null);
+$diskMap = propiedades_leer_mapa_disco($id);
+$val_lat = isset($prop['mapa_lat']) && $prop['mapa_lat'] !== null && $prop['mapa_lat'] !== '' ? (string)$prop['mapa_lat'] : '';
+$val_lng = isset($prop['mapa_lng']) && $prop['mapa_lng'] !== null && $prop['mapa_lng'] !== '' ? (string)$prop['mapa_lng'] : '';
+$val_enlace = isset($prop['mapa_enlace']) ? (string)$prop['mapa_enlace'] : '';
+if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
+    if (isset($diskMap['lat'], $diskMap['lng'])) {
+        $val_lat = (string)$diskMap['lat'];
+        $val_lng = (string)$diskMap['lng'];
+    }
+    if ($val_enlace === '' && !empty($diskMap['enlace'])) {
+        $val_enlace = (string)$diskMap['enlace'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -128,7 +141,7 @@ $fotos_existentes = propiedades_fotos_desde_json($prop['fotos_json'] ?? null);
         <label>Ubicación en mapa (Google Maps)</label>
         <div class="mapa-caja">
             <p>Abra <a href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps</a>, busque el lugar, use <strong>Compartir</strong> y pegue el enlace. Luego pulse <strong>Extraer coordenadas</strong>.</p>
-            <input type="text" id="mapa_enlace" name="mapa_enlace" value="<?= htmlspecialchars($prop['mapa_enlace'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Enlace de Google Maps (opcional)" style="text-transform:none;">
+            <input type="text" id="mapa_enlace" name="mapa_enlace" value="<?= htmlspecialchars($val_enlace, ENT_QUOTES, 'UTF-8') ?>" placeholder="Enlace de Google Maps (opcional)" style="text-transform:none;">
             <div class="fila-map-btn">
                 <button type="button" class="btn-mapa" onclick="extraerCoordsDeEnlaceMaps()">Extraer coordenadas del enlace</button>
                 <button type="button" class="btn-mapa" onclick="window.open('https://www.google.com/maps','_blank')">Abrir Google Maps</button>
@@ -136,11 +149,11 @@ $fotos_existentes = propiedades_fotos_desde_json($prop['fotos_json'] ?? null);
             <div class="mini-coord">
                 <div style="flex:1;">
                     <label style="margin-top:6px;">Latitud</label>
-                    <input type="text" id="mapa_lat" name="mapa_lat" value="<?= isset($prop['mapa_lat']) && $prop['mapa_lat'] !== null && $prop['mapa_lat'] !== '' ? htmlspecialchars((string)$prop['mapa_lat']) : '' ?>" placeholder="-26.8241" inputmode="decimal" style="text-transform:none;">
+                    <input type="text" id="mapa_lat" name="mapa_lat" value="<?= htmlspecialchars($val_lat) ?>" placeholder="-26.8241" inputmode="decimal" style="text-transform:none;">
                 </div>
                 <div style="flex:1;">
                     <label style="margin-top:6px;">Longitud</label>
-                    <input type="text" id="mapa_lng" name="mapa_lng" value="<?= isset($prop['mapa_lng']) && $prop['mapa_lng'] !== null && $prop['mapa_lng'] !== '' ? htmlspecialchars((string)$prop['mapa_lng']) : '' ?>" placeholder="-65.2226" inputmode="decimal" style="text-transform:none;">
+                    <input type="text" id="mapa_lng" name="mapa_lng" value="<?= htmlspecialchars($val_lng) ?>" placeholder="-65.2226" inputmode="decimal" style="text-transform:none;">
                 </div>
             </div>
         </div>
