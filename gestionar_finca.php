@@ -332,7 +332,7 @@ if (!empty($_SESSION['pdt_ultimo_tractor'])) {
 }
 
 // Fincas: mismas opciones que hoja de ruta cosecha + las que ya figuran en PDT
-$fincas_fijas = ['Finca 6', 'Finca 4', 'Finca 7', 'Finca 5', 'Finca 2', 'Finca 10', 'Finca 11', 'Finca 47', 'Finca 29'];
+$fincas_fijas = ['Finca 6', 'Finca 4', 'Finca 7', 'Finca 5', 'Finca 2', 'Finca 10', 'Finca 11', 'Finca 47', 'Finca 29', 'Galpon'];
 $fincas_lista = $fincas_fijas;
 $r_fincas_c = mysqli_query($conexion, "SELECT DISTINCT finca FROM cosecha_hojas_ruta WHERE finca != '' AND finca IS NOT NULL ORDER BY finca");
 if ($r_fincas_c) {

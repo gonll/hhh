@@ -167,7 +167,7 @@ $puede_modificar_eliminar = function($fecha_reg) use ($nivelAcceso, $hoy, $ayer)
 };
 
 // Fincas fijas por defecto + las agregadas por "Nueva finca" (desde BD)
-$fincas_fijas = ['Finca 6', 'Finca 4', 'Finca 7', 'Finca 5', 'Finca 2', 'Finca 10', 'Finca 11', 'Finca 47', 'Finca 29'];
+$fincas_fijas = ['Finca 6', 'Finca 4', 'Finca 7', 'Finca 5', 'Finca 2', 'Finca 10', 'Finca 11', 'Finca 47', 'Finca 29', 'Galpon'];
 $fincas_lista = $fincas_fijas;
 $r_fincas = mysqli_query($conexion, "SELECT DISTINCT finca FROM cosecha_hojas_ruta WHERE finca != '' AND finca IS NOT NULL ORDER BY finca");
 if ($r_fincas) {
