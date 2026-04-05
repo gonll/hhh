@@ -8,6 +8,8 @@
 if (!isset($conexion)) return;
 include_once __DIR__ . '/helpers_propiedad.php';
 
+alquileres_asegurar_columna_incremento($conexion);
+
 $dia = (int)date('j');
 if ($dia < 1) return;
 
@@ -15,29 +17,6 @@ $mes_actual     = date('m/Y');
 $primer_dia     = date('Y-m-01');
 $anio_actual    = (int)date('Y');
 $mes_num_actual = (int)date('m');
-
-/**
- * Coeficiente de actualización según N meses de IPC (N=1..6).
- */
-function liquidar_alquiler_coef_ipc($conexion, $n_meses) {
-    $n = max(1, min(6, (int) $n_meses));
-    $anio_actual = (int) date('Y');
-    $mes_num_actual = (int) date('m');
-    $coef = 1.0;
-    for ($j = 2; $j <= $n + 1; $j++) {
-        $m = $mes_num_actual - $j;
-        $a = $anio_actual;
-        while ($m <= 0) {
-            $m += 12;
-            $a--;
-        }
-        $fecha_ipc = sprintf('%04d-%02d-01', $a, $m);
-        $r = mysqli_query($conexion, "SELECT valor FROM indices WHERE fecha = '$fecha_ipc' AND tipo = 'IPC' LIMIT 1");
-        $v = ($r && $row = mysqli_fetch_assoc($r)) ? (float) $row['valor'] : 0;
-        $coef *= (1 + $v / 100);
-    }
-    return $coef * 1.015;
-}
 
 $contratos = mysqli_query($conexion,
     "SELECT a.propiedad_id, a.inquilino1_id, a.precio_convenido, a.fecha_inicio,

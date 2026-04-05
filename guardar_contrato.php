@@ -12,26 +12,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-/**
- * Columna incremento_alquiler_meses (1–6) si la base es antigua.
- */
-function alquileres_asegurar_columna_incremento($conexion) {
-    static $done = false;
-    if ($done) {
-        return;
-    }
-    $r = mysqli_query($conexion, "SHOW COLUMNS FROM alquileres LIKE 'incremento_alquiler_meses'");
-    if ($r && mysqli_num_rows($r) > 0) {
-        $done = true;
-        return;
-    }
-    $sql = "ALTER TABLE alquileres ADD COLUMN incremento_alquiler_meses TINYINT UNSIGNED NOT NULL DEFAULT 2 COMMENT 'Cada cuántos meses se actualiza el alquiler (1-6)' AFTER plazo_meses";
-    if (!@mysqli_query($conexion, $sql)) {
-        error_log('alquileres_asegurar_columna_incremento: ' . mysqli_error($conexion));
-    }
-    $done = true;
-}
-
 alquileres_asegurar_columna_incremento($conexion);
 
 // Datos que envía el formulario de contrato_alquiler.php
