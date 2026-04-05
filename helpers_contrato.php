@@ -46,4 +46,39 @@ function mesNombre($mes) {
     $m = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
     return $m[(int)$mes - 1] ?? '';
 }
+
+/**
+ * Texto legal para cláusula de actualización del alquiler según periodicidad (1–6 meses).
+ *
+ * @return array{adverbio: string, calculo: string, primer_periodo: string}
+ */
+function contrato_texto_actualizacion_ipc($meses) {
+    $n = max(1, min(6, (int) $meses));
+    $adverbios = [
+        1 => 'mensualmente',
+        2 => 'bimestralmente',
+        3 => 'trimestralmente',
+        4 => 'cuatrimestralmente',
+        5 => 'cada cinco meses',
+        6 => 'semestralmente',
+    ];
+    $adverbio = $adverbios[$n - 1] ?? 'bimestralmente';
+    $calculos = [
+        1 => 'La actualización mensual se calcula con el último mes de IPC disponible más el 1,5%.',
+        2 => 'La actualización bimestral se calcula con los dos últimos meses de IPC disponibles más el 1,5%.',
+        3 => 'La actualización trimestral se calcula con los tres últimos meses de IPC disponibles más el 1,5%.',
+        4 => 'La actualización cuatrimestral se calcula con los cuatro últimos meses de IPC disponibles más el 1,5%.',
+        5 => 'La actualización cada cinco meses se calcula con los cinco últimos meses de IPC disponibles más el 1,5%.',
+        6 => 'La actualización semestral se calcula con los seis últimos meses de IPC disponibles más el 1,5%.',
+    ];
+    $calculo = $calculos[$n - 1] ?? $calculos[1];
+    $primer = $n === 1
+        ? 'el primer mes de vigencia del presente contrato'
+        : 'los primeros ' . $n . ' meses de vigencia del presente contrato';
+    return [
+        'adverbio' => $adverbio,
+        'calculo' => $calculo,
+        'primer_periodo' => $primer,
+    ];
+}
 ?>

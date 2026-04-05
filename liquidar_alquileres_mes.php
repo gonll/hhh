@@ -1,9 +1,9 @@
 <?php
 /**
  * Evalúa si ya se liquidaron los alquileres del mes para cada contrato vigente.
- * Considera fecha_inicio: actualización bimestral usando IPC ante anterior y ante ante anterior + 1,5%.
+ * Actualización según incremento_alquiler_meses (1–6): coeficiente = producto de (1+IPC/100)
+ * sobre los meses M-2 … M-(N+1) × 1,015 (misma lógica que bimestral con N=2).
  * Si corresponde actualización: concepto "ALQUILER ACTUALIZADO - [propiedad]".
- * En el concepto se omite ciudad y provincia de la propiedad.
  */
 if (!isset($conexion)) return;
 include_once __DIR__ . '/helpers_propiedad.php';
@@ -16,26 +16,33 @@ $primer_dia     = date('Y-m-01');
 $anio_actual    = (int)date('Y');
 $mes_num_actual = (int)date('m');
 
-// IPC mes-2 (ante anterior) y mes-3 (ante ante anterior) - ya publicados
-$mes2 = $mes_num_actual - 2;
-$anio2 = $anio_actual;
-if ($mes2 <= 0) { $mes2 += 12; $anio2--; }
-$mes3 = $mes_num_actual - 3;
-$anio3 = $anio_actual;
-if ($mes3 <= 0) { $mes3 += 12; $anio3--; }
-
-$fecha_ipc2 = sprintf('%04d-%02d-01', $anio2, $mes2);
-$fecha_ipc3 = sprintf('%04d-%02d-01', $anio3, $mes3);
-
-$r2 = mysqli_query($conexion, "SELECT valor FROM indices WHERE fecha = '$fecha_ipc2' AND tipo = 'IPC' LIMIT 1");
-$r3 = mysqli_query($conexion, "SELECT valor FROM indices WHERE fecha = '$fecha_ipc3' AND tipo = 'IPC' LIMIT 1");
-$ipc2 = ($r2 && $row2 = mysqli_fetch_assoc($r2)) ? (float)$row2['valor'] : 0;
-$ipc3 = ($r3 && $row3 = mysqli_fetch_assoc($r3)) ? (float)$row3['valor'] : 0;
-
-$coef_actualizacion = (1 + $ipc2/100) * (1 + $ipc3/100) * 1.015;
+/**
+ * Coeficiente de actualización según N meses de IPC (N=1..6).
+ */
+function liquidar_alquiler_coef_ipc($conexion, $n_meses) {
+    $n = max(1, min(6, (int) $n_meses));
+    $anio_actual = (int) date('Y');
+    $mes_num_actual = (int) date('m');
+    $coef = 1.0;
+    for ($j = 2; $j <= $n + 1; $j++) {
+        $m = $mes_num_actual - $j;
+        $a = $anio_actual;
+        while ($m <= 0) {
+            $m += 12;
+            $a--;
+        }
+        $fecha_ipc = sprintf('%04d-%02d-01', $a, $m);
+        $r = mysqli_query($conexion, "SELECT valor FROM indices WHERE fecha = '$fecha_ipc' AND tipo = 'IPC' LIMIT 1");
+        $v = ($r && $row = mysqli_fetch_assoc($r)) ? (float) $row['valor'] : 0;
+        $coef *= (1 + $v / 100);
+    }
+    return $coef * 1.015;
+}
 
 $contratos = mysqli_query($conexion,
-    "SELECT a.propiedad_id, a.inquilino1_id, a.precio_convenido, a.fecha_inicio, p.propiedad AS nombre_propiedad
+    "SELECT a.propiedad_id, a.inquilino1_id, a.precio_convenido, a.fecha_inicio,
+            COALESCE(a.incremento_alquiler_meses, 2) AS incremento_alquiler_meses,
+            p.propiedad AS nombre_propiedad
      FROM alquileres a
      INNER JOIN propiedades p ON a.propiedad_id = p.propiedad_id
      WHERE a.estado = 'VIGENTE'"
@@ -46,6 +53,7 @@ while ($c = mysqli_fetch_assoc($contratos)) {
     $inquilino_id   = (int)$c['inquilino1_id'];
     $precio         = (float)$c['precio_convenido'];
     $fecha_inicio   = $c['fecha_inicio'];
+    $incr_meses     = max(1, min(6, (int) $c['incremento_alquiler_meses']));
     $nombre_prop    = mysqli_real_escape_string($conexion, strtoupper(omitir_ciudad_provincia(trim($c['nombre_propiedad']))));
     $concepto_base  = 'ALQUILER - ' . $nombre_prop;
     $concepto_act   = 'ALQUILER ACTUALIZADO - ' . strtoupper($nombre_prop);
@@ -81,7 +89,9 @@ while ($c = mysqli_fetch_assoc($contratos)) {
     $mes_inicio   = (int)date('m', $ts_inicio);
     $meses_desde_inicio = ($anio_actual - $anio_inicio) * 12 + ($mes_num_actual - $mes_inicio);
 
-    $aplica_actualizacion = ($meses_desde_inicio >= 2 && ($meses_desde_inicio % 2 == 0));
+    $aplica_actualizacion = ($meses_desde_inicio >= $incr_meses && ($meses_desde_inicio % $incr_meses == 0));
+
+    $coef_actualizacion = liquidar_alquiler_coef_ipc($conexion, $incr_meses);
 
     if ($aplica_actualizacion && $coef_actualizacion > 0) {
         // Buscar último monto de ALQUILER para esta propiedad (no de otras propiedades del mismo inquilino)

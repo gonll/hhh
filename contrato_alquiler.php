@@ -22,7 +22,7 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
     <title>Nuevo Contrato - HHH</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
-        .caja { background: white; padding: 12px; border-radius: 8px; width: 750px; margin: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .caja { background: white; padding: 12px; border-radius: 8px; max-width: 920px; width: 100%; margin: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); box-sizing: border-box; }
         h3 { margin-top: 0; color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 5px; font-size: 12px; text-transform: uppercase; }
         .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .campo-completo { grid-column: span 2; }
@@ -36,6 +36,13 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
         .btn-accion:hover { background: #e0a800; }
         .volver { display: inline-block; padding: 6px 12px; text-decoration: none; background: #28a745; color: white; font-weight: bold; font-size: 10px; border-radius: 4px; }
         .volver:hover { background: #218838; }
+        .fotos-muestra { margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; }
+        .fotos-muestra label { margin-bottom: 6px; }
+        .fotos-grid { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .fotos-grid img { width: 120px; height: 90px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; }
+        .fotos-muestra-vacio { font-size: 10px; color: #888; font-style: italic; }
+        input[readonly].nav-enter { background: #f5f5f5; color: #333; }
+        .hint-destino { font-size: 8px; font-weight: normal; color: #555; text-transform: none; }
     </style>
 </head>
 <body>
@@ -57,6 +64,12 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
                         </option>
                     <?php endwhile; ?>
                 </select>
+            </div>
+
+            <div id="fotosPropiedadWrap" class="campo-completo fotos-muestra" style="display: none;">
+                <label>Fotos de la propiedad</label>
+                <div id="fotosPropiedad" class="fotos-grid"></div>
+                <div id="fotosPropiedadEmpty" class="fotos-muestra-vacio" style="display: none;">Sin fotos cargadas para esta propiedad.</div>
             </div>
 
             <div class="buscador-contenedor">
@@ -85,15 +98,29 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
                 <div id="sug_cod2" class="sugerencias"></div>
             </div>
 
+            <div class="campo-completo">
+                <label>Destino <span class="hint-destino">(vigencia pactada: vivienda 2 años; consultorio, oficina o comercial 3 años)</span></label>
+                <select id="destino" class="nav-enter" onchange="aplicarDestinoPlazo()">
+                    <option value="VIVIENDA" data-meses="24">VIVIENDA — 2 AÑOS</option>
+                    <option value="CONSULTORIO" data-meses="36">CONSULTORIO — 3 AÑOS</option>
+                    <option value="OFICINA" data-meses="36">OFICINA — 3 AÑOS</option>
+                    <option value="COMERCIAL" data-meses="36">COMERCIAL — 3 AÑOS</option>
+                </select>
+            </div>
+
             <div>
-                <label>Plazo (Meses)</label>
-                <input type="number" id="plazo" class="nav-enter" value="24" required onchange="recalcularFechaFin()">
+                <label>Plazo (meses)</label>
+                <input type="number" id="plazo" class="nav-enter" value="24" required readonly title="Se ajusta según el destino elegido">
             </div>
             <div>
-                <label>Destino</label>
-                <select id="destino" class="nav-enter">
-                    <option value="VIVIENDA">VIVIENDA</option>
-                    <option value="CONSULTORIO">CONSULTORIO</option>
+                <label>Incremento del alquiler (cada cuántos meses)</label>
+                <select id="incremento_alquiler_meses" class="nav-enter">
+                    <option value="1">1 MES</option>
+                    <option value="2" selected>2 MESES</option>
+                    <option value="3">3 MESES</option>
+                    <option value="4">4 MESES</option>
+                    <option value="5">5 MESES</option>
+                    <option value="6">6 MESES</option>
                 </select>
             </div>
 
@@ -128,6 +155,14 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
 
 <script>
 let infoProp = { padron: '', detalle: '' };
+
+function aplicarDestinoPlazo() {
+    const sel = document.getElementById('destino');
+    const opt = sel.options[sel.selectedIndex];
+    const meses = parseInt(opt.getAttribute('data-meses') || '24', 10);
+    document.getElementById('plazo').value = meses;
+    recalcularFechaFin();
+}
 
 // FUNCIÓN CLAVE: Recalcula la fecha fin sumando los meses y buscando el último día
 function recalcularFechaFin() {
@@ -189,6 +224,42 @@ function actualizarInfoProp() {
     const opt = sel.options[sel.selectedIndex];
     infoProp.padron = opt.getAttribute('data-padron') || '';
     infoProp.detalle = opt.getAttribute('data-detalle') || '';
+    const id = sel.value;
+    const wrap = document.getElementById('fotosPropiedadWrap');
+    const grid = document.getElementById('fotosPropiedad');
+    const empty = document.getElementById('fotosPropiedadEmpty');
+    if (!wrap || !grid) return;
+    if (!id) {
+        wrap.style.display = 'none';
+        grid.innerHTML = '';
+        if (empty) empty.style.display = 'none';
+        return;
+    }
+    wrap.style.display = 'block';
+    grid.innerHTML = '';
+    if (empty) empty.style.display = 'none';
+    fetch('fotos_propiedad_json.php?id=' + encodeURIComponent(id))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            const fotos = (data && data.fotos) ? data.fotos : [];
+            grid.innerHTML = '';
+            if (fotos.length === 0) {
+                if (empty) empty.style.display = 'block';
+                return;
+            }
+            if (empty) empty.style.display = 'none';
+            fotos.forEach(function(url) {
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = 'Foto propiedad';
+                img.loading = 'lazy';
+                img.onclick = function() { window.open(url, '_blank', 'noopener'); };
+                grid.appendChild(img);
+            });
+        })
+        .catch(function() {
+            if (empty) { empty.style.display = 'block'; empty.textContent = 'No se pudieron cargar las fotos.'; }
+        });
 }
 
 function calcularDeposito(precio) {
@@ -237,7 +308,8 @@ function validarYEnviar() {
         fecha_firma: document.getElementById('fecha_firma').value,
         deposito: document.getElementById('deposito').value,
         padron: infoProp.padron,
-        detalle: infoProp.detalle
+        detalle: infoProp.detalle,
+        incremento_alquiler_meses: document.getElementById('incremento_alquiler_meses').value
     };
 
     if (!d.propiedad_id || !d.inq1_id || !d.cod1_id || !d.precio) {
@@ -275,7 +347,7 @@ document.addEventListener('keydown', function(e) {
 }, true);
 
 document.addEventListener('DOMContentLoaded', function () {
-    recalcularFechaFin();
+    aplicarDestinoPlazo();
 });
 </script>
 <?php include 'timeout_sesion_inc.php'; ?>

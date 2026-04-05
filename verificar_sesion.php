@@ -6,6 +6,7 @@ $scriptApiJson = basename($_SERVER['SCRIPT_NAME'] ?? '');
 $esApiJson = in_array($scriptApiJson, [
     'eliminar_liq_expensas_periodo.php',
     'borrar_todos_liq_expensas.php',
+    'fotos_propiedad_json.php',
 ], true);
 
 if (empty($_SESSION['acceso_id']) || !isset($_SESSION['acceso_nivel'])) {

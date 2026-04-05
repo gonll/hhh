@@ -12,6 +12,28 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+/**
+ * Columna incremento_alquiler_meses (1–6) si la base es antigua.
+ */
+function alquileres_asegurar_columna_incremento($conexion) {
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $r = mysqli_query($conexion, "SHOW COLUMNS FROM alquileres LIKE 'incremento_alquiler_meses'");
+    if ($r && mysqli_num_rows($r) > 0) {
+        $done = true;
+        return;
+    }
+    $sql = "ALTER TABLE alquileres ADD COLUMN incremento_alquiler_meses TINYINT UNSIGNED NOT NULL DEFAULT 2 COMMENT 'Cada cuántos meses se actualiza el alquiler (1-6)' AFTER plazo_meses";
+    if (!@mysqli_query($conexion, $sql)) {
+        error_log('alquileres_asegurar_columna_incremento: ' . mysqli_error($conexion));
+    }
+    $done = true;
+}
+
+alquileres_asegurar_columna_incremento($conexion);
+
 // Datos que envía el formulario de contrato_alquiler.php
 $propiedad_id  = (int)$_POST['propiedad_id'];
 $inq1_id       = (int)$_POST['inq1_id'];
@@ -19,6 +41,10 @@ $inq2_id       = isset($_POST['inq2_id']) && $_POST['inq2_id'] !== '' ? (int)$_P
 $cod1_id       = (int)$_POST['cod1_id'];
 $cod2_id       = isset($_POST['cod2_id']) && $_POST['cod2_id'] !== '' ? (int)$_POST['cod2_id'] : null;
 $plazo         = (int)$_POST['plazo'];
+$incremento_alquiler_meses = isset($_POST['incremento_alquiler_meses']) ? (int)$_POST['incremento_alquiler_meses'] : 2;
+if ($incremento_alquiler_meses < 1 || $incremento_alquiler_meses > 6) {
+    $incremento_alquiler_meses = 2;
+}
 $destino       = mysqli_real_escape_string($conexion, $_POST['destino']);
 $fecha_inicio  = trim((string)($_POST['fecha_inicio'] ?? ''));
 $fecha_fin     = trim((string)($_POST['fecha_fin'] ?? ''));
@@ -61,10 +87,10 @@ try {
     // Inquilino2 y codeudor2: NULL si no se enviaron
     $sqlAlquiler = "INSERT INTO alquileres (
         propiedad_id, inquilino1_id, inquilino2_id, codeudor1_id, codeudor2_id,
-        plazo_meses, destino, fecha_inicio, fecha_fin, precio_convenido, monto_deposito, fecha_firma, estado
+        plazo_meses, incremento_alquiler_meses, destino, fecha_inicio, fecha_fin, precio_convenido, monto_deposito, fecha_firma, estado
     ) VALUES (
         ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, 'VIGENTE'
+        ?, ?, ?, ?, ?, ?, ?, ?, 'VIGENTE'
     )";
     $stmtAlq = mysqli_prepare($conexion, $sqlAlquiler);
     if (!$stmtAlq) {
@@ -72,17 +98,16 @@ try {
     }
     $inq2_param = $inq2_id ?: null;
     $cod2_param = $cod2_id ?: null;
-    /* 12 params: i×6 + s×4 (destino, inicio, fin, firma) + d×2. Cadena correcta: iiii iisssdds.
-     * Si faltaba una 's', fecha_fin se enlazaba como 'd' y PHP convertía la fecha a float → 2028 → error DATE. */
     mysqli_stmt_bind_param(
         $stmtAlq,
-        'iiiiiisssdds',
+        'iiiiiiisssdds',
         $propiedad_id,
         $inq1_id,
         $inq2_param,
         $cod1_id,
         $cod2_param,
         $plazo,
+        $incremento_alquiler_meses,
         $destino,
         $fecha_inicio,
         $fecha_fin,
