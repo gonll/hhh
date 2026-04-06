@@ -139,7 +139,7 @@ if (mysqli_stmt_execute($stmt)) {
     } else {
         propiedades_guardar_mapa_disco($id, $mapa_lat, $mapa_lng, $mapa_enlace);
     }
-    header('Location: propiedades.php?ok=1');
+    header('Location: editar_propiedad.php?id=' . $id . '&ok=1');
 } else {
     error_log('actualizar_propiedad execute: ' . mysqli_stmt_error($stmt));
     mysqli_stmt_close($stmt);

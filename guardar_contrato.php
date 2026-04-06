@@ -2,6 +2,7 @@
 include 'db.php';
 include 'verificar_sesion.php';
 include 'helpers_propiedad.php';
+require_once __DIR__ . '/includes/alquileres_modelo_contrato.php';
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=sin_permiso');
     exit;
@@ -13,8 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 alquileres_asegurar_columna_incremento($conexion);
+alquileres_asegurar_columna_modelo_contrato($conexion);
 
 // Datos que envía el formulario de contrato_alquiler.php
+$modelo_contrato_raw = strtoupper(trim((string)($_POST['modelo_contrato'] ?? 'HYLL')));
+$modelo_contrato = in_array($modelo_contrato_raw, ['HYLL', 'BGH'], true) ? $modelo_contrato_raw : 'HYLL';
+$modelo_contrato_esc = mysqli_real_escape_string($conexion, $modelo_contrato);
+
 $propiedad_id  = (int)$_POST['propiedad_id'];
 $inq1_id       = (int)$_POST['inq1_id'];
 $inq2_id       = isset($_POST['inq2_id']) && $_POST['inq2_id'] !== '' ? (int)$_POST['inq2_id'] : null;
@@ -67,10 +73,10 @@ try {
     // Inquilino2 y codeudor2: NULL si no se enviaron
     $sqlAlquiler = "INSERT INTO alquileres (
         propiedad_id, inquilino1_id, inquilino2_id, codeudor1_id, codeudor2_id,
-        plazo_meses, incremento_alquiler_meses, destino, fecha_inicio, fecha_fin, precio_convenido, monto_deposito, fecha_firma, estado
+        plazo_meses, incremento_alquiler_meses, destino, modelo_contrato, fecha_inicio, fecha_fin, precio_convenido, monto_deposito, fecha_firma, estado
     ) VALUES (
         ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?, 'VIGENTE'
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, 'VIGENTE'
     )";
     $stmtAlq = mysqli_prepare($conexion, $sqlAlquiler);
     if (!$stmtAlq) {
@@ -80,7 +86,7 @@ try {
     $cod2_param = $cod2_id ?: null;
     mysqli_stmt_bind_param(
         $stmtAlq,
-        'iiiiiiisssdds',
+        'iiiiiiissssdds',
         $propiedad_id,
         $inq1_id,
         $inq2_param,
@@ -89,6 +95,7 @@ try {
         $plazo,
         $incremento_alquiler_meses,
         $destino,
+        $modelo_contrato_esc,
         $fecha_inicio,
         $fecha_fin,
         $precio,

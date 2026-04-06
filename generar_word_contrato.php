@@ -3,6 +3,8 @@ include 'db.php';
 include 'verificar_sesion.php';
 include 'helpers_contrato.php';
 include 'config_contrato.php';
+require_once __DIR__ . '/includes/alquileres_modelo_contrato.php';
+alquileres_asegurar_columna_modelo_contrato($conexion);
 
 if (!isset($_GET['id'])) {
     die("Error: No se especificó la propiedad.");
@@ -10,11 +12,11 @@ if (!isset($_GET['id'])) {
 
 $id_prop = (int)$_GET['id'];
 
-$sql = "SELECT a.*, p.propiedad, p.ciudad, p.padron, p.detalle as prop_detalle, p.propietario_id,
+$sql = "SELECT a.*, p.propiedad, p.ciudad, p.padron, p.consorcio, p.detalle as prop_detalle, p.propietario_id,
                prop.apellido as prop_nom, prop.cuit as prop_cuit, prop.dni as prop_dni, prop.domicilio as prop_dom,
-               u1.apellido as inq1_nom, u1.dni as inq1_dni, u1.domicilio as inq1_dom, u1.email as inq1_email,
+               u1.apellido as inq1_nom, u1.dni as inq1_dni, u1.domicilio as inq1_dom, u1.email as inq1_email, u1.cuit as inq1_cuit,
                u2.apellido as inq2_nom, u2.dni as inq2_dni, u2.email as inq2_email,
-               c1.apellido as cod1_nom, c1.dni as cod1_dni, c1.domicilio as cod1_dom,
+               c1.apellido as cod1_nom, c1.dni as cod1_dni, c1.domicilio as cod1_dom, c1.cuit as cod1_cuit,
                c2.apellido as cod2_nom, c2.dni as cod2_dni, c2.domicilio as cod2_dom
         FROM alquileres a
         INNER JOIN propiedades p ON a.propiedad_id = p.propiedad_id
@@ -104,6 +106,44 @@ $destino = strtoupper($c['destino'] ?? 'VIVIENDA');
 $es_vivienda = ($destino === 'VIVIENDA');
 $texto_tipo_locacion = $es_vivienda ? 'para vivienda' : 'para uso ' . strtolower($destino);
 
+$modelo = strtoupper(trim($c['modelo_contrato'] ?? 'HYLL'));
+if ($modelo !== 'BGH') {
+    $modelo = 'HYLL';
+}
+
+if ($modelo === 'BGH') {
+    $plazo_letras = function_exists('mb_strtolower')
+        ? mb_strtolower(numerosALetras($plazo), 'UTF-8')
+        : strtolower(numerosALetras($plazo));
+    $loc_cuit_txt = (!empty($c['prop_cuit']) && trim((string) $c['prop_cuit']) !== '')
+        ? preg_replace('/\D/', '', (string) $c['prop_cuit'])
+        : '……………………………';
+    $inq1_cuit_txt = (!empty($c['inq1_cuit']) && trim((string) $c['inq1_cuit']) !== '')
+        ? preg_replace('/\D/', '', (string) $c['inq1_cuit'])
+        : '……………………………';
+    $locatario_partes = strtoupper(trim((string) ($c['inq1_nom'] ?? '')));
+    if (!empty($c['inq2_nom'])) {
+        $locatario_partes .= ' Y ' . strtoupper(trim((string) $c['inq2_nom']));
+    }
+    $consorcio_txt = trim((string) ($c['consorcio'] ?? '')) !== ''
+        ? trim((string) $c['consorcio'])
+        : '……………………';
+    $rubro_txt = $destino;
+    $dni_cod1 = preg_replace('/\D/', '', (string) ($c['cod1_dni'] ?? ''));
+    $cuil_cod1 = (!empty($c['cod1_cuit']) && trim((string) $c['cod1_cuit']) !== '')
+        ? preg_replace('/\D/', '', (string) $c['cod1_cuit'])
+        : '……………………………';
+    $cod1_fianza_txt = 'la señora/el señor ' . strtoupper((string) ($c['cod1_nom'] ?? ''))
+        . ', D.N.I. N° ' . $dni_cod1 . ', CUIL/CUIT N° ' . $cuil_cod1
+        . ', argentina, mayor de edad, con domicilio en '
+        . strtoupper(trim((string) ($c['cod1_dom'] ?? '……………………………………………'))) . ', Tucumán.';
+    $inq1_email = $inquilino_mail;
+
+    ob_start();
+    include __DIR__ . '/plantilla_word_contrato_bgh_oficinas.php';
+    $html = ob_get_clean();
+} else {
+
 // Generar contenido en formato Word (HTML compatible con Microsoft Word)
 ob_start();
 ?>
@@ -176,13 +216,16 @@ p { margin: 0 0 12pt; line-height: 1.5; }
 <?php
 $html = ob_get_clean();
 
+} // fin modelo HYLL
+
 // Carpeta desde config_contrato.php (Documents/contratos de alquiler o fallback)
 $docs = $RUTA_CONTRATOS;
 if (!is_dir($docs)) {
     @mkdir($docs, 0755, true);
 }
 
-$nombre_archivo = 'Contrato_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $c['inq1_nom']) . '_' . date('Y-m-d_His') . '.doc';
+$sufijo_modelo = ($modelo === 'BGH') ? '_BGH' : '';
+$nombre_archivo = 'Contrato_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $c['inq1_nom']) . $sufijo_modelo . '_' . date('Y-m-d_His') . '.doc';
 $ruta_completa = $docs . DIRECTORY_SEPARATOR . $nombre_archivo;
 
 $guardado_ok = false;

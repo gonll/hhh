@@ -146,6 +146,13 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
                 <label>Monto Depósito Garantía ($) - 1.5 alquileres</label>
                 <input type="number" id="deposito" class="nav-enter" placeholder="0.00" required>
             </div>
+            <div>
+                <label>Tipo de contrato</label>
+                <select id="modelo_contrato" class="nav-enter" title="HyLL: modelo estándar H&amp;L (16 cláusulas, ICL). BGH: locación comercial oficinas (texto extendido).">
+                    <option value="HYLL" selected>HyLL — modelo estándar (actual)</option>
+                    <option value="BGH">BGH — oficinas (plantilla extendida)</option>
+                </select>
+            </div>
         </div>
 
         <button type="button" id="btnHacerContrato" class="btn-accion" onclick="validarYEnviar()">Hacer Contrato</button>
@@ -307,6 +314,7 @@ function validarYEnviar() {
         precio: document.getElementById('precio').value,
         fecha_firma: document.getElementById('fecha_firma').value,
         deposito: document.getElementById('deposito').value,
+        modelo_contrato: document.getElementById('modelo_contrato').value,
         padron: infoProp.padron,
         detalle: infoProp.detalle,
         incremento_alquiler_meses: document.getElementById('incremento_alquiler_meses').value

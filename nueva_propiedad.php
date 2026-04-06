@@ -33,15 +33,16 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
         label { display: block; margin: 6px 0 3px; font-size: 10px; font-weight: bold; color: #555; text-transform: uppercase; }
         input, textarea { width: 100%; padding: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; text-transform: uppercase; font-size: 11px; }
         textarea { min-height: 50px; resize: vertical; }
+        textarea#detalle { text-transform: none; }
         .btns { margin-top: 12px; display: flex; gap: 10px; }
         button, .btn-cancelar { flex: 1; padding: 7px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-align: center; text-decoration: none; font-size: 11px; }
         button { background: #28a745; color: white; }
         .btn-cancelar { background: #ffc107; color: #333; display: block; }
         .btn-cancelar:hover { background: #e0a800; }
         button:hover { background: #218838; }
-        .btn-detalle { background: #17a2b8; color: white; padding: 4px 8px; font-size: 10px; margin-right: 6px; margin-bottom: 4px; }
+        .btn-detalle { background: #17a2b8; color: white; padding: 4px 7px; font-size: 9px; margin: 0; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; line-height: 1.2; }
         .btn-detalle:hover { background: #138496; }
-        .carga-rapida { margin-bottom: 6px; }
+        .carga-rapida { margin-bottom: 6px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 5px 6px; max-width: 100%; }
         .buscador-contenedor { position: relative; }
         .buscador-contenedor input[type="text"] { padding-right: 36px; }
         .buscador-contenedor .ico-lupa { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #6c757d; font-size: 1rem; }
@@ -102,6 +103,12 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
             <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Un dormitorio con placar completo, baño completo con grifería FV y loza Ferrun revestido con cerámico en perfectas condiciones, cocina revestida en cerámico, con alacena en buen estado de conservación, bacha de acero inoxidable con monocomando, con cocina y lavadero marca Ferrun, todo recién pintado, piso de cerámico, todo en perfecto estado de conservación.'">1 dormitorio</button>
             <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Dos dormitorios con placares completo, baño completo con grifería FV y loza Ferrun revestido con cerámico en perfectas condiciones, cocina revestida en cerámico, con bacha de acero inoxidable y monocomando fv, con alacena en buen estado de conservación, con cocina y lavadero marca Ferrun y grifería FV, con monocomando, toilette completo con grifería FV y loza Ferrun, todo recién pintado, piso de cerámico, todo en perfecto estado de conservación.'">2 dormitorios</button>
             <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Tres dormitorios con placares completo, baño completo con grifería FV y loza Ferrun revestido con cerámico en perfectas condiciones, cocina revestida en cerámico, con bacha de acero inoxidable y monocomando fv, con alacena en buen estado de conservación, con cocina y lavadero marca Ferrun y grifería FV, con monocomando, toilette completo con grifería FV y loza Ferrun, todo recién pintado, piso de cerámico, todo en perfecto estado de conservación.'">3 dormitorios</button>
+            <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Monoambiente con placard completo, baño completo con grifería FV y loza Ferrun revestido con cerámico en perfectas condiciones, cocina integrada revestida en cerámico, bacha de acero inoxidable con monocomando, alacena en buen estado, cocina y lavadero marca Ferrun, todo recién pintado, piso de cerámico, todo en perfecto estado de conservación.'">Monoambiente</button>
+            <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Oficina o local comercial con baño completo con grifería FV, revestimientos en cerámico en buen estado, instalaciones eléctricas y de iluminación en condiciones de uso, piso de cerámico o similar, frente vidriado o según diseño de la unidad, todo en estado de conservación acorde al uso comercial.'">Oficina / local</button>
+            <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Cochera cubierta o descubierta según unidad, con acceso y medidas habituales de consorcio, piso en condiciones de uso, iluminación según instalación existente, cerramiento o portón según corresponda a la unidad funcional, en estado de conservación adecuado.'">Cochera</button>
+            <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Consultorio u ambiente profesional con baño completo con grifería FV y loza Ferrun revestido con cerámico, recepción o espera según distribución, instalaciones aptas para actividad profesional, piso de cerámico, pintura en buen estado, todo en condiciones sanitarias y de conservación adecuadas.'">Consultorio</button>
+            <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='PH o dúplex con escalera interna, dormitorios con placares, baño completo y toilette según distribución, cocina y lavadero con grifería FV y loza Ferrun, revestimientos en cerámico, alacenas en buen estado, todo recién pintado donde corresponda, piso de cerámico, en perfecto estado de conservación general.'">Dúplex / PH</button>
+            <button type="button" class="btn-detalle" onclick="document.getElementById('detalle').value='Casa o vivienda en planta con ambientes según distribución, baño completo con grifería FV y loza Ferrun, cocina y lavadero, revestimientos en cerámico, aberturas y cerramientos en buen estado, patio o espacio exterior si corresponde, todo recién pintado según estado, en buen estado de conservación.'">Casa</button>
         </div>
         
         <label>Detalle técnico</label>

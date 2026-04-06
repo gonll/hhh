@@ -7,6 +7,8 @@ $archivo_respaldo = hacerRespaldoAutomatico(); // Ejecutar respaldo si no se hiz
 if ((int)date('j') > 10) include 'actualizar_ipc_desde_api.php';
 include 'liquidar_alquileres_mes.php'; // Liquidar alquileres del mes si aún no se cargaron (desde día 1)
 // Consulta para listar usuarios, poniendo a "CAJA" (ID 1) primero, con fecha fin de contrato vigente
+// Excluye usuario técnico del libro Transferencias (movimientos de nivelación)
+$ap_excl_libro_transf = mysqli_real_escape_string($conexion, 'TRANSFERENCIAS (LIBRO)');
 $sql = "SELECT u.*, 
         (SELECT a.fecha_fin 
          FROM alquileres a 
@@ -15,6 +17,7 @@ $sql = "SELECT u.*,
          ORDER BY a.fecha_fin DESC 
          LIMIT 1) as fecha_fin_contrato
         FROM usuarios u 
+        WHERE u.apellido <> '$ap_excl_libro_transf'
         ORDER BY (u.id = 1) DESC, u.apellido ASC";
 $resultado = mysqli_query($conexion, $sql);
 
@@ -189,6 +192,8 @@ if ($nivelAcceso === 3) {
         .fila-seleccionada .btn-edit-inline { display: block; }
 
         .fila-seleccionada { background-color: #e7f3ff !important; font-weight: bold; border-left: 3px solid #007bff; }
+        .fila-libro-transfer { background: #f0f9ff; border-left: 3px solid #17a2b8; }
+        .fila-libro-transfer.fila-seleccionada { background-color: #d1ecf1 !important; border-left-color: #117a8b; }
         .fila-mov-seleccionada { background-color: #fff9c4 !important; outline: 1px solid #fbc02d; }
 
         .btn-caja { flex: 0 0 25%; padding: 12px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; opacity: 0.3; pointer-events: none; text-transform: uppercase; }
@@ -288,6 +293,11 @@ if ($nivelAcceso === 3) {
                                     $btnEdit
                                 </td>
                               </tr>";
+                        if ((int)$f['id'] === 1) {
+                            echo "<tr class=\"fila-libro-transfer\" data-id=\"-99\" onclick=\"cargarLibroTransferencias(this)\">
+                                <td><span class=\"nombre-txt\">TRANSFERENCIAS</span></td>
+                              </tr>";
+                        }
                     } ?>
                 </tbody>
             </table>
@@ -401,6 +411,7 @@ if ($nivelAcceso === 3) {
                                 <option value="CHEQUE/ECHEQ">CHEQUE/ECHEQ</option>
                                 <option value="SUELDO/EXTRAS">SUELDO/EXTRAS</option>
                                 <option value="MORA">MORA</option>
+                                <option value="NIVELACION TRANSF">NIVELACIÓN TRANSF (ajuste libro)</option>
                             </select>
                         </td>
                         <td><input type="text" id="ins_refer" style="width:95%"></td>
@@ -777,7 +788,9 @@ if ($nivelAcceso === 3) {
 
 <script src="informe_azucar.js"></script>
 <script>
-let uSel = null; 
+let uSel = null;
+/** Libro global transferencias (no caja): id ficticio en lista */
+const USUARIO_LIBRO_TRANSF = -99;
 let tipo = ''; 
 let movSel = null;
 let esConsorcioUsuario = false;
@@ -852,8 +865,8 @@ function cargarMovimientos(fila, id) {
     
     var btnIng = document.getElementById("btnIngreso");
     var btnRet = document.getElementById("btnRetiro");
-    if (btnIng) btnIng.classList.add("btn-activo");
-    if (btnRet) btnRet.classList.add("btn-activo");
+    if (btnIng) { btnIng.style.opacity = ""; btnIng.style.pointerEvents = ""; btnIng.classList.add("btn-activo"); }
+    if (btnRet) { btnRet.style.opacity = ""; btnRet.style.pointerEvents = ""; btnRet.classList.add("btn-activo"); }
     document.getElementById("btnWord").style.display = "none";
     
     // Construir título con fecha de fin de contrato si existe
@@ -1001,6 +1014,92 @@ function cargarMovimientos(fila, id) {
         });
 }
 
+function cargarLibroTransferencias(fila) {
+    uSel = USUARIO_LIBRO_TRANSF;
+    document.querySelectorAll("#cuerpo tr").forEach(function(r) { r.classList.remove("fila-seleccionada"); });
+    fila.classList.add("fila-seleccionada");
+
+    var btnIng = document.getElementById("btnIngreso");
+    var btnRet = document.getElementById("btnRetiro");
+    if (btnIng) { btnIng.classList.add("btn-activo"); btnIng.style.opacity = ""; btnIng.style.pointerEvents = ""; }
+    if (btnRet) { btnRet.classList.add("btn-activo"); btnRet.style.opacity = ""; btnRet.style.pointerEvents = ""; }
+    document.getElementById("btnWord").style.display = "none";
+
+    document.getElementById("tituloMovimientos").innerText = "TRANSFERENCIAS — transferencias y nivelaciones (no Caja efectivo). Ingreso/Retiro: indique el motivo en concepto.";
+
+    esConsorcioUsuario = false;
+    esArrendadorUsuario = false;
+    var panelCons = document.getElementById("panelConsorcio");
+    var panelExtra = document.getElementById("panelBotonesExtra");
+    var resumenLinea = document.getElementById("resumenConsorcioLinea");
+    var btnResumenCtas = document.getElementById("btnResumenCtas");
+    if (panelCons) panelCons.style.display = "none";
+    if (panelExtra) panelExtra.style.display = "none";
+    if (resumenLinea) resumenLinea.style.display = "none";
+    if (btnResumenCtas) btnResumenCtas.style.display = "none";
+    var panelCobroCaja = document.getElementById("panelCobroCaja");
+    if (panelCobroCaja) { panelCobroCaja.style.display = "none"; resetCobroCaja(); }
+    var migrarCtrl = document.getElementById("migrar-saldo-control");
+    if (migrarCtrl) migrarCtrl.style.display = "none";
+
+    var filaCarga = document.getElementById("filaCarga");
+    if (filaCarga) filaCarga.style.display = "none";
+    actualizarCheckGrabarCaja();
+
+    movScrollData = { first_fecha: '', first_id: 0, last_fecha: '', last_id: 0, has_more_older: false, has_more_newer: false, loading: false };
+    fetch("obtener_movimientos_transferencias.php")
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById("tablaMovimientos").innerHTML = data.html;
+            movScrollData.first_fecha = data.first_fecha || '';
+            movScrollData.first_id = data.first_id || 0;
+            movScrollData.last_fecha = data.last_fecha || '';
+            movScrollData.last_id = data.last_id || 0;
+            movScrollData.has_more_older = !!data.has_more_older;
+            movScrollData.has_more_newer = !!data.has_more_newer;
+            actualizarBtnCargarAnteriores();
+            var saldo = parseFloat(data.saldo_actual);
+            saldoActualCuenta = isNaN(saldo) ? 0 : saldo;
+            var saldoEl = document.getElementById("migrar-saldo-actual");
+            if (saldoEl) {
+                saldoEl.setAttribute("data-valor", isNaN(saldo) ? "0" : saldo);
+                saldoEl.textContent = (isNaN(saldo) ? "--" : "$ " + saldo.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            }
+            actualizarSaldoCobroPanel();
+            actualizarDiferenciaMigrar();
+            var scrollEl = document.getElementById("scrollMovimientos");
+            var tbody = document.getElementById("tablaMovimientos");
+            if (scrollEl && tbody) {
+                function scrollAlUltimo() {
+                    var ultimaFila = tbody.querySelector("tr.fila-mov:last-child");
+                    if (ultimaFila) ultimaFila.scrollIntoView({ behavior: "auto", block: "end" });
+                    scrollEl.scrollTop = scrollEl.scrollHeight;
+                }
+                requestAnimationFrame(function() {
+                    scrollAlUltimo();
+                    setTimeout(function() { scrollAlUltimo(); onScrollMovimientos(); }, 150);
+                });
+            }
+        })
+        .catch(function() {
+            document.getElementById("tablaMovimientos").innerHTML = "<tr><td colspan='7' style='text-align:center; padding:30px; color:red;'>Error al cargar transferencias</td></tr>";
+            movScrollData = null;
+            saldoActualCuenta = 0;
+            actualizarBtnCargarAnteriores();
+        });
+}
+
+/** Tras guardar/borrar/editar: recarga la grilla según cuenta o libro transferencias */
+function recargarVistaCuentaSeleccionada() {
+    if (uSel === USUARIO_LIBRO_TRANSF) {
+        var filaT = document.querySelector('#cuerpo tr.fila-libro-transfer');
+        if (filaT) cargarLibroTransferencias(filaT);
+        return;
+    }
+    var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
+    if (fila && uSel && uSel > 0) cargarMovimientos(fila, uSel);
+}
+
 function actualizarBtnCargarAnteriores() {
     var btn = document.getElementById("btnCargarAnteriores");
     if (btn) btn.style.display = (movScrollData && movScrollData.has_more_older && !movScrollData.loading) ? "block" : "none";
@@ -1011,9 +1110,11 @@ function cargarMasAnteriores() {
     if (!div) return;
     movScrollData.loading = true;
     actualizarBtnCargarAnteriores();
-    var url = 'obtener_movimientos.php?id=' + uSel + '&before_fecha=' + encodeURIComponent(movScrollData.first_fecha) + '&before_id=' + movScrollData.first_id;
+    var url = (uSel === USUARIO_LIBRO_TRANSF)
+        ? ('obtener_movimientos_transferencias.php?before_fecha=' + encodeURIComponent(movScrollData.first_fecha) + '&before_id=' + movScrollData.first_id)
+        : ('obtener_movimientos.php?id=' + uSel + '&before_fecha=' + encodeURIComponent(movScrollData.first_fecha) + '&before_id=' + movScrollData.first_id);
     fetch(url).then(r => r.json()).then(function(data) {
-        if (data.html && data.html.indexOf('NO HAY MOVIMIENTOS') < 0 && data.html.indexOf('fila-mov') >= 0) {
+        if (data.html && data.html.indexOf('fila-mov') >= 0) {
             var tbody = document.getElementById("tablaMovimientos");
             var oldHeight = div.scrollHeight;
             tbody.innerHTML = data.html + tbody.innerHTML;
@@ -1038,9 +1139,11 @@ function onScrollMovimientos() {
     var margin = 80;
     if (movScrollData.has_more_older && div.scrollTop <= margin) {
         movScrollData.loading = true;
-        var url = 'obtener_movimientos.php?id=' + uSel + '&before_fecha=' + encodeURIComponent(movScrollData.first_fecha) + '&before_id=' + movScrollData.first_id;
+        var url = (uSel === USUARIO_LIBRO_TRANSF)
+            ? ('obtener_movimientos_transferencias.php?before_fecha=' + encodeURIComponent(movScrollData.first_fecha) + '&before_id=' + movScrollData.first_id)
+            : ('obtener_movimientos.php?id=' + uSel + '&before_fecha=' + encodeURIComponent(movScrollData.first_fecha) + '&before_id=' + movScrollData.first_id);
         fetch(url).then(r => r.json()).then(function(data) {
-            if (data.html && data.html.indexOf('NO HAY MOVIMIENTOS') < 0 && data.html.indexOf('fila-mov') >= 0) {
+            if (data.html && data.html.indexOf('fila-mov') >= 0) {
                 var tbody = document.getElementById("tablaMovimientos");
                 var oldHeight = div.scrollHeight;
                 tbody.innerHTML = data.html + tbody.innerHTML;
@@ -1058,9 +1161,11 @@ function onScrollMovimientos() {
         }).catch(function() { movScrollData.loading = false; actualizarBtnCargarAnteriores(); });
     } else if (movScrollData.has_more_newer && div.scrollTop + div.clientHeight >= div.scrollHeight - margin) {
         movScrollData.loading = true;
-        var url = 'obtener_movimientos.php?id=' + uSel + '&after_fecha=' + encodeURIComponent(movScrollData.last_fecha) + '&after_id=' + movScrollData.last_id;
+        var url = (uSel === USUARIO_LIBRO_TRANSF)
+            ? ('obtener_movimientos_transferencias.php?after_fecha=' + encodeURIComponent(movScrollData.last_fecha) + '&after_id=' + movScrollData.last_id)
+            : ('obtener_movimientos.php?id=' + uSel + '&after_fecha=' + encodeURIComponent(movScrollData.last_fecha) + '&after_id=' + movScrollData.last_id);
         fetch(url).then(r => r.json()).then(function(data) {
-            if (data.html && data.html.indexOf('NO HAY MOVIMIENTOS') < 0 && data.html.indexOf('fila-mov') >= 0) {
+            if (data.html && data.html.indexOf('fila-mov') >= 0) {
                 var tbody = document.getElementById("tablaMovimientos");
                 tbody.innerHTML = tbody.innerHTML + data.html;
                 movScrollData.last_fecha = data.last_fecha || movScrollData.last_fecha;
@@ -1249,7 +1354,7 @@ function guardarPrecioAzucar() {
             if (txt.trim() === 'OK') {
                 cerrarModalPrecioAzucar();
                 var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
-                if (fila && uSel) cargarMovimientos(fila, uSel);
+                recargarVistaCuentaSeleccionada();
             } else {
                 alert(txt || 'Error al actualizar.');
             }
@@ -1378,8 +1483,7 @@ function ejecutarBorrarLiqExp() {
                 alert(data.msg);
                 cerrarModalBorrarLiqExp();
                 volverPasoBorrarLiqExp();
-                var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
-                if (fila) cargarMovimientos(fila, uSel);
+                recargarVistaCuentaSeleccionada();
             } else {
                 alert(data && data.msg ? data.msg : 'No se pudo eliminar.');
             }
@@ -1433,8 +1537,7 @@ function ejecutarBorrarTodasLiqExp() {
             if (data && data.ok) {
                 alert(data.msg);
                 cerrarModalBorrarTodasLiqExp();
-                var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
-                if (fila) cargarMovimientos(fila, uSel);
+                recargarVistaCuentaSeleccionada();
             } else {
                 alert(data && data.msg ? data.msg : 'No se pudo eliminar.');
             }
@@ -1447,6 +1550,10 @@ function ejecutarBorrarTodasLiqExp() {
 function imprimirMovimientos() {
     if (!uSel) {
         alert('Seleccioná un usuario primero.');
+        return;
+    }
+    if (uSel === USUARIO_LIBRO_TRANSF) {
+        alert('El libro de transferencias se consulta solo en pantalla. Use impresión desde una cuenta de persona.');
         return;
     }
     var cant = prompt('¿Cuántos últimos movimientos imprimir?', '20');
@@ -1463,6 +1570,10 @@ function imprimirMovimientos() {
 function imprimirEstadoCuenta() {
     if (!uSel) {
         alert('Seleccioná un usuario primero.');
+        return;
+    }
+    if (uSel === USUARIO_LIBRO_TRANSF) {
+        alert('El libro de transferencias se consulta solo en pantalla.');
         return;
     }
     window.open('imprimir_movimientos.php?id=' + uSel + '&limit=15', '_blank', 'width=900,height=700');
@@ -1633,8 +1744,7 @@ function ejecutarLiquidarExpensas() {
                 data = JSON.parse(txt);
             } catch (e) {
                 if (txt.trim() === 'OK') {
-                    var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
-                    if (fila) cargarMovimientos(fila, uSel);
+                    recargarVistaCuentaSeleccionada();
                     alert('Liquidación de expensas guardada correctamente.');
                     cerrarModalLiqExp();
                     return;
@@ -1643,8 +1753,7 @@ function ejecutarLiquidarExpensas() {
                 return;
             }
             if (data && data.ok) {
-                var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
-                if (fila) cargarMovimientos(fila, uSel);
+                recargarVistaCuentaSeleccionada();
                 alert('Liquidación de expensas guardada correctamente.');
                 cerrarModalLiqExp();
             } else {
@@ -1686,8 +1795,7 @@ function guardarCobroExp() {
         .then(txt => {
             if (txt === 'OK') {
                 cerrarModalCobroExp();
-                var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
-                if (fila) cargarMovimientos(fila, uSel);
+                recargarVistaCuentaSeleccionada();
                 document.getElementById('cobroMonto').value = '';
             } else {
                 alert('Falta dato o corregir.');
@@ -1718,6 +1826,7 @@ function migrarSaldo() {
         alert('Seleccioná un usuario primero.');
         return;
     }
+    if (uSel === USUARIO_LIBRO_TRANSF) return;
     var inp = document.getElementById('monto-migrar');
     if (!inp) return;
     var montoObjetivo = parseMonto(inp.value);
@@ -1747,8 +1856,7 @@ function migrarSaldo() {
         .then(function(txt) {
             if (txt === 'SKIP' || typeof txt !== 'string') return;
             if (txt.trim() === 'OK') {
-                var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
-                if (fila) cargarMovimientos(fila, uSel);
+                recargarVistaCuentaSeleccionada();
                 inp.value = '';
                 actualizarDiferenciaMigrar();
                 alert('Migración realizada correctamente.');
@@ -1930,8 +2038,7 @@ function aceptarCobroCaja() {
                 if (periodoRecibo) urlRecibo += "&periodo=" + encodeURIComponent(periodoRecibo);
                 window.open(urlRecibo, "_blank", "noopener");
                 resetCobroCaja();
-                var fila = document.querySelector("#cuerpo tr.fila-seleccionada");
-                if (fila) cargarMovimientos(fila, uSel);
+                recargarVistaCuentaSeleccionada();
                 if (msgVuelto) alert("Cobro guardado correctamente." + msgVuelto);
             } else {
                 alert(txt.trim() || "Error al grabar.");
@@ -1947,17 +2054,17 @@ function seleccionarFila(el, movimientoId, fecha, concepto, compro, ref, monto) 
     document.querySelectorAll('.fila-mov').forEach(f => f.classList.remove('fila-mov-seleccionada'));
     el.classList.add('fila-mov-seleccionada');
     movSel = { movimientoId, fecha, concepto, compro, ref, monto, usuario: document.querySelector('.fila-seleccionada .nombre-txt').innerText };
-    document.getElementById("btnWord").style.display = "block";
+    document.getElementById("btnWord").style.display = (uSel === USUARIO_LIBRO_TRANSF) ? "none" : "block";
     var panelCobro = document.getElementById("panelCobroCaja");
     if (panelCobro && panelCobro.style.display !== "none" && uSel !== 1) {
         asignarCobroCajaItem(concepto, monto, ref);
     }
-    if (tipo === 'INGRESO' && concepto) {
+    if (uSel !== USUARIO_LIBRO_TRANSF && tipo === 'INGRESO' && concepto) {
         document.getElementById("filaCarga").style.display = "table-footer-group";
         document.getElementById("ins_concepto").value = "Cobro de: " + concepto;
         ponerFechaActual();
     }
-    if (tipo === 'RETIRO' && esArrendadorUsuario && concepto) {
+    if (uSel !== USUARIO_LIBRO_TRANSF && tipo === 'RETIRO' && esArrendadorUsuario && concepto) {
         document.getElementById("filaCarga").style.display = "table-footer-group";
         var conceptoFormateado = (concepto || '').replace(/KILOS\s+DTOS PACTADOS/g, "KILOS. DTOS PACTADOS").replace(/\bKILOS\b(?!\.?\s*DTOS PACTADOS)/i, "KILOS. DTOS PACTADOS: ");
         var precioRef = (ref || '').trim();
@@ -1976,8 +2083,7 @@ function eliminarMovSeguro(movId) {
             .then(r => r.text())
             .then(res => {
                 if (res.trim() === "OK") {
-                    var fila = document.querySelector('#cuerpo tr.fila-seleccionada') || document.querySelector('#cuerpo tr[data-id="' + uSel + '"]');
-                    if (fila) cargarMovimientos(fila, uSel);
+                    recargarVistaCuentaSeleccionada();
                 }
             });
         return;
@@ -1998,8 +2104,7 @@ function eliminarMovSeguro(movId) {
                 .then(r2 => r2.text())
                 .then(function(res2) {
                     if (res2.trim() === "OK") {
-                        var fila = document.querySelector('#cuerpo tr.fila-seleccionada') || document.querySelector('#cuerpo tr[data-id="' + uSel + '"]');
-                        if (fila) cargarMovimientos(fila, uSel);
+                        recargarVistaCuentaSeleccionada();
                     }
                 });
         });
@@ -2291,7 +2396,19 @@ function avisarComprobanteCaja() {
 }
 
 function preparar(t) { 
-    tipo = t; 
+    tipo = t;
+    if (uSel === USUARIO_LIBRO_TRANSF) {
+        document.getElementById("filaCarga").style.display = "table-footer-group";
+        document.getElementById("ins_fecha").value = "";
+        ponerFechaActual();
+        document.getElementById("ins_concepto").value = "";
+        document.getElementById("ins_compro").value = "NIVELACION TRANSF";
+        document.getElementById("ins_refer").value = "NIVEL";
+        document.getElementById("ins_monto").value = "";
+        actualizarCheckGrabarCaja();
+        setTimeout(function() { document.getElementById("ins_concepto").focus(); }, 0);
+        return;
+    }
     document.getElementById("filaCarga").style.display = "table-footer-group";
     document.getElementById("ins_fecha").value = "";
     ponerFechaActual();
@@ -2329,7 +2446,7 @@ function actualizarCheckGrabarCaja() {
     var chk = document.getElementById("ins_grabar_caja");
     var fila = document.getElementById("filaCheckCaja");
     if (!chk || !fila) return;
-    if (uSel === 1) {
+    if (uSel === 1 || uSel === USUARIO_LIBRO_TRANSF) {
         fila.style.display = "none";
         return;
     }
@@ -2353,6 +2470,46 @@ function fechaTextoAISO() {
 function guardar() {
     let m = parseMonto(document.getElementById("ins_monto").value);
     if(isNaN(m) || !uSel) return;
+    if (uSel === USUARIO_LIBRO_TRANSF) {
+        var concLib = (document.getElementById("ins_concepto").value || '').trim();
+        if (concLib.length < 3) {
+            alert('Indique el motivo o concepto de la nivelación (mínimo 3 caracteres).');
+            return;
+        }
+        var iso = fechaTextoAISO();
+        if (!iso || iso.length !== 10) {
+            alert('Indique una fecha válida (dd/mm/aaaa).');
+            return;
+        }
+        var montoAbs = Math.abs(m);
+        if (tipo === 'RETIRO' && montoAbs > saldoActualCuenta) {
+            var msgL = 'El monto del retiro ($ ' + montoAbs.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ') es mayor que el saldo del libro ($ ' + saldoActualCuenta.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '). ¿Desea continuar de todos modos?';
+            if (!confirm(msgL)) return;
+        }
+        var fd = new URLSearchParams();
+        fd.append('fecha', iso);
+        fd.append('concepto', concLib);
+        fd.append('tipo', tipo);
+        fd.append('monto', String(montoAbs));
+        var refL = (document.getElementById("ins_refer").value || '').trim();
+        if (refL) fd.append('refer', refL);
+        fetch('guardar_movimiento_transferencias_libro.php', { method: 'POST', body: fd })
+            .then(function(r) { return r.text(); })
+            .then(function(txt) {
+                var t = (txt || '').trim();
+                if (t !== 'OK') {
+                    alert(t.indexOf('Error') === 0 ? t : 'Falta dato o corregir.');
+                    return;
+                }
+                recargarVistaCuentaSeleccionada();
+                document.getElementById("filaCarga").style.display = "none";
+                document.getElementById("ins_concepto").value = "";
+                document.getElementById("ins_refer").value = "";
+                document.getElementById("ins_monto").value = "";
+            })
+            .catch(function() { alert('Error de red.'); });
+        return;
+    }
     var montoAbs = Math.abs(m);
     if (tipo === 'RETIRO' && montoAbs > saldoActualCuenta) {
         var msg = 'El monto del retiro ($ ' + montoAbs.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ') es mayor que el saldo actual de la cuenta ($ ' + saldoActualCuenta.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '). ¿Desea continuar de todos modos?';
@@ -2377,7 +2534,7 @@ function guardar() {
             alert('Falta dato o corregir.');
             return;
         }
-        cargarMovimientos(document.querySelector('.fila-seleccionada'), uSel);
+        recargarVistaCuentaSeleccionada();
         document.getElementById("filaCarga").style.display = "none";
         document.getElementById("ins_concepto").value = "";
         document.getElementById("ins_refer").value = "";
@@ -2607,8 +2764,7 @@ function guardar() {
                             var p = nuevaFecha.split('-');
                             tdFecha.textContent = p[2] + '/' + p[1] + '/' + p[0];
                             if (tr && tr.dataset) tr.dataset.fecha = nuevaFecha;
-                            var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
-                            if (fila) cargarMovimientos(fila, uSel);
+                            recargarVistaCuentaSeleccionada();
                         } else {
                             tdFecha.textContent = fechaActual ? (fechaActual.split('-').reverse().join('/')) : '';
                             alert(txt || 'Error al actualizar.');

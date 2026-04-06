@@ -15,6 +15,15 @@ if (isset($_POST['id'])) {
     
     // 1. Captura y limpieza de datos (Seguridad básica)
     $usuario_id = (int)$_POST['id'];
+    $compro_in = strtoupper(trim($_POST['compro'] ?? ''));
+    if ($compro_in === 'NIVELACION TRANSF') {
+        require_once __DIR__ . '/includes_transferencias_libro.php';
+        $id_lib = transferencias_libro_id_existente($conexion);
+        if ($id_lib <= 0 || $usuario_id !== $id_lib) {
+            echo 'Error: El comprobante NIVELACIÓN TRANSF solo se usa desde el libro Transferencias.';
+            exit;
+        }
+    }
     $fecha_raw  = trim($_POST['fecha'] ?? '');
     // Formato esperado: YYYY-MM-DD (igual que input type="date")
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_raw)) {
@@ -84,7 +93,7 @@ if (isset($_POST['id'])) {
         $es_consorcio = ($nom_usuario && stripos($nom_usuario, 'CONSORCIO') === 0);
         $compro_es_efvo_boleta = ($compro === 'BOLETA' || $compro === 'EFVO');
         $compro_es_sueldo = ($compro === 'SUELDO' || $compro === 'SUELDO/EXTRAS');
-        $compro_es_transferencia = ($compro === 'TRANSFERENCIA');
+        $compro_es_transferencia = ($compro === 'TRANSFERENCIA' || $compro === 'NIVELACION TRANSF');
         $compro_es_anticipo = ($compro === 'ANTICIPO');
         $concepto_es_cobro = (stripos($concepto, 'COBRO') === 0);
 
