@@ -64,29 +64,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['limpiar']) && $_POST[
 }
 
 /**
- * Reconciliación: si un usuario borró el movimiento en su cuenta pero convenios_finca_liquidado
- * aún lo marca como liquidado, se quita ese registro y se vuelve a liquidar el mes anterior.
- * Se ejecuta al guardar y al salir de convenios.
+ * Liquida todos los meses pendientes (no liquidados) hasta el último mes cerrado.
+ * Si $forzar_reconciliacion=true, primero limpia marcas "liquidado" que no tengan movimiento en cuenta.
  */
-function reconciliar_liquidaciones_convenios($conexion) {
+function liquidar_meses_pendientes_convenio($conexion, $convenio_id, $usuario_id, $tipo_trabajo, $anio_convenio, $montos, $forzar_reconciliacion = false) {
     $mes_actual = (int)date('n');
     $anio_actual_hoy = (int)date('Y');
-    $mes_a_liquidar = $mes_actual - 1;
-    $anio_a_liquidar = $anio_actual_hoy;
-    if ($mes_a_liquidar < 1) {
-        $mes_a_liquidar = 12;
-        $anio_a_liquidar = $anio_actual_hoy - 1;
-    }
-    $ref = sprintf('%02d/%04d', $mes_a_liquidar, $anio_a_liquidar);
-    $ref_esc = mysqli_real_escape_string($conexion, $ref);
-    $col_mes = 'monto_mes_' . $mes_a_liquidar;
+    if ($anio_convenio > $anio_actual_hoy) return [];
 
-    $convenios = mysqli_query($conexion,
-        "SELECT c.id AS convenio_id, c.usuario_id, c.tipo_trabajo, c.$col_mes AS jornales
-         FROM convenios_finca c
-         WHERE c.anio = $anio_a_liquidar AND c.$col_mes > 0"
-    );
-    if (!$convenios) return '';
+    $ultimo_mes_liquidable = ($anio_convenio === $anio_actual_hoy) ? ($mes_actual - 1) : 12;
+    if ($ultimo_mes_liquidable < 1) return [];
 
     $res_ts = mysqli_query($conexion, "SELECT valor_hora_comun, valor_hora_tractor FROM tabla_salarial ORDER BY id DESC LIMIT 1");
     $vh_comun = 0;
@@ -95,41 +82,94 @@ function reconciliar_liquidaciones_convenios($conexion) {
         $vh_comun = (float)($ts['valor_hora_comun'] ?? 0);
         $vh_tractor = (float)($ts['valor_hora_tractor'] ?? 0);
     }
+    $valor_hora = (stripos($tipo_trabajo, 'tract') !== false) ? $vh_tractor : $vh_comun;
+    if ($valor_hora <= 0) return [];
+
+    $detalle_tipo = (stripos($tipo_trabajo, 'tract') !== false) ? 'Horas tractos' : 'Horas Comunes';
+    $tipo_like = mysqli_real_escape_string($conexion, (stripos($tipo_trabajo, 'tract') !== false) ? '%Horas tractos%' : '%Horas Comunes%');
     $nombres_mes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     $comprobante = mysqli_real_escape_string($conexion, 'trabajo');
-    $mensajes = [];
+    $aplicados = [];
 
-    while ($c = mysqli_fetch_assoc($convenios)) {
-        $convenio_id = (int)$c['convenio_id'];
-        $usuario_id = (int)$c['usuario_id'];
-        $tipo_trabajo = $c['tipo_trabajo'];
-        $jornales = (float)$c['jornales'];
+    for ($mes = 1; $mes <= $ultimo_mes_liquidable; $mes++) {
+        $jornales = (float)($montos[$mes] ?? 0);
+        if ($jornales <= 0) continue;
 
-        $tipo_like = mysqli_real_escape_string($conexion, (stripos($tipo_trabajo, 'tract') !== false) ? '%Horas tractos%' : '%Horas Comunes%');
+        $ref = sprintf('%02d/%04d', $mes, $anio_convenio);
+        $ref_esc = mysqli_real_escape_string($conexion, $ref);
+
         $existe_cuenta = mysqli_query($conexion,
             "SELECT 1 FROM cuentas WHERE usuario_id = $usuario_id AND comprobante = 'trabajo' AND referencia = '$ref_esc' AND (concepto LIKE 'Fijo de mes%' OR concepto LIKE 'FIJO DE MES%') AND concepto LIKE '$tipo_like' LIMIT 1"
         );
-        if ($existe_cuenta && mysqli_num_rows($existe_cuenta) > 0) continue; // Ya existe, no hacer nada
+        $tiene_cuenta = ($existe_cuenta && mysqli_num_rows($existe_cuenta) > 0);
 
-        mysqli_query($conexion, "DELETE FROM convenios_finca_liquidado WHERE convenio_id = $convenio_id AND mes = $mes_a_liquidar");
+        if ($forzar_reconciliacion && !$tiene_cuenta) {
+            mysqli_query($conexion, "DELETE FROM convenios_finca_liquidado WHERE convenio_id = $convenio_id AND mes = $mes");
+        }
 
-        $valor_hora = (stripos($tipo_trabajo, 'tract') !== false) ? $vh_tractor : $vh_comun;
-        if ($valor_hora <= 0) continue;
+        $existe_liquidado = mysqli_query($conexion, "SELECT 1 FROM convenios_finca_liquidado WHERE convenio_id = $convenio_id AND mes = $mes LIMIT 1");
+        if ($existe_liquidado && mysqli_num_rows($existe_liquidado) > 0) continue;
 
-        $detalle_tipo = (stripos($tipo_trabajo, 'tract') !== false) ? 'Horas tractos' : 'Horas Comunes';
+        if ($tiene_cuenta) {
+            mysqli_query($conexion, "INSERT IGNORE INTO convenios_finca_liquidado (convenio_id, mes) VALUES ($convenio_id, $mes)");
+            continue;
+        }
+
+        $mes_fecha = $mes + 1;
+        $anio_fecha = $anio_convenio;
+        if ($mes_fecha > 12) {
+            $mes_fecha = 1;
+            $anio_fecha++;
+        }
+        $fecha = sprintf('%04d-%02d-01', $anio_fecha, $mes_fecha);
         $monto = round(8 * $jornales * $valor_hora, 2);
-        $fecha = sprintf('%04d-%02d-01', $anio_actual_hoy, $mes_actual);
         $jornales_fmt = number_format($jornales, 2, ',', '.');
         $valor_fmt = number_format($valor_hora, 2, ',', '.');
-        $concepto = "Fijo de mes {$nombres_mes[$mes_a_liquidar-1]}, cantidad $jornales_fmt jornales (8 h c/u) $detalle_tipo, valor $valor_fmt por hora";
+        $concepto = "Fijo de mes {$nombres_mes[$mes-1]}, cantidad $jornales_fmt jornales (8 h c/u) $detalle_tipo, valor $valor_fmt por hora";
         $concepto_esc = mysqli_real_escape_string($conexion, $concepto);
         $sql_cuenta = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) VALUES ($usuario_id, '$fecha', '$concepto_esc', '$comprobante', '$ref_esc', $monto)";
         if (mysqli_query($conexion, $sql_cuenta)) {
-            mysqli_query($conexion, "INSERT INTO convenios_finca_liquidado (convenio_id, mes) VALUES ($convenio_id, $mes_a_liquidar)");
-            $mensajes[] = $nombres_mes[$mes_a_liquidar - 1];
+            mysqli_query($conexion, "INSERT IGNORE INTO convenios_finca_liquidado (convenio_id, mes) VALUES ($convenio_id, $mes)");
+            $aplicados[] = $nombres_mes[$mes - 1] . '/' . $anio_convenio;
         }
     }
-    return empty($mensajes) ? '' : ' Se repuso liquidación de ' . implode(', ', array_unique($mensajes)) . ' (faltaba en cuenta).';
+
+    return $aplicados;
+}
+
+/**
+ * Reconciliación global de convenios:
+ * - Limpia marcas "liquidado" sin movimiento en cuenta.
+ * - Reaplica automáticamente cualquier mes pendiente.
+ */
+function reconciliar_liquidaciones_convenios($conexion) {
+    $anio_actual_hoy = (int)date('Y');
+    $convenios = mysqli_query($conexion, "SELECT * FROM convenios_finca WHERE anio <= $anio_actual_hoy");
+    if (!$convenios) return '';
+
+    $mensajes = [];
+    while ($c = mysqli_fetch_assoc($convenios)) {
+        $montos = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $montos[$m] = (float)($c["monto_mes_$m"] ?? 0);
+        }
+        $aplicados = liquidar_meses_pendientes_convenio(
+            $conexion,
+            (int)$c['id'],
+            (int)$c['usuario_id'],
+            (string)$c['tipo_trabajo'],
+            (int)$c['anio'],
+            $montos,
+            true
+        );
+        if (!empty($aplicados)) {
+            $mensajes = array_merge($mensajes, $aplicados);
+        }
+    }
+
+    if (empty($mensajes)) return '';
+    $mensajes = array_values(array_unique($mensajes));
+    return ' Se repuso/aplicó liquidación de: ' . implode(', ', $mensajes) . '.';
 }
 
 // Al salir: reconciliar y redirigir a gestionar_finca
@@ -208,47 +248,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             }
-            // Aplicar al guardar: solo el MES ANTERIOR (ej: 01/03 liquida febrero). Si no fue aplicado antes.
+            // Aplicar al guardar: todos los meses pendientes (no liquidados), hasta el último mes cerrado.
             if ($convenio_id && isset($montos_aplicar) && isset($anio_aplicar)) {
-                $mes_actual = (int)date('n');
-                $anio_actual_hoy = (int)date('Y');
-                $mes_a_liquidar = $mes_actual - 1;
-                $anio_a_liquidar = $anio_actual_hoy;
-                if ($mes_a_liquidar < 1) {
-                    $mes_a_liquidar = 12;
-                    $anio_a_liquidar = $anio_actual_hoy - 1;
-                }
-                $jornales = (float)($montos_aplicar[$mes_a_liquidar] ?? 0);
-                if ($jornales > 0 && $anio_aplicar == $anio_a_liquidar) {
-                    $existe = mysqli_query($conexion, "SELECT 1 FROM convenios_finca_liquidado WHERE convenio_id = $convenio_id AND mes = $mes_a_liquidar LIMIT 1");
-                    if (!$existe || mysqli_num_rows($existe) == 0) {
-                        $res_ts = mysqli_query($conexion, "SELECT valor_hora_comun, valor_hora_tractor FROM tabla_salarial ORDER BY id DESC LIMIT 1");
-                        $vh_comun = 0;
-                        $vh_tractor = 0;
-                        if ($res_ts && $ts = mysqli_fetch_assoc($res_ts)) {
-                            $vh_comun = (float)($ts['valor_hora_comun'] ?? 0);
-                            $vh_tractor = (float)($ts['valor_hora_tractor'] ?? 0);
-                        }
-                        $valor_hora = (stripos($tipo_trabajo, 'tract') !== false) ? $vh_tractor : $vh_comun;
-                        if ($valor_hora > 0) {
-                            $detalle_tipo = (stripos($tipo_trabajo, 'tract') !== false) ? 'Horas tractos' : 'Horas Comunes';
-                            $nombres_mes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-                            $comprobante = mysqli_real_escape_string($conexion, 'trabajo');
-                            $monto = round(8 * $jornales * $valor_hora, 2);
-                            $fecha = sprintf('%04d-%02d-01', $anio_actual_hoy, $mes_actual); // día 1 del mes en curso (01/03 al liquidar feb)
-                            $ref = sprintf('%02d/%04d', $mes_a_liquidar, $anio_a_liquidar); // mes liquidado: 02/2026
-                            $ref_esc = mysqli_real_escape_string($conexion, $ref);
-                            $jornales_fmt = number_format($jornales, 2, ',', '.');
-                            $valor_fmt = number_format($valor_hora, 2, ',', '.');
-                            $concepto = "Fijo de mes {$nombres_mes[$mes_a_liquidar-1]}, cantidad $jornales_fmt jornales (8 h c/u) $detalle_tipo, valor $valor_fmt por hora";
-                            $concepto_esc = mysqli_real_escape_string($conexion, $concepto);
-                            $sql_cuenta = "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) VALUES ($usuario_id, '$fecha', '$concepto_esc', '$comprobante', '$ref_esc', $monto)";
-                            if (mysqli_query($conexion, $sql_cuenta)) {
-                                mysqli_query($conexion, "INSERT INTO convenios_finca_liquidado (convenio_id, mes) VALUES ($convenio_id, $mes_a_liquidar)");
-                                $mensaje .= " Se aplicó " . $nombres_mes[$mes_a_liquidar-1] . " en cuenta corriente.";
-                            }
-                        }
-                    }
+                $aplicados = liquidar_meses_pendientes_convenio(
+                    $conexion,
+                    (int)$convenio_id,
+                    (int)$usuario_id,
+                    (string)$tipo_trabajo,
+                    (int)$anio_aplicar,
+                    $montos_aplicar,
+                    false
+                );
+                if (!empty($aplicados)) {
+                    $mensaje .= " Se aplicó en cuenta corriente: " . implode(', ', $aplicados) . ".";
                 }
             }
         }
