@@ -2,6 +2,9 @@
 include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/inc_orden_alquiler.php';
+require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
+
+propiedades_asegurar_columnas($conexion);
 
 $nivelAcceso = (int) ($_SESSION['acceso_nivel'] ?? 0);
 if ($nivelAcceso < 2) {
@@ -21,6 +24,54 @@ if (!$p) {
 }
 
 $d = orden_alquiler_cargar_datos($id);
+
+$fotos = propiedades_fotos_unificadas($id, $p['fotos_json'] ?? null);
+$primeraFotoUrl = null;
+foreach ($fotos as $rel0) {
+    $rel0 = str_replace(['..', '\\'], '', (string) $rel0);
+    if ($rel0 === '' || strpos($rel0, 'uploads/propiedades/') !== 0) {
+        continue;
+    }
+    $primeraFotoUrl = propiedades_url_publica($rel0);
+    break;
+}
+
+$lat = isset($p['mapa_lat']) && $p['mapa_lat'] !== null && $p['mapa_lat'] !== '' ? (float) $p['mapa_lat'] : null;
+$lng = isset($p['mapa_lng']) && $p['mapa_lng'] !== null && $p['mapa_lng'] !== '' ? (float) $p['mapa_lng'] : null;
+$diskMap = propiedades_leer_mapa_disco($id);
+if (($lat === null || $lng === null) && is_array($diskMap)) {
+    if (isset($diskMap['lat'], $diskMap['lng']) && $diskMap['lat'] !== null && $diskMap['lng'] !== '') {
+        $lat = (float) $diskMap['lat'];
+        $lng = (float) $diskMap['lng'];
+    }
+    if (empty($p['mapa_enlace']) && !empty($diskMap['enlace'])) {
+        $p['mapa_enlace'] = $diskMap['enlace'];
+    }
+}
+$tieneMapa = ($lat !== null && $lng !== null);
+$gmaps_link = $tieneMapa ? ('https://www.google.com/maps?q=' . rawurlencode($lat . ',' . $lng)) : '';
+/** Mapa estático OSM (imagen) para que imprima bien en PDF */
+$staticMapUrl = '';
+if ($tieneMapa) {
+    $staticMapUrl = 'https://staticmap.openstreetmap.de/staticmap.php?center=' . rawurlencode($lat . ',' . $lng)
+        . '&zoom=15&size=520x240&markers=' . rawurlencode($lat . ',' . $lng) . ',red-pushpin';
+}
+
+function imprimir_url_absoluta_img($pathRel) {
+    $pathRel = (string) $pathRel;
+    if ($pathRel === '') {
+        return '';
+    }
+    if (preg_match('#^https?://#i', $pathRel)) {
+        return $pathRel;
+    }
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    if ($pathRel[0] !== '/') {
+        $pathRel = '/' . $pathRel;
+    }
+    return $scheme . '://' . $host . $pathRel;
+}
 
 function h($s) {
     return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
@@ -81,6 +132,12 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
         .detalle { white-space: pre-wrap; font-size: 11px; word-break: break-word; }
         .no-print { margin-bottom: 16px; }
         .pie-doc { margin-top: 16px; font-size: 10px; color: #666; }
+        .bloque-foto-mapa { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 11px; }
+        .bloque-foto-mapa td { border: 1px solid #ccc; padding: 8px; vertical-align: top; width: 50%; }
+        .bloque-foto-mapa .tit-cel { font-weight: bold; margin-bottom: 6px; color: #333; }
+        .bloque-foto-mapa img { max-width: 100%; height: auto; max-height: 200px; display: block; margin: 0 auto; }
+        .bloque-foto-mapa .coords { font-size: 9px; color: #555; margin-top: 6px; }
+        .bloque-foto-mapa .sin-dato { color: #888; font-style: italic; }
 
         /* Impresión: papel A4 con márgenes seguros */
         @page {
@@ -102,8 +159,9 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
                 box-shadow: none;
                 box-sizing: border-box;
             }
-            table.datos, .detalle { page-break-inside: avoid; }
+            table.datos, .detalle, .bloque-foto-mapa { page-break-inside: avoid; }
             h2 { page-break-after: avoid; }
+            .bloque-foto-mapa img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -117,6 +175,33 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
     <div class="hoja-a4">
     <h1>Orden de alquiler</h1>
     <p class="meta">Impreso: <?= h($fecha) ?> · Último guardado en formulario: <?= h($upd) ?></p>
+
+    <table class="bloque-foto-mapa">
+        <tr>
+            <td>
+                <div class="tit-cel">Foto de la propiedad</div>
+                <?php if ($primeraFotoUrl !== null):
+                    $imgAbs = imprimir_url_absoluta_img($primeraFotoUrl);
+                ?>
+                    <img src="<?= h($imgAbs) ?>" alt="Foto principal">
+                <?php else: ?>
+                    <span class="sin-dato">Sin foto cargada.</span>
+                <?php endif; ?>
+            </td>
+            <td>
+                <div class="tit-cel">Ubicación</div>
+                <?php if ($tieneMapa && $staticMapUrl !== ''): ?>
+                    <img src="<?= h($staticMapUrl) ?>" alt="Mapa de ubicación">
+                    <p class="coords">Coordenadas: <?= h((string) $lat) ?>, <?= h((string) $lng) ?> · <span style="word-break:break-all;"><?= h($gmaps_link) ?></span></p>
+                <?php elseif (!empty($p['mapa_enlace'])): ?>
+                    <p class="sin-dato" style="margin:0;">Mapa: enlace guardado (sin coordenadas en sistema).</p>
+                    <p style="margin:6px 0 0; font-size:10px; word-break:break-all;"><?= h($p['mapa_enlace']) ?></p>
+                <?php else: ?>
+                    <span class="sin-dato">Sin ubicación en mapa.</span>
+                <?php endif; ?>
+            </td>
+        </tr>
+    </table>
 
     <table class="datos">
         <tr><th>Propiedad</th><td><?= h($p['propiedad'] ?? '') ?></td></tr>
