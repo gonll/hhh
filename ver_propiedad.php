@@ -35,7 +35,8 @@ if (($lat === null || $lng === null) && is_array($diskMap)) {
 }
 $tieneMapa = ($lat !== null && $lng !== null);
 if ($tieneMapa) {
-    $dl = 0.012;
+    $zoomMapa = propiedades_mapa_zoom_efectivo($prop['mapa_enlace'] ?? '', $diskMap);
+    $dl = propiedades_mapa_bbox_delta_desde_zoom($zoomMapa);
     $bbox = ($lng - $dl) . '%2C' . ($lat - $dl) . '%2C' . ($lng + $dl) . '%2C' . ($lat + $dl);
     $osm_embed = 'https://www.openstreetmap.org/export/embed.html?bbox=' . $bbox . '&layer=mapnik&marker=' . rawurlencode($lat . ',' . $lng);
     $gmaps_link = 'https://www.google.com/maps?q=' . rawurlencode($lat . ',' . $lng);

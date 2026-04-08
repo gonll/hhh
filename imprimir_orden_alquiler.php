@@ -49,12 +49,13 @@ if (($lat === null || $lng === null) && is_array($diskMap)) {
     }
 }
 $tieneMapa = ($lat !== null && $lng !== null);
+$zoomMapa = $tieneMapa ? propiedades_mapa_zoom_efectivo($p['mapa_enlace'] ?? '', $diskMap) : 15;
 $gmaps_link = $tieneMapa ? ('https://www.google.com/maps?q=' . rawurlencode($lat . ',' . $lng)) : '';
 /** Mapa estático OSM (imagen) para que imprima bien en PDF */
 $staticMapUrl = '';
 if ($tieneMapa) {
     $staticMapUrl = 'https://staticmap.openstreetmap.de/staticmap.php?center=' . rawurlencode($lat . ',' . $lng)
-        . '&zoom=15&size=520x240&markers=' . rawurlencode($lat . ',' . $lng) . ',red-pushpin';
+        . '&zoom=' . (int) $zoomMapa . '&size=520x240&markers=' . rawurlencode($lat . ',' . $lng) . ',red-pushpin';
 }
 
 function imprimir_url_absoluta_img($pathRel) {
@@ -192,7 +193,7 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
                 <div class="tit-cel">Ubicación</div>
                 <?php if ($tieneMapa && $staticMapUrl !== ''): ?>
                     <img src="<?= h($staticMapUrl) ?>" alt="Mapa de ubicación">
-                    <p class="coords">Coordenadas: <?= h((string) $lat) ?>, <?= h((string) $lng) ?> · <span style="word-break:break-all;"><?= h($gmaps_link) ?></span></p>
+                    <p class="coords">Zoom <?= (int) $zoomMapa ?> · <a href="<?= h($gmaps_link) ?>" target="_blank" rel="noopener">Google Maps</a><?php if (!empty($p['mapa_enlace'])): ?> · <a href="<?= h($p['mapa_enlace']) ?>" target="_blank" rel="noopener">Enlace guardado</a><?php endif; ?></p>
                 <?php elseif (!empty($p['mapa_enlace'])): ?>
                     <p class="sin-dato" style="margin:0;">Mapa: enlace guardado (sin coordenadas en sistema).</p>
                     <p style="margin:6px 0 0; font-size:10px; word-break:break-all;"><?= h($p['mapa_enlace']) ?></p>

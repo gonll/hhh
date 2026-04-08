@@ -54,8 +54,12 @@ if (($lat === null || $lng === null) && is_array($diskMap)) {
     }
 }
 $tieneMapa = ($lat !== null && $lng !== null);
+$zoomMapa = 15;
+$osm_embed = '';
+$gmaps_link = '';
 if ($tieneMapa) {
-    $dl = 0.012;
+    $zoomMapa = propiedades_mapa_zoom_efectivo($prop['mapa_enlace'] ?? '', $diskMap);
+    $dl = propiedades_mapa_bbox_delta_desde_zoom($zoomMapa);
     $bbox = ($lng - $dl) . '%2C' . ($lat - $dl) . '%2C' . ($lng + $dl) . '%2C' . ($lat + $dl);
     $osm_embed = 'https://www.openstreetmap.org/export/embed.html?bbox=' . $bbox . '&layer=mapnik&marker=' . rawurlencode($lat . ',' . $lng);
     $gmaps_link = 'https://www.google.com/maps?q=' . rawurlencode($lat . ',' . $lng);
@@ -211,7 +215,7 @@ $g2 = $datos['garante2'];
                         <a href="<?= h($prop['mapa_enlace']) ?>" target="_blank" rel="noopener">Enlace guardado</a>
                     <?php endif; ?>
                 </div>
-                <p class="coords-mini">Coordenadas: <?= h((string) $lat) ?>, <?= h((string) $lng) ?></p>
+                <p class="coords-mini">Encuadre según zoom <?= (int) $zoomMapa ?> (tomado del enlace guardado o valor por defecto).</p>
             <?php else: ?>
                 <div class="sin-foto-caja" style="min-height:200px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
                     <span>No hay coordenadas en mapa.</span>

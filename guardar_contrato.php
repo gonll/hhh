@@ -57,8 +57,11 @@ if (!$fecha_fin || !fecha_valida_ymd($fecha_fin)) {
 $fecha_inicio  = mysqli_real_escape_string($conexion, $fecha_inicio);
 $fecha_fin     = mysqli_real_escape_string($conexion, $fecha_fin);
 $fecha_firma   = mysqli_real_escape_string($conexion, $fecha_firma);
-// El depósito de garantía siempre será 1.5 veces el precio del alquiler
-$deposito      = round($precio * 1.5, 2);
+// Depósito: por defecto igual al precio mensual; el formulario puede enviar otro monto
+$deposito = round($precio, 2);
+if (isset($_POST['deposito']) && $_POST['deposito'] !== '' && is_numeric($_POST['deposito'])) {
+    $deposito = round((float) $_POST['deposito'], 2);
+}
 $nom_prop_raw   = isset($_POST['nom_prop']) ? trim($_POST['nom_prop']) : '';
 $nom_prop       = mysqli_real_escape_string($conexion, omitir_ciudad_provincia($nom_prop_raw));
 

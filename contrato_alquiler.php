@@ -143,7 +143,7 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
             </div>
 
             <div>
-                <label>Monto Depósito Garantía ($) - 1.5 alquileres</label>
+                <label>Monto Depósito Garantía ($) — por defecto igual al alquiler mensual</label>
                 <input type="number" id="deposito" class="nav-enter" placeholder="0.00" required>
             </div>
             <div>
@@ -271,8 +271,7 @@ function actualizarInfoProp() {
 
 function calcularDeposito(precio) {
     const precioNum = parseFloat(precio) || 0;
-    const deposito = precioNum * 1.5;
-    document.getElementById('deposito').value = deposito.toFixed(2);
+    document.getElementById('deposito').value = precioNum.toFixed(2);
 }
 
 function buscar(q, listaId, hiddenId) {

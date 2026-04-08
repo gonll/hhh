@@ -24,7 +24,7 @@ function propiedades_url_publica($rel) {
 /**
  * Respaldo si no hay columnas en BD: coordenadas y enlace en disco.
  */
-function propiedades_guardar_mapa_disco($propiedad_id, $lat, $lng, $enlace) {
+function propiedades_guardar_mapa_disco($propiedad_id, $lat, $lng, $enlace, $zoom = null) {
     $propiedad_id = (int) $propiedad_id;
     if ($propiedad_id <= 0) {
         return false;
@@ -40,6 +40,15 @@ function propiedades_guardar_mapa_disco($propiedad_id, $lat, $lng, $enlace) {
         'lng' => $lng,
         'enlace' => $enlace,
     ];
+    if ($zoom === null && ($enlace !== null && $enlace !== '')) {
+        $zoom = propiedades_zoom_desde_enlace_maps($enlace);
+    }
+    if ($zoom !== null && $zoom !== '') {
+        $zi = (int) $zoom;
+        if ($zi >= 1 && $zi <= 22) {
+            $data['zoom'] = $zi;
+        }
+    }
     return (bool) @file_put_contents($dir . '/mapa.json', json_encode($data, JSON_UNESCAPED_UNICODE));
 }
 
@@ -54,6 +63,61 @@ function propiedades_leer_mapa_disco($propiedad_id) {
     }
     $j = json_decode((string) @file_get_contents($f), true);
     return is_array($j) ? $j : null;
+}
+
+/**
+ * Intenta leer el nivel de zoom (estilo Google Maps, 1–22) desde el enlace guardado.
+ */
+function propiedades_zoom_desde_enlace_maps($url) {
+    if ($url === null || $url === '') {
+        return null;
+    }
+    $url = (string) $url;
+    if (preg_match('/@[-+]?\d+\.?\d*,[-+]?\d+\.?\d*,(\d{1,2})z/i', $url, $m)) {
+        return (int) min(22, max(1, (int) $m[1]));
+    }
+    if (preg_match('/!(\d{1,2})z/i', $url, $m)) {
+        return (int) min(22, max(1, (int) $m[1]));
+    }
+    if (preg_match('/[,/](\d{1,2})z\b/i', $url, $m)) {
+        return (int) min(22, max(1, (int) $m[1]));
+    }
+    if (preg_match('#[?&]z=(\d{1,2})\b#i', $url, $m)) {
+        return (int) min(22, max(1, (int) $m[1]));
+    }
+    return null;
+}
+
+/**
+ * Semi-extensión del bbox (grados lat/lng desde el centro) para embed OSM según zoom (~como Google).
+ * Zoom 15 ≈ el encuadre que usábamos antes con dl 0.012.
+ */
+function propiedades_mapa_bbox_delta_desde_zoom($zoom) {
+    $zoom = (int) $zoom;
+    if ($zoom < 1 || $zoom > 22) {
+        $zoom = 15;
+    }
+    $dl = 0.012 * pow(2, 15 - $zoom);
+
+    return max(0.0006, min(0.5, $dl));
+}
+
+/**
+ * Zoom efectivo: enlace, luego mapa.json, luego 15.
+ */
+function propiedades_mapa_zoom_efectivo($enlace, $diskMap) {
+    $z = propiedades_zoom_desde_enlace_maps($enlace ?? '');
+    if ($z !== null) {
+        return $z;
+    }
+    if (is_array($diskMap) && isset($diskMap['zoom']) && $diskMap['zoom'] !== '' && $diskMap['zoom'] !== null) {
+        $zi = (int) $diskMap['zoom'];
+        if ($zi >= 1 && $zi <= 22) {
+            return $zi;
+        }
+    }
+
+    return 15;
 }
 
 /**
