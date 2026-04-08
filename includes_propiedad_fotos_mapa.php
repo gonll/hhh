@@ -177,10 +177,36 @@ function propiedades_fotos_desde_json($json) {
 }
 
 /**
+ * Mensaje legible para error de subida PHP.
+ */
+function propiedades_upload_err_str($code) {
+    switch ((int) $code) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'archivo demasiado grande (límite del servidor o 5 MB en la app)';
+        case UPLOAD_ERR_PARTIAL:
+            return 'subida interrumpida';
+        case UPLOAD_ERR_NO_FILE:
+            return 'ningún archivo';
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return 'falta carpeta temporal en el servidor';
+        case UPLOAD_ERR_CANT_WRITE:
+        case UPLOAD_ERR_EXTENSION:
+            return 'no se pudo escribir el archivo en el servidor';
+        default:
+            return 'error de subida (código ' . (int) $code . ')';
+    }
+}
+
+/**
+ * @param array|null $diag Si se pasa una variable, se rellena con avisos (errores o formato no reconocido).
  * @return string[] nuevas rutas añadidas
  */
-function propiedades_procesar_subida_fotos($propiedad_id, $field = 'fotos') {
+function propiedades_procesar_subida_fotos($propiedad_id, $field = 'fotos', &$diag = null) {
     $propiedad_id = (int) $propiedad_id;
+    if ($diag !== null) {
+        $diag = [];
+    }
     if ($propiedad_id <= 0 || !isset($_FILES[$field])) {
         return [];
     }
@@ -215,10 +241,23 @@ function propiedades_procesar_subida_fotos($propiedad_id, $field = 'fotos') {
         $tm = is_array($f['tmp_name']) ? ($f['tmp_name'][$idx] ?? '') : $f['tmp_name'];
         $sz = is_array($f['size']) ? (int) ($f['size'][$idx] ?? 0) : (int) $f['size'];
         $ty = is_array($f['type'] ?? null) ? ($f['type'][$idx] ?? '') : ($f['type'] ?? '');
-        if ($err !== UPLOAD_ERR_OK || $tm === '' || !is_uploaded_file($tm)) {
+        $nombreArchivo = is_array($f['name']) ? ($f['name'][$idx] ?? '') : ($f['name'] ?? '');
+        if ($err !== UPLOAD_ERR_OK) {
+            if ($diag !== null && $err !== UPLOAD_ERR_NO_FILE) {
+                $diag[] = (string) $nombreArchivo . ': ' . propiedades_upload_err_str($err);
+            }
+            continue;
+        }
+        if ($tm === '' || !is_uploaded_file($tm)) {
+            if ($diag !== null) {
+                $diag[] = (string) $nombreArchivo . ': archivo temporal inválido';
+            }
             continue;
         }
         if ($sz > $maxBytes) {
+            if ($diag !== null) {
+                $diag[] = (string) $nombreArchivo . ': supera 5 MB';
+            }
             continue;
         }
         $detect = $ty;
@@ -247,6 +286,16 @@ function propiedades_procesar_subida_fotos($propiedad_id, $field = 'fotos') {
             }
         }
         if (!isset($mime_ok[$detect])) {
+            $extFromName = strtolower((string) pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+            $extToMime = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'];
+            if (isset($extToMime[$extFromName])) {
+                $detect = $extToMime[$extFromName];
+            }
+        }
+        if (!isset($mime_ok[$detect])) {
+            if ($diag !== null) {
+                $diag[] = (string) $nombreArchivo . ': formato no reconocido (use JPG, PNG, GIF o WEBP)';
+            }
             continue;
         }
         $ext = $mime_ok[$detect];

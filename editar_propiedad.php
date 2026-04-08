@@ -86,7 +86,15 @@ if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
     <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Falta dato o corregir.</div>
     <?php endif; ?>
     <?php if (isset($_GET['ok']) && $_GET['ok'] === '1'): ?>
-    <div style="background:#d4edda; color:#155724; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Cambios guardados. El detalle y el resto de los datos quedan como los editó.</div>
+    <div style="background:#d4edda; color:#155724; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">
+        Cambios guardados. El detalle y el resto de los datos quedan como los editó.
+        <?php if (isset($_GET['fotos_n']) && (int)$_GET['fotos_n'] > 0): ?>
+            <strong> Fotos nuevas agregadas: <?= (int)$_GET['fotos_n'] ?>.</strong>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <?php if (!empty($_GET['fotos_aviso'])): ?>
+    <div style="background:#fff3cd; color:#856404; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px; white-space:pre-wrap;"><?= htmlspecialchars($_GET['fotos_aviso'], ENT_QUOTES, 'UTF-8') ?></div>
     <?php endif; ?>
     <a href="ver_propiedad.php?id=<?= (int)$prop['propiedad_id'] ?>" class="link-ver" target="_blank" rel="noopener">Ver fotos y ubicación en pantalla completa</a>
     <form class="form-nav-enter" action="actualizar_propiedad.php" method="POST" enctype="multipart/form-data">

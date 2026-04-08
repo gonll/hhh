@@ -123,7 +123,8 @@ if (!$stmt) {
 
 if (mysqli_stmt_execute($stmt)) {
     mysqli_stmt_close($stmt);
-    $nuevas = propiedades_procesar_subida_fotos($id, 'fotos');
+    $fotosDiag = [];
+    $nuevas = propiedades_procesar_subida_fotos($id, 'fotos', $fotosDiag);
     if ($tiene_media) {
         $existentes = [];
         $r0 = mysqli_query($conexion, "SELECT fotos_json FROM propiedades WHERE propiedad_id = " . (int)$id . " LIMIT 1");
@@ -134,12 +135,20 @@ if (mysqli_stmt_execute($stmt)) {
             $todas = array_merge($existentes, $nuevas);
             if (!propiedades_guardar_json_fotos($conexion, $id, $todas)) {
                 error_log('actualizar_propiedad: fotos_json id=' . $id . ' err=' . mysqli_error($conexion));
+                $fotosDiag[] = 'Las fotos se subieron a la carpeta pero no se pudo actualizar fotos_json en la base (ver permisos MySQL o columna).';
             }
         }
     } else {
         propiedades_guardar_mapa_disco($id, $mapa_lat, $mapa_lng, $mapa_enlace);
+        if (count($nuevas) > 0) {
+            $fotosDiag[] = 'Fotos guardadas en carpeta (sin columna fotos_json en BD). Ejecute la migración SQL para registrar también en la base.';
+        }
     }
-    header('Location: editar_propiedad.php?id=' . $id . '&ok=1');
+    $q = 'editar_propiedad.php?id=' . $id . '&ok=1&fotos_n=' . count($nuevas);
+    if (!empty($fotosDiag)) {
+        $q .= '&fotos_aviso=' . rawurlencode(implode(' | ', array_slice($fotosDiag, 0, 3)));
+    }
+    header('Location: ' . $q);
 } else {
     error_log('actualizar_propiedad execute: ' . mysqli_stmt_error($stmt));
     mysqli_stmt_close($stmt);
