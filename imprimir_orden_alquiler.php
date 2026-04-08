@@ -51,11 +51,21 @@ if (($lat === null || $lng === null) && is_array($diskMap)) {
 $tieneMapa = ($lat !== null && $lng !== null);
 $zoomMapa = $tieneMapa ? propiedades_mapa_zoom_efectivo($p['mapa_enlace'] ?? '', $diskMap) : 15;
 $gmaps_link = $tieneMapa ? ('https://www.google.com/maps?q=' . rawurlencode($lat . ',' . $lng)) : '';
-/** Mapa estático OSM (imagen) para que imprima bien en PDF */
-$staticMapUrl = '';
+$osm_embed = '';
+$mapaImgSrc = '';
+$mapaUsarIframe = false;
 if ($tieneMapa) {
-    $staticMapUrl = 'https://staticmap.openstreetmap.de/staticmap.php?center=' . rawurlencode($lat . ',' . $lng)
-        . '&zoom=' . (int) $zoomMapa . '&size=520x240&markers=' . rawurlencode($lat . ',' . $lng) . ',red-pushpin';
+    $dl = propiedades_mapa_bbox_delta_desde_zoom($zoomMapa);
+    $bbox = ($lng - $dl) . '%2C' . ($lat - $dl) . '%2C' . ($lng + $dl) . '%2C' . ($lat + $dl);
+    $osm_embed = 'https://www.openstreetmap.org/export/embed.html?bbox=' . $bbox . '&layer=mapnik&marker=' . rawurlencode($lat . ',' . $lng);
+    $mapaPngBin = propiedades_descargar_mapa_estatico_png($lat, $lng, $zoomMapa, 520, 240);
+    if ($mapaPngBin !== null) {
+        $isPng = (substr($mapaPngBin, 0, 8) === "\x89PNG\r\n\x1a\n");
+        $mime = $isPng ? 'image/png' : 'image/jpeg';
+        $mapaImgSrc = 'data:' . $mime . ';base64,' . base64_encode($mapaPngBin);
+    } elseif ($osm_embed !== '') {
+        $mapaUsarIframe = true;
+    }
 }
 
 function imprimir_url_absoluta_img($pathRel) {
@@ -137,6 +147,10 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
         .bloque-foto-mapa td { border: 1px solid #ccc; padding: 8px; vertical-align: top; width: 50%; }
         .bloque-foto-mapa .tit-cel { font-weight: bold; margin-bottom: 6px; color: #333; }
         .bloque-foto-mapa img { max-width: 100%; height: auto; max-height: 200px; display: block; margin: 0 auto; }
+        .bloque-foto-mapa .mapa-iframe-print {
+            display: block; width: 100%; height: 220px; border: 1px solid #ccc; border-radius: 2px;
+            background: #e8e8e8;
+        }
         .bloque-foto-mapa .coords { font-size: 9px; color: #555; margin-top: 6px; }
         .bloque-foto-mapa .sin-dato { color: #888; font-style: italic; }
 
@@ -162,7 +176,8 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
             }
             table.datos, .detalle, .bloque-foto-mapa { page-break-inside: avoid; }
             h2 { page-break-after: avoid; }
-            .bloque-foto-mapa img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .bloque-foto-mapa img,
+            .bloque-foto-mapa .mapa-iframe-print { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -191,8 +206,11 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
             </td>
             <td>
                 <div class="tit-cel">Ubicación</div>
-                <?php if ($tieneMapa && $staticMapUrl !== ''): ?>
-                    <img src="<?= h($staticMapUrl) ?>" alt="Mapa de ubicación">
+                <?php if ($tieneMapa && $mapaImgSrc !== ''): ?>
+                    <img src="<?= h($mapaImgSrc) ?>" alt="Mapa de ubicación">
+                    <p class="coords">Zoom <?= (int) $zoomMapa ?> · <a href="<?= h($gmaps_link) ?>" target="_blank" rel="noopener">Google Maps</a><?php if (!empty($p['mapa_enlace'])): ?> · <a href="<?= h($p['mapa_enlace']) ?>" target="_blank" rel="noopener">Enlace guardado</a><?php endif; ?></p>
+                <?php elseif ($tieneMapa && $mapaUsarIframe && $osm_embed !== ''): ?>
+                    <iframe class="mapa-iframe-print" src="<?= h($osm_embed) ?>" title="Mapa de ubicación" loading="lazy"></iframe>
                     <p class="coords">Zoom <?= (int) $zoomMapa ?> · <a href="<?= h($gmaps_link) ?>" target="_blank" rel="noopener">Google Maps</a><?php if (!empty($p['mapa_enlace'])): ?> · <a href="<?= h($p['mapa_enlace']) ?>" target="_blank" rel="noopener">Enlace guardado</a><?php endif; ?></p>
                 <?php elseif (!empty($p['mapa_enlace'])): ?>
                     <p class="sin-dato" style="margin:0;">Mapa: enlace guardado (sin coordenadas en sistema).</p>

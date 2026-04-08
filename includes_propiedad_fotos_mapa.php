@@ -121,6 +121,66 @@ function propiedades_mapa_zoom_efectivo($enlace, $diskMap) {
 }
 
 /**
+ * Descarga PNG/JPEG de un mapa estático (tiles OSM vía servicio público) para impresión/PDF.
+ * El resultado se puede incrustar como data URI para que el navegador imprima el dibujo del mapa.
+ *
+ * @return string|null binario de imagen o null
+ */
+function propiedades_descargar_mapa_estatico_png($lat, $lng, $zoom, $width = 520, $height = 240) {
+    $lat = (float) $lat;
+    $lng = (float) $lng;
+    $zoom = max(1, min(18, (int) $zoom));
+    $width = max(200, min(640, (int) $width));
+    $height = max(120, min(480, (int) $height));
+    $markers = rawurlencode($lat . ',' . $lng);
+    $center = rawurlencode($lat . ',' . $lng);
+    $urls = [
+        "https://staticmap.openstreetmap.de/staticmap.php?center={$center}&zoom={$zoom}&size={$width}x{$height}&markers={$markers},red-pushpin",
+        "https://staticmap.openstreetmap.de/staticmap.php?center={$center}&zoom={$zoom}&size={$width}x{$height}&markers={$markers},lightblue1",
+        "https://staticmap.openstreetmap.de/staticmap.php?center={$center}&zoom={$zoom}&size={$width}x{$height}&markers={$markers}",
+    ];
+    $headers = ['User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'];
+    $valid = function ($data) {
+        if ($data === false || strlen($data) < 400) {
+            return false;
+        }
+        return (substr($data, 0, 8) === "\x89PNG\r\n\x1a\n" || substr($data, 0, 3) === "\xFF\xD8\xFF");
+    };
+    if (function_exists('curl_init')) {
+        foreach ($urls as $url) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT => 18,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_HTTPHEADER => $headers,
+            ]);
+            $data = curl_exec($ch);
+            $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($code >= 200 && $code < 300 && $valid($data)) {
+                return $data;
+            }
+        }
+    }
+    $ctx = stream_context_create([
+        'http' => [
+            'timeout' => 18,
+            'header' => implode("\r\n", $headers) . "\r\n\r\n",
+        ],
+    ]);
+    foreach ($urls as $url) {
+        $data = @file_get_contents($url, false, $ctx);
+        if ($valid($data)) {
+            return $data;
+        }
+    }
+
+    return null;
+}
+
+/**
  * Lista imágenes en carpeta (respaldo si fotos_json vacío o sin columna).
  */
 function propiedades_listar_fotos_disco($propiedad_id) {
