@@ -61,6 +61,31 @@ if ($tieneMapa) {
     $gmaps_link = 'https://www.google.com/maps?q=' . rawurlencode($lat . ',' . $lng);
 }
 
+$primeraFotoUrl = null;
+foreach ($fotos as $rel0) {
+    $rel0 = str_replace(['..', '\\'], '', (string) $rel0);
+    if ($rel0 === '' || strpos($rel0, 'uploads/propiedades/') !== 0) {
+        continue;
+    }
+    $primeraFotoUrl = propiedades_url_publica($rel0);
+    break;
+}
+$fotosRestantes = [];
+if ($primeraFotoUrl !== null && count($fotos) > 1) {
+    $saltarUna = true;
+    foreach ($fotos as $rel0) {
+        $rel0 = str_replace(['..', '\\'], '', (string) $rel0);
+        if ($rel0 === '' || strpos($rel0, 'uploads/propiedades/') !== 0) {
+            continue;
+        }
+        if ($saltarUna) {
+            $saltarUna = false;
+            continue;
+        }
+        $fotosRestantes[] = $rel0;
+    }
+}
+
 function h($s) {
     return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 }
@@ -112,6 +137,43 @@ $g2 = $datos['garante2'];
         .btn-print:hover { background: #218838; }
         .btn-volver { background: #ffc107; color: #333; }
         .nota { font-size: 11px; color: #666; margin-top: 8px; line-height: 1.4; }
+        .destaque-visual {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            align-items: stretch;
+            margin-bottom: 18px;
+        }
+        @media (max-width: 720px) { .destaque-visual { grid-template-columns: 1fr; } }
+        .destaque-visual .panel-foto, .destaque-visual .panel-mapa {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fafbfc;
+        }
+        .destaque-visual .panel-foto { display: flex; flex-direction: column; min-height: 220px; }
+        .destaque-visual .panel-foto .etiqueta {
+            font-size: 11px; font-weight: bold; color: #495057; padding: 8px 10px; background: #e9ecef; border-bottom: 1px solid #dee2e6;
+        }
+        .destaque-visual .panel-foto .img-wrap {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            min-height: 200px; background: #e9ecef;
+        }
+        .destaque-visual .panel-foto img {
+            max-width: 100%; max-height: 280px; width: auto; height: auto; object-fit: contain; display: block;
+        }
+        .destaque-visual .sin-foto-caja {
+            padding: 24px; text-align: center; color: #888; font-size: 12px;
+        }
+        .destaque-visual .panel-mapa .etiqueta {
+            font-size: 11px; font-weight: bold; color: #495057; padding: 8px 10px; background: #e9ecef; border-bottom: 1px solid #dee2e6;
+        }
+        .destaque-visual .panel-mapa .mapa-wrap { height: 260px; margin: 0; border: none; border-radius: 0; }
+        .destaque-visual .panel-mapa .links-mapa { padding: 8px 10px; background: #fff; }
+        .destaque-visual .panel-mapa .coords-mini { font-size: 10px; color: #666; padding: 0 10px 8px; }
+        .galeria-mini { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .galeria-mini a { display: block; width: 72px; height: 72px; border-radius: 4px; overflow: hidden; border: 1px solid #ddd; }
+        .galeria-mini img { width: 100%; height: 100%; object-fit: cover; }
     </style>
 </head>
 <body>
@@ -124,6 +186,43 @@ $g2 = $datos['garante2'];
         <div class="msg <?= (strpos($mensaje, 'No se pudo') !== false) ? 'err' : 'ok' ?>"><?= h($mensaje) ?></div>
     <?php endif; ?>
 
+    <div class="destaque-visual">
+        <div class="panel-foto">
+            <div class="etiqueta">Foto de la propiedad</div>
+            <?php if ($primeraFotoUrl !== null): ?>
+                <div class="img-wrap">
+                    <a href="<?= h($primeraFotoUrl) ?>" target="_blank" rel="noopener" title="Abrir foto">
+                        <img src="<?= h($primeraFotoUrl) ?>" alt="Primera foto de la propiedad">
+                    </a>
+                </div>
+            <?php else: ?>
+                <div class="sin-foto-caja">No hay fotos cargadas. Podés agregarlas desde la edición de la propiedad.</div>
+            <?php endif; ?>
+        </div>
+        <div class="panel-mapa">
+            <div class="etiqueta">Ubicación (mapa guardado)</div>
+            <?php if ($tieneMapa): ?>
+                <div class="mapa-wrap">
+                    <iframe title="Mapa" loading="lazy" src="<?= h($osm_embed) ?>"></iframe>
+                </div>
+                <div class="links-mapa">
+                    <a href="<?= h($gmaps_link) ?>" target="_blank" rel="noopener">Abrir en Google Maps</a>
+                    <?php if (!empty($prop['mapa_enlace'])): ?>
+                        <a href="<?= h($prop['mapa_enlace']) ?>" target="_blank" rel="noopener">Enlace guardado</a>
+                    <?php endif; ?>
+                </div>
+                <p class="coords-mini">Coordenadas: <?= h((string) $lat) ?>, <?= h((string) $lng) ?></p>
+            <?php else: ?>
+                <div class="sin-foto-caja" style="min-height:200px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+                    <span>No hay coordenadas en mapa.</span>
+                    <?php if (!empty($prop['mapa_enlace'])): ?>
+                        <a href="<?= h($prop['mapa_enlace']) ?>" target="_blank" rel="noopener" style="font-weight:bold;">Abrir ubicación (enlace guardado)</a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
     <div class="bloque-info">
         <div><strong>Propiedad:</strong> <?= h($prop['propiedad'] ?? '') ?></div>
         <?php if (!empty($prop['consorcio'])): ?><div><strong>Consorcio:</strong> <?= h($prop['consorcio']) ?></div><?php endif; ?>
@@ -133,41 +232,25 @@ $g2 = $datos['garante2'];
         <div style="white-space:pre-wrap; font-size:12px; color:#333;"><?= h($prop['detalle'] ?? '') !== '' ? h($prop['detalle']) : '—' ?></div>
     </div>
 
-    <h2>Fotos</h2>
-    <?php if (count($fotos) === 0): ?>
-        <p class="sin-dato">No hay fotos cargadas. Podés cargarlas desde la edición de la propiedad o la ficha de fotos.</p>
-    <?php else: ?>
-        <div class="galeria">
-            <?php foreach ($fotos as $rel):
-                $rel = str_replace(['..', '\\'], '', $rel);
-                if ($rel === '' || strpos($rel, 'uploads/propiedades/') !== 0) {
-                    continue;
-                }
-                $url = propiedades_url_publica($rel);
-                $src = h($url);
-            ?>
-            <a href="<?= $src ?>" target="_blank" rel="noopener" title="Abrir foto"><img src="<?= $src ?>" alt="Foto"></a>
-            <?php endforeach; ?>
-        </div>
-        <p style="margin-top:10px;"><a href="ver_propiedad.php?id=<?= $id ?>#fotos" target="_blank">Abrir galería completa</a></p>
-    <?php endif; ?>
-
-    <h2>Mapa</h2>
-    <?php if (!$tieneMapa): ?>
-        <p class="sin-dato">No hay ubicación en mapa. Cargá coordenadas desde la edición de la propiedad.</p>
-        <?php if (!empty($prop['mapa_enlace'])): ?>
-            <p><a href="<?= h($prop['mapa_enlace']) ?>" target="_blank" rel="noopener">Abrir enlace guardado</a></p>
-        <?php endif; ?>
-    <?php else: ?>
-        <div class="mapa-wrap">
-            <iframe title="Mapa" loading="lazy" src="<?= h($osm_embed) ?>"></iframe>
-        </div>
-        <div class="links-mapa">
-            <a href="<?= h($gmaps_link) ?>" target="_blank" rel="noopener">Google Maps</a>
-            <?php if (!empty($prop['mapa_enlace'])): ?>
-                <a href="<?= h($prop['mapa_enlace']) ?>" target="_blank" rel="noopener">Enlace original</a>
-            <?php endif; ?>
-        </div>
+    <?php if (count($fotosRestantes) > 0): ?>
+    <h2 style="margin-top:8px;">Más fotos</h2>
+    <div class="galeria-mini">
+        <?php foreach ($fotosRestantes as $rel):
+            $rel = str_replace(['..', '\\'], '', $rel);
+            if ($rel === '' || strpos($rel, 'uploads/propiedades/') !== 0) {
+                continue;
+            }
+            $url = propiedades_url_publica($rel);
+            $src = h($url);
+        ?>
+        <a href="<?= $src ?>" target="_blank" rel="noopener" title="Ver foto"><img src="<?= $src ?>" alt=""></a>
+        <?php endforeach; ?>
+    </div>
+    <p style="margin:10px 0 0; font-size:12px;"><a href="ver_propiedad.php?id=<?= $id ?>#fotos" target="_blank">Ver galería completa</a></p>
+    <?php elseif ($primeraFotoUrl !== null && count($fotos) === 1): ?>
+    <p style="margin:0 0 12px; font-size:12px;"><a href="ver_propiedad.php?id=<?= $id ?>#fotos" target="_blank">Abrir ficha de fotos</a></p>
+    <?php elseif ($primeraFotoUrl === null): ?>
+    <p style="margin:0 0 12px; font-size:12px;"><a href="ver_propiedad.php?id=<?= $id ?>" target="_blank">Ficha de la propiedad</a></p>
     <?php endif; ?>
 
     <form method="post" action="orden_alquiler.php">
