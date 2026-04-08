@@ -601,6 +601,10 @@ function fmtNum($n) {
         .filtro-azucar-cell::placeholder { color: #6c757d; font-size: 9px; }
         .btn-limpiar-filtros-azucar { font-size: 9px; padding: 2px 6px; cursor: pointer; border: 1px solid #6c757d; border-radius: 3px; background: #fff; color: #495057; font-weight: bold; white-space: nowrap; }
         .btn-limpiar-filtros-azucar:hover { background: #f8f9fa; }
+        .tabla-azucar tfoot tr.fila-totales-azucar td { background: #d8e8ff; font-weight: bold; border: 1px solid #9ec5fe; position: sticky; bottom: 0; z-index: 5; box-shadow: 0 -1px 0 #9ec5fe; }
+        .tabla-azucar tfoot tr.fila-totales-azucar td.col-cantidad,
+        .tabla-azucar tfoot tr.fila-totales-azucar td.col-cantvta,
+        .tabla-azucar tfoot tr.fila-totales-azucar td.col-cantfact { background: #c5dcf0; color: #0d3a66; }
         .tabla-azucar td { padding: 2px 3px; border: 1px solid #ddd; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold; }
         .tabla-azucar tbody tr { cursor: pointer; }
         .tabla-azucar tbody tr:hover { background: #e7f3ff; }
@@ -1031,6 +1035,17 @@ function fmtNum($n) {
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </tbody>
+                <tfoot>
+                    <tr class="fila-totales-azucar">
+                        <td colspan="4" style="text-align:right;">Σ visibles</td>
+                        <td class="col-cantidad" id="totAzucarCantidad">0</td>
+                        <td colspan="3"></td>
+                        <td class="col-cantvta" id="totAzucarCantVta">0</td>
+                        <td colspan="4"></td>
+                        <td class="col-cantfact" id="totAzucarCantFact">0</td>
+                        <td colspan="4"></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
         </div>
@@ -1434,9 +1449,43 @@ function fmtNum($n) {
             e.preventDefault();
         }
     });
+    function actualizarTotalesAzucarFiltrados() {
+        var elCant = document.getElementById('totAzucarCantidad');
+        var elVta = document.getElementById('totAzucarCantVta');
+        var elFact = document.getElementById('totAzucarCantFact');
+        if (!elCant || !elVta || !elFact) return;
+        var sumC = 0, sumV = 0, sumF = 0;
+        document.querySelectorAll('.tabla-azucar tbody tr').forEach(function(tr) {
+            if (tr.style.display === 'none') return;
+            var tdCant = tr.querySelector('td.col-cantidad');
+            if (!tdCant) return;
+            function numDesdeFila(dsKey, td) {
+                var raw = tr.dataset[dsKey];
+                if (raw !== undefined && raw !== '') {
+                    var n = parseFloat(String(raw).replace(',', '.'), 10);
+                    if (!isNaN(n)) return n;
+                }
+                var t = (td && td.textContent) ? td.textContent.trim().replace(/\s/g, '').replace(/\./g, '').replace(',', '.') : '';
+                var n2 = parseFloat(t, 10);
+                return isNaN(n2) ? 0 : n2;
+            }
+            sumC += numDesdeFila('cantidad', tdCant);
+            sumV += numDesdeFila('cantvta', tr.querySelector('td.col-cantvta'));
+            sumF += numDesdeFila('cantfact', tr.querySelector('td.col-cantfact'));
+        });
+        function fmt(n) {
+            if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+            return String(Math.round(n * 100) / 100);
+        }
+        elCant.textContent = fmt(sumC);
+        elVta.textContent = fmt(sumV);
+        elFact.textContent = fmt(sumF);
+    }
     function aplicarFiltrosAzucar() {
         var inputs = document.querySelectorAll('.fila-filtros-azucar .filtro-azucar-cell');
-        var rows = document.querySelectorAll('.tabla-azucar tbody tr[data-id]');
+        var rows = Array.prototype.filter.call(document.querySelectorAll('.tabla-azucar tbody tr'), function(tr) {
+            return tr.querySelector('td.col-cantidad');
+        });
         rows.forEach(function(tr) {
             var tds = tr.querySelectorAll('td');
             var show = true;
@@ -1448,8 +1497,8 @@ function fmtNum($n) {
             }
             tr.style.display = show ? '' : 'none';
         });
-        var sel = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada[data-id]');
-        if (sel && sel.style.display === 'none') {
+        var sel = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada');
+        if (sel && sel.style.display === 'none' && sel.querySelector('td.col-cantidad')) {
             sel.classList.remove('fila-seleccionada');
             for (var j = 0; j < rows.length; j++) {
                 if (rows[j].style.display !== 'none') {
@@ -1459,13 +1508,15 @@ function fmtNum($n) {
             }
         }
         if (typeof actualizarCartelSaldoOrden === 'function') actualizarCartelSaldoOrden();
+        actualizarTotalesAzucarFiltrados();
     }
     function exportarGrillaAzucarExcel() {
         var table = document.querySelector('.tabla-azucar');
         if (!table) return;
         var clone = table.cloneNode(true);
         clone.querySelectorAll('.fila-filtros-azucar').forEach(function(r) { r.remove(); });
-        clone.querySelectorAll('tbody tr[data-id]').forEach(function(tr) {
+        clone.querySelectorAll('tbody tr').forEach(function(tr) {
+            if (!tr.querySelector('td.col-cantidad')) return;
             if (tr.style.display === 'none') tr.remove();
         });
         clone.querySelectorAll('button, .btn-mov-cobro, .btn-imprimir-remito').forEach(function(el) { el.remove(); });
@@ -2183,6 +2234,7 @@ function fmtNum($n) {
                                         setTimeout(function() {
                                             nuevaFila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                                         }, 100);
+                                        if (typeof actualizarTotalesAzucarFiltrados === 'function') actualizarTotalesAzucarFiltrados();
                                     } else {
                                         console.error('No se pudo parsear la fila HTML');
                                     }
@@ -2954,6 +3006,8 @@ function fmtNum($n) {
                                 });
                             });
                         }
+                        if (typeof actualizarTotalesAzucarFiltrados === 'function') actualizarTotalesAzucarFiltrados();
+                        if (typeof aplicarFiltrosAzucar === 'function') aplicarFiltrosAzucar();
                     })
                     .catch(function() {
                         document.getElementById('btnInterpretar').disabled = false;
@@ -3033,6 +3087,7 @@ function fmtNum($n) {
         });
     }
     actualizarCartelSaldoOrden();
+    actualizarTotalesAzucarFiltrados();
     if (window.location.search.indexOf('abrir_venta=1') !== -1) {
         history.replaceState({}, '', 'gestionar_azucares.php');
         var tr = document.querySelector('.tabla-azucar tbody tr.fila-seleccionada[data-id]');

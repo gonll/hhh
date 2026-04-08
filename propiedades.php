@@ -4,10 +4,12 @@ include 'verificar_sesion.php';
 require_once __DIR__ . '/config_clave_borrado.php';
 require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
 propiedades_asegurar_columnas($conexion);
-$sql = "SELECT p.*, u.apellido as nombre_inquilino, a.fecha_inicio as inicio, a.fecha_fin as vencimiento 
+$sql = "SELECT p.*, u.apellido as nombre_inquilino, a.fecha_inicio as inicio, a.fecha_fin as vencimiento,
+        prop.apellido AS nombre_propietario
         FROM propiedades p 
         LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
         LEFT JOIN usuarios u ON a.inquilino1_id = u.id 
+        LEFT JOIN usuarios prop ON prop.id = p.propietario_id
         ORDER BY p.consorcio ASC, p.propiedad ASC";
 $resultado = mysqli_query($conexion, $sql);
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
@@ -83,6 +85,7 @@ if ($r_consorcios) {
         .w-chico { width: 45px; }
 
         .btn-baja { background: #dc3545; color: white; } 
+        .btn-imp-ord-alq { background: #28a745; color: white; }
         .btn-fin { background: #fd7e14; color: white; }  
         .btn-print { background: #007bff; color: white; }
         .btn-editar { background: #D4A5A5; color: white; }
@@ -95,7 +98,8 @@ if ($r_consorcios) {
         .al-cen { text-align: center !important; }
         .al-izq { text-align: left !important; }
         .inquilino-nombre { color: #28a745; font-weight: bold; }
-        .disponible { color: #999; font-style: italic; }
+        .propietario-sin-alq { color: #dc3545; font-weight: bold; font-style: normal; text-transform: none; }
+        .propietario-sin-alq .prop-prefijo { margin-right: 4px; }
     </style>
 </head>
 <body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){e.preventDefault();window.location.href='index.php';return false;}">
@@ -157,7 +161,13 @@ if ($r_consorcios) {
                     <a href="ver_propiedad.php?id=<?= $pid ?>#mapa" class="link-ver-prop" title="Ver ubicación" onclick="event.stopPropagation();">Mapa</a>
                 </td>
                 <td class="al-cen">
-                    <?= $alquilada ? "<span class='inquilino-nombre'>{$f['nombre_inquilino']}</span>" : "<span class='disponible'>DISPONIBLE</span>" ?>
+                    <?php if ($alquilada): ?>
+                        <span class="inquilino-nombre"><?= htmlspecialchars($f['nombre_inquilino'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php else:
+                        $nomProp = trim((string)($f['nombre_propietario'] ?? ''));
+                    ?>
+                        <span class="propietario-sin-alq"><span class="prop-prefijo">Prop:</span><?= $nomProp !== '' ? htmlspecialchars($nomProp, ENT_QUOTES, 'UTF-8') : '—' ?></span>
+                    <?php endif; ?>
                 </td>
                 <td class="al-cen"><?= $inicio ?></td>
                 <td class="al-cen"><?= $venc ?></td>
@@ -169,7 +179,7 @@ if ($r_consorcios) {
                             <button onclick="imprimirContrato(<?= $f['propiedad_id'] ?>)" class="btn btn-print w-chico">IMPRIMIR CONTRATO</button>
                         <?php else: ?>
                             <button type="button" class="btn btn-baja w-grande" data-propiedad="<?= htmlspecialchars($f['propiedad'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-id="<?= (int)$f['propiedad_id'] ?>">BAJA PROP.</button>
-                            <div style="width: 45px;"></div> 
+                            <button type="button" class="btn btn-imp-ord-alq w-grande" onclick="window.open('orden_alquiler.php?id=<?= $pid ?>', '_blank');" title="Orden de alquiler: condiciones, solicitante y garantes">IMP ORD ALQ.</button>
                         <?php endif; ?>
                     </div>
                     <?php else: ?>

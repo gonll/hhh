@@ -1,0 +1,27 @@
+{
+    "precio_alquiler_pedido": "",
+    "actualizacion": "",
+    "monto_garantia": "",
+    "solicitante": {
+        "nombre": "",
+        "dni": "",
+        "cuit": "",
+        "email": "",
+        "celular": ""
+    },
+    "garante1": {
+        "nombre": "",
+        "dni": "",
+        "cuit": "",
+        "email": "",
+        "celular": ""
+    },
+    "garante2": {
+        "nombre": "",
+        "dni": "",
+        "cuit": "",
+        "email": "",
+        "celular": ""
+    },
+    "updated_at": "2026-04-08T23:41:17+02:00"
+}
