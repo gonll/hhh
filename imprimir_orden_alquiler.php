@@ -95,6 +95,7 @@ function fila_persona($titulo, array $persona) {
         'Apellido y nombre' => $n,
         'DNI' => $persona['dni'] ?? '',
         'CUIT' => $persona['cuit'] ?? '',
+        'Domicilio' => $persona['domicilio'] ?? '',
         'Mail' => $persona['email'] ?? '',
         'Celular' => $persona['celular'] ?? '',
     ];

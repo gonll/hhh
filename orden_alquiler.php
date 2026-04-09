@@ -284,6 +284,7 @@ $g2 = $datos['garante2'];
                 <div><label for="solicitante_nombre">Apellido y nombre</label><input type="text" name="solicitante_nombre" id="solicitante_nombre" value="<?= h($s['nombre']) ?>" autocomplete="off"></div>
                 <div><label for="solicitante_dni">DNI</label><input type="text" name="solicitante_dni" id="solicitante_dni" value="<?= h($s['dni']) ?>" autocomplete="off"></div>
                 <div><label for="solicitante_cuit">CUIT</label><input type="text" name="solicitante_cuit" id="solicitante_cuit" value="<?= h($s['cuit']) ?>" autocomplete="off"></div>
+                <div><label for="solicitante_domicilio">Domicilio</label><input type="text" name="solicitante_domicilio" id="solicitante_domicilio" value="<?= h($s['domicilio']) ?>" autocomplete="off"></div>
                 <div><label for="solicitante_email">Mail</label><input type="email" name="solicitante_email" id="solicitante_email" value="<?= h($s['email']) ?>" autocomplete="off"></div>
                 <div style="grid-column: 1 / -1;"><label for="solicitante_celular">Celular</label><input type="text" name="solicitante_celular" id="solicitante_celular" value="<?= h($s['celular']) ?>" autocomplete="off"></div>
             </div>
@@ -295,6 +296,7 @@ $g2 = $datos['garante2'];
                 <div><label for="garante1_nombre">Apellido y nombre</label><input type="text" name="garante1_nombre" id="garante1_nombre" value="<?= h($g1['nombre']) ?>" autocomplete="off"></div>
                 <div><label for="garante1_dni">DNI</label><input type="text" name="garante1_dni" id="garante1_dni" value="<?= h($g1['dni']) ?>" autocomplete="off"></div>
                 <div><label for="garante1_cuit">CUIT</label><input type="text" name="garante1_cuit" id="garante1_cuit" value="<?= h($g1['cuit']) ?>" autocomplete="off"></div>
+                <div><label for="garante1_domicilio">Domicilio</label><input type="text" name="garante1_domicilio" id="garante1_domicilio" value="<?= h($g1['domicilio']) ?>" autocomplete="off"></div>
                 <div><label for="garante1_email">Mail</label><input type="email" name="garante1_email" id="garante1_email" value="<?= h($g1['email']) ?>" autocomplete="off"></div>
                 <div style="grid-column: 1 / -1;"><label for="garante1_celular">Celular</label><input type="text" name="garante1_celular" id="garante1_celular" value="<?= h($g1['celular']) ?>" autocomplete="off"></div>
             </div>
@@ -306,6 +308,7 @@ $g2 = $datos['garante2'];
                 <div><label for="garante2_nombre">Apellido y nombre</label><input type="text" name="garante2_nombre" id="garante2_nombre" value="<?= h($g2['nombre']) ?>" autocomplete="off"></div>
                 <div><label for="garante2_dni">DNI</label><input type="text" name="garante2_dni" id="garante2_dni" value="<?= h($g2['dni']) ?>" autocomplete="off"></div>
                 <div><label for="garante2_cuit">CUIT</label><input type="text" name="garante2_cuit" id="garante2_cuit" value="<?= h($g2['cuit']) ?>" autocomplete="off"></div>
+                <div><label for="garante2_domicilio">Domicilio</label><input type="text" name="garante2_domicilio" id="garante2_domicilio" value="<?= h($g2['domicilio']) ?>" autocomplete="off"></div>
                 <div><label for="garante2_email">Mail</label><input type="email" name="garante2_email" id="garante2_email" value="<?= h($g2['email']) ?>" autocomplete="off"></div>
                 <div style="grid-column: 1 / -1;"><label for="garante2_celular">Celular</label><input type="text" name="garante2_celular" id="garante2_celular" value="<?= h($g2['celular']) ?>" autocomplete="off"></div>
             </div>

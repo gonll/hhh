@@ -15,7 +15,7 @@ function orden_alquiler_json_file($propiedad_id) {
 }
 
 function orden_alquiler_persona_vacia() {
-    return ['nombre' => '', 'dni' => '', 'cuit' => '', 'email' => '', 'celular' => ''];
+    return ['nombre' => '', 'dni' => '', 'cuit' => '', 'domicilio' => '', 'email' => '', 'celular' => ''];
 }
 
 function orden_alquiler_defaults() {
@@ -79,6 +79,7 @@ function orden_alquiler_post_a_datos() {
             'nombre' => $p($pref . '_nombre'),
             'dni' => $p($pref . '_dni'),
             'cuit' => $p($pref . '_cuit'),
+            'domicilio' => $p($pref . '_domicilio'),
             'email' => $p($pref . '_email'),
             'celular' => $p($pref . '_celular'),
         ];
