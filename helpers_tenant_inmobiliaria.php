@@ -1,8 +1,9 @@
 <?php
 /**
- * Ámbito inmobiliario: usuario de acceso "sofia" (case-insensitive) vs resto.
- * NULL en acceso_creador_id = datos del sistema principal (HHH).
- * acceso_creador_id = id de fila en `accesos` = datos solo visibles para ese login.
+ * Ámbito inmobiliario: usuario de acceso "sofia" (case-insensitive) vs sistema principal.
+ * - Sofía: solo filas con acceso_creador_id = id de su fila en `accesos`.
+ * - Resto (adminhugo, etc.): solo filas con acceso_creador_id IS NULL (datos HHH; no ven el ámbito de Sofía).
+ * Si no existe usuario "sofia" en `accesos`, no se aplica filtro (compatibilidad).
  */
 
 if (!function_exists('tenant_inmob_es_sofia')) {
@@ -89,7 +90,8 @@ if (!function_exists('tenant_inmob_es_sofia')) {
         if ($sid <= 0) {
             return '1=1';
         }
-        return "(acceso_creador_id IS NULL OR acceso_creador_id <> $sid)";
+        // Sistema principal (p. ej. adminhugo): solo personas sin ámbito (no mezclar con datos de Sofía).
+        return 'acceso_creador_id IS NULL';
     }
 
     /** Con prefijo de alias (ej. u.acceso_creador_id). */
@@ -113,7 +115,7 @@ if (!function_exists('tenant_inmob_es_sofia')) {
         if ($sid <= 0) {
             return '1=1';
         }
-        return "($alias.acceso_creador_id IS NULL OR $alias.acceso_creador_id <> $sid)";
+        return "$alias.acceso_creador_id IS NULL";
     }
 
     function tenant_inmob_indices_acceso_creador_valor($conexion): int
