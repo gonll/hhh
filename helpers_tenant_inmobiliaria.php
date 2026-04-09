@@ -1,9 +1,15 @@
 <?php
 /**
- * Ámbito inmobiliario: usuario de acceso "sofia" (case-insensitive) vs sistema principal.
- * - Sofía: solo filas con acceso_creador_id = id de su fila en `accesos`.
- * - Resto (adminhugo, etc.): solo filas con acceso_creador_id IS NULL (datos HHH; no ven el ámbito de Sofía).
- * Si no existe usuario "sofia" en `accesos`, no se aplica filtro (compatibilidad).
+ * Ámbito inmobiliario (columna acceso_creador_id en usuarios/propiedades; índices IPC por ámbito).
+ *
+ * Regla de negocio:
+ * - Con sesión "sofia": solo registros cargados en su ámbito → acceso_creador_id = id de la fila
+ *   `accesos` donde usuario = 'sofia'. No se listan ni cuentas/propiedades del sistema principal (NULL).
+ * - Con cualquier otro usuario de acceso: solo datos del sistema principal → acceso_creador_id IS NULL.
+ *   No se ven los registros del ámbito Sofía (acceso_creador_id = id de sofia).
+ *
+ * Los movimientos (cuentas) van ligados a usuarios: al filtrar personas por ámbito, los saldos quedan aislados.
+ * Si no existe usuario 'sofia' en `accesos`, no se aplica filtro (compatibilidad con bases antiguas).
  */
 
 if (!function_exists('tenant_inmob_es_sofia')) {
@@ -61,6 +67,37 @@ if (!function_exists('tenant_inmob_es_sofia')) {
             @mysqli_query($conexion, "ALTER TABLE indices ADD COLUMN acceso_creador_id INT(11) NOT NULL DEFAULT 0 COMMENT '0=principal'");
         }
         $done = true;
+        tenant_inmob_reparar_acceso_creador_huerfanos($conexion);
+    }
+
+    /**
+     * Tras importar desde otro servidor, acceso_creador_id puede apuntar a un id que no existe en accesos.
+     * Reasigna esas filas al id actual del usuario 'sofia' para que el filtro de ámbito las encuentre.
+     */
+    function tenant_inmob_reparar_acceso_creador_huerfanos($conexion): void
+    {
+        static $reparado = false;
+        if ($reparado) {
+            return;
+        }
+        $reparado = true;
+        $sid = tenant_inmob_id_acceso_sofia_bd($conexion);
+        if ($sid <= 0) {
+            return;
+        }
+        $sid = (int) $sid;
+        $tUsu = tenant_inmob_tabla_columna_existe($conexion, 'usuarios', 'acceso_creador_id');
+        $tProp = tenant_inmob_tabla_columna_existe($conexion, 'propiedades', 'acceso_creador_id');
+        $tIdx = tenant_inmob_tabla_columna_existe($conexion, 'indices', 'acceso_creador_id');
+        if ($tUsu) {
+            @mysqli_query($conexion, "UPDATE usuarios u LEFT JOIN accesos a ON a.id = u.acceso_creador_id SET u.acceso_creador_id = $sid WHERE u.acceso_creador_id IS NOT NULL AND a.id IS NULL");
+        }
+        if ($tProp) {
+            @mysqli_query($conexion, "UPDATE propiedades p LEFT JOIN accesos a ON a.id = p.acceso_creador_id SET p.acceso_creador_id = $sid WHERE p.acceso_creador_id IS NOT NULL AND a.id IS NULL");
+        }
+        if ($tIdx) {
+            @mysqli_query($conexion, "UPDATE indices i LEFT JOIN accesos a ON a.id = i.acceso_creador_id SET i.acceso_creador_id = $sid WHERE i.acceso_creador_id IS NOT NULL AND i.acceso_creador_id <> 0 AND a.id IS NULL");
+        }
     }
 
     function tenant_inmob_id_acceso_sofia_bd($conexion): int
@@ -83,8 +120,11 @@ if (!function_exists('tenant_inmob_es_sofia')) {
     {
         tenant_inmob_asegurar_esquema($conexion);
         if (tenant_inmob_es_sofia()) {
-            $aid = (int)($_SESSION['acceso_id'] ?? 0);
-            return "acceso_creador_id = $aid";
+            $sid = tenant_inmob_id_acceso_sofia_bd($conexion);
+            if ($sid <= 0) {
+                return '1=0';
+            }
+            return 'acceso_creador_id = ' . (int) $sid;
         }
         $sid = tenant_inmob_id_acceso_sofia_bd($conexion);
         if ($sid <= 0) {
@@ -108,8 +148,11 @@ if (!function_exists('tenant_inmob_es_sofia')) {
     {
         tenant_inmob_asegurar_esquema($conexion);
         if (tenant_inmob_es_sofia()) {
-            $aid = (int)($_SESSION['acceso_id'] ?? 0);
-            return "$alias.acceso_creador_id = $aid";
+            $sid = tenant_inmob_id_acceso_sofia_bd($conexion);
+            if ($sid <= 0) {
+                return '1=0';
+            }
+            return "$alias.acceso_creador_id = " . (int) $sid;
         }
         $sid = tenant_inmob_id_acceso_sofia_bd($conexion);
         if ($sid <= 0) {
@@ -120,7 +163,12 @@ if (!function_exists('tenant_inmob_es_sofia')) {
 
     function tenant_inmob_indices_acceso_creador_valor($conexion): int
     {
-        return tenant_inmob_es_sofia() ? (int)($_SESSION['acceso_id'] ?? 0) : 0;
+        if (!tenant_inmob_es_sofia()) {
+            return 0;
+        }
+        $sid = tenant_inmob_id_acceso_sofia_bd($conexion);
+
+        return $sid > 0 ? $sid : (int) ($_SESSION['acceso_id'] ?? 0);
     }
 
     function tenant_inmob_usuario_id_visible($conexion, int $usuario_id): bool
@@ -150,7 +198,9 @@ if (!function_exists('tenant_inmob_es_sofia')) {
     function tenant_inmob_propiedad_acceso_creador_insert_sql($conexion): string
     {
         if (tenant_inmob_es_sofia()) {
-            return (string)(int)($_SESSION['acceso_id'] ?? 0);
+            $sid = tenant_inmob_id_acceso_sofia_bd($conexion);
+
+            return (string) ($sid > 0 ? $sid : (int) ($_SESSION['acceso_id'] ?? 0));
         }
         return 'NULL';
     }
@@ -159,7 +209,9 @@ if (!function_exists('tenant_inmob_es_sofia')) {
     function tenant_inmob_usuario_acceso_creador_insert_sql($conexion): string
     {
         if (tenant_inmob_es_sofia()) {
-            return (string)(int)($_SESSION['acceso_id'] ?? 0);
+            $sid = tenant_inmob_id_acceso_sofia_bd($conexion);
+
+            return (string) ($sid > 0 ? $sid : (int) ($_SESSION['acceso_id'] ?? 0));
         }
         return 'NULL';
     }
