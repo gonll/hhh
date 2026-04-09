@@ -21,6 +21,12 @@ if (!$prop) {
     echo "Propiedad no encontrada.";
     exit;
 }
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+if (!tenant_inmob_propiedad_id_visible($conexion, $id)) {
+    header('Location: propiedades.php?msg=sin_permiso');
+    exit;
+}
 $fotos_existentes = propiedades_fotos_unificadas($id, $prop['fotos_json'] ?? null);
 $diskMap = propiedades_leer_mapa_disco($id);
 $val_lat = isset($prop['mapa_lat']) && $prop['mapa_lat'] !== null && $prop['mapa_lat'] !== '' ? (string)$prop['mapa_lat'] : '';
@@ -40,7 +46,7 @@ if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Editar Propiedad - HHH</title>
+    <title><?= htmlspecialchars(tenant_inmob_html_title('Editar Propiedad')) ?></title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
         .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }

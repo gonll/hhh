@@ -1,12 +1,17 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 
 if (!isset($_GET['id'], $_GET['limit'])) {
     die('Faltan parámetros (id, limit).');
 }
 
 $id = (int)$_GET['id'];
+if (!tenant_inmob_usuario_id_visible($conexion, $id)) {
+    die('Sin permiso');
+}
 $limit = (int)$_GET['limit'];
 if ($limit < 1) $limit = 10;
 if ($limit > 500) $limit = 500;

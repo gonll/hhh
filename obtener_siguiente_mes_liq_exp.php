@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('HTTP/1.0 403 Forbidden');
     echo '';
@@ -8,6 +10,10 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
 }
 $usuario_id = isset($_GET['usuario_id']) ? (int)$_GET['usuario_id'] : 0;
 if ($usuario_id < 1) {
+    echo '';
+    exit;
+}
+if (!tenant_inmob_usuario_id_visible($conexion, $usuario_id)) {
     echo '';
     exit;
 }

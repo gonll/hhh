@@ -1,9 +1,15 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('HTTP/1.0 403 Forbidden');
     echo 'Sin permiso';
+    exit;
+}
+if (tenant_inmob_es_sofia()) {
+    echo "Error: Esta operación usa la caja central y no está disponible en el ámbito inmobiliario.";
     exit;
 }
 
@@ -22,6 +28,10 @@ $monto       = (float)str_replace(',', '.', $_POST['monto']);
 
 if ($usuario_id <= 0 || $periodo === '' || $monto <= 0) {
     echo "Error: Datos inválidos.";
+    exit;
+}
+if (!tenant_inmob_usuario_id_visible($conexion, $usuario_id)) {
+    echo "Error: Sin permiso.";
     exit;
 }
 if ($propiedad_id <= 0 && $consorcio_param === '') {

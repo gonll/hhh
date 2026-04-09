@@ -5,12 +5,19 @@ include 'helpers_contrato.php';
 include 'config_contrato.php';
 require_once __DIR__ . '/includes/alquileres_modelo_contrato.php';
 alquileres_asegurar_columna_modelo_contrato($conexion);
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 
 if (!isset($_GET['id'])) {
     die("Error: No se especificó la propiedad.");
 }
 
 $id_prop = (int)$_GET['id'];
+
+if (!tenant_inmob_propiedad_id_visible($conexion, $id_prop)) {
+    header('Location: index.php?msg=sin_permiso');
+    exit;
+}
 
 $sql = "SELECT a.*, p.propiedad, p.ciudad, p.padron, p.consorcio, p.detalle as prop_detalle, p.propietario_id,
                prop.apellido as prop_nom, prop.cuit as prop_cuit, prop.dni as prop_dni, prop.domicilio as prop_dom,

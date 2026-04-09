@@ -41,6 +41,13 @@ if ($id <= 0 || $propiedad === '') {
     exit;
 }
 
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+if (!tenant_inmob_propiedad_id_visible($conexion, $id)) {
+    header('Location: propiedades.php?msg=sin_permiso');
+    exit;
+}
+
 if ($padron !== '') {
     $stmt_ex = mysqli_prepare($conexion, "SELECT propiedad_id FROM propiedades WHERE padron = ? AND propiedad_id != ? LIMIT 1");
     if ($stmt_ex) {

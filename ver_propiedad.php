@@ -19,6 +19,12 @@ if (!$prop) {
     header('Location: propiedades.php');
     exit;
 }
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+if (!tenant_inmob_propiedad_id_visible($conexion, $id)) {
+    header('Location: propiedades.php?msg=sin_permiso');
+    exit;
+}
 
 $fotos = propiedades_fotos_unificadas($id, $prop['fotos_json'] ?? null);
 $lat = isset($prop['mapa_lat']) && $prop['mapa_lat'] !== null && $prop['mapa_lat'] !== '' ? (float)$prop['mapa_lat'] : null;
@@ -47,7 +53,7 @@ if ($tieneMapa) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Propiedad — Fotos y ubicación</title>
+    <title><?= htmlspecialchars(tenant_inmob_html_title('Propiedad — Fotos y ubicación')) ?></title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 12px; }
         .card { background: white; max-width: 720px; margin: 0 auto; padding: 16px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }

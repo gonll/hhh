@@ -10,7 +10,7 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Nueva persona</title>
+    <title><?= htmlspecialchars(tenant_inmob_html_title('Nueva persona')) ?></title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .caja { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 300px; text-align: center; }

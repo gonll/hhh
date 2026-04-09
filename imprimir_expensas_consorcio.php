@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 include 'helpers_contrato.php';
 include __DIR__ . '/includes/expensa_extraordinaria.php';
 include_once __DIR__ . '/includes/expensa_hoja_propiedad.php';
@@ -19,6 +21,9 @@ $res_u = mysqli_query($conexion, "SELECT id, apellido, consorcio FROM usuarios W
 $row_u = mysqli_fetch_assoc($res_u);
 if (!$row_u || stripos($row_u['apellido'], 'CONSORCIO') !== 0) {
     die("El usuario no es un Consorcio");
+}
+if (!tenant_inmob_usuario_id_visible($conexion, $consorcio_id)) {
+    die('Sin permiso');
 }
 
 $nombre_consorcio = trim($row_u['consorcio'] ?? '');

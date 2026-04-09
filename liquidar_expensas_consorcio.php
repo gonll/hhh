@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('HTTP/1.0 403 Forbidden');
     echo 'Sin permiso';
@@ -35,6 +37,10 @@ $res_u = mysqli_query($conexion, "SELECT id, apellido, consorcio FROM usuarios W
 $row_u = mysqli_fetch_assoc($res_u);
 if (!$row_u || stripos($row_u['apellido'], 'CONSORCIO') !== 0) {
     echo 'Error: El usuario no es un Consorcio.';
+    exit;
+}
+if (!tenant_inmob_usuario_id_visible($conexion, $consorcio_id)) {
+    echo 'Error: Sin permiso.';
     exit;
 }
 

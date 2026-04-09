@@ -9,7 +9,7 @@ if (!isset($_GET['id'])) {
     die("ID de usuario no proporcionado.");
 }
 
-$id = $_GET['id'];
+$id = (int)$_GET['id'];
 // Obtener datos actuales
 $query = mysqli_query($conexion, "SELECT * FROM usuarios WHERE id = $id");
 $user = mysqli_fetch_assoc($query);
@@ -17,12 +17,18 @@ $user = mysqli_fetch_assoc($query);
 if (!$user) {
     die("Usuario no encontrado.");
 }
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+if (!tenant_inmob_usuario_id_visible($conexion, $id)) {
+    header('Location: index.php?msg=sin_permiso');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Editar Usuario</title>
+    <title><?= htmlspecialchars(tenant_inmob_html_title('Editar persona')) ?></title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 380px; }

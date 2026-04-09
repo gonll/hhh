@@ -1,12 +1,15 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=solo_lectura');
     exit;
 }
-// Consulta para obtener solo propiedades desocupadas
-$sql_prop = "SELECT propiedad_id, propiedad, consorcio, padron, detalle FROM propiedades WHERE alquiler = 0 OR alquiler IS NULL ORDER BY propiedad ASC";
+$wp = tenant_inmob_sql_propiedades($conexion, 'p');
+// Consulta para obtener solo propiedades desocupadas (del ámbito del usuario)
+$sql_prop = "SELECT p.propiedad_id, p.propiedad, p.consorcio, p.padron, p.detalle FROM propiedades p WHERE ($wp) AND (p.alquiler = 0 OR p.alquiler IS NULL) ORDER BY p.propiedad ASC";
 $res_prop = mysqli_query($conexion, $sql_prop);
 
 // Fechas iniciales por defecto (24 meses)
@@ -19,7 +22,7 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Nuevo Contrato - HHH</title>
+    <title><?= htmlspecialchars(tenant_inmob_html_title('Contrato de Alquiler')) ?></title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
         .caja { background: white; padding: 12px; border-radius: 8px; max-width: 920px; width: 100%; margin: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); box-sizing: border-box; }

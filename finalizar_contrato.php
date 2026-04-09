@@ -18,6 +18,13 @@ if ($id_prop <= 0) {
     exit;
 }
 
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+if (!tenant_inmob_propiedad_id_visible($conexion, $id_prop)) {
+    echo 'Sin permiso';
+    exit;
+}
+
 $sql1 = "UPDATE alquileres SET estado = 'BAJA' WHERE propiedad_id = $id_prop AND estado = 'VIGENTE'";
 if (!mysqli_query($conexion, $sql1)) {
     echo 'Error alquileres: ' . mysqli_error($conexion);

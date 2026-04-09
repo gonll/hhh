@@ -1,14 +1,21 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 require_once __DIR__ . '/config_clave_borrado.php';
 include 'respaldar_automatico.php'; // Respaldo automático diario
 $archivo_respaldo = hacerRespaldoAutomatico(); // Ejecutar respaldo si no se hizo hoy (retorna nombre de archivo si se hizo nuevo)
-if ((int)date('j') > 10) include 'actualizar_ipc_desde_api.php';
-include 'liquidar_alquileres_mes.php'; // Liquidar alquileres del mes si aún no se cargaron (desde día 1)
+if (!tenant_inmob_es_sofia()) {
+    if ((int)date('j') > 10) {
+        include 'actualizar_ipc_desde_api.php';
+    }
+    include 'liquidar_alquileres_mes.php'; // Liquidar alquileres del mes si aún no se cargaron (desde día 1)
+}
 // Consulta para listar usuarios, poniendo a "CAJA" (ID 1) primero, con fecha fin de contrato vigente
 // Excluye usuario técnico del libro Transferencias (movimientos de nivelación)
 $ap_excl_libro_transf = mysqli_real_escape_string($conexion, 'TRANSFERENCIAS (LIBRO)');
+$tw_usuarios = tenant_inmob_sql_usuarios($conexion, 'u');
 $sql = "SELECT u.*, 
         (SELECT a.fecha_fin 
          FROM alquileres a 
@@ -17,16 +24,18 @@ $sql = "SELECT u.*,
          ORDER BY a.fecha_fin DESC 
          LIMIT 1) as fecha_fin_contrato
         FROM usuarios u 
-        WHERE u.apellido <> '$ap_excl_libro_transf'
+        WHERE u.apellido <> '$ap_excl_libro_transf' AND ($tw_usuarios)
         ORDER BY (u.id = 1) DESC, u.apellido ASC";
 $resultado = mysqli_query($conexion, $sql);
 
-// Consulta para detectar si falta el índice del mes actual
+// Consulta para detectar si falta el índice del mes actual (ámbito principal vs Sofía)
 $mes_actual = date('Y-m-01');
-$res_check = mysqli_query($conexion, "SELECT id FROM indices WHERE fecha = '$mes_actual' LIMIT 1");
-$falta_indice = (mysqli_num_rows($res_check) == 0);
+$idx_acceso = tenant_inmob_indices_acceso_creador_valor($conexion);
+$res_check = mysqli_query($conexion, "SELECT id FROM indices WHERE fecha = '$mes_actual' AND acceso_creador_id = $idx_acceso LIMIT 1");
+$falta_indice = ($res_check && mysqli_num_rows($res_check) == 0);
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
 $soloLectura = ($nivelAcceso < 2);
+$esUsuarioSofia = tenant_inmob_es_sofia();
 // Nivel 0: usuario zafra → Cosecha; resto → Partes desde cel
 if ($nivelAcceso === 0) {
     $usuario = (string)($_SESSION['acceso_usuario'] ?? '');
@@ -38,13 +47,14 @@ $usuarios_anticipo = [];
 $consorcios_lista = [];
 require_once __DIR__ . '/config_tutoriales.php';
 if ($nivelAcceso === 3) {
-    $r_ant = mysqli_query($conexion, "SELECT id, apellido FROM usuarios WHERE id != 1 ORDER BY apellido ASC");
+    $tw_ant = tenant_inmob_sql_usuarios($conexion, 'u');
+    $r_ant = mysqli_query($conexion, "SELECT u.id, u.apellido FROM usuarios u WHERE u.id != 1 AND ($tw_ant) ORDER BY u.apellido ASC");
     if ($r_ant) {
         while ($u = mysqli_fetch_assoc($r_ant)) {
             $usuarios_anticipo[] = $u;
         }
     }
-    $r_con = mysqli_query($conexion, "SELECT id, apellido, consorcio FROM usuarios WHERE UPPER(apellido) LIKE 'CONSORCIO%' ORDER BY apellido ASC");
+    $r_con = mysqli_query($conexion, "SELECT u.id, u.apellido, u.consorcio FROM usuarios u WHERE UPPER(u.apellido) LIKE 'CONSORCIO%' AND ($tw_ant) ORDER BY u.apellido ASC");
     if ($r_con) {
         while ($c = mysqli_fetch_assoc($r_con)) {
             $consorcios_lista[] = ['id' => (int)$c['id'], 'apellido' => $c['apellido'], 'consorcio' => trim($c['consorcio'] ?? '')];
@@ -57,7 +67,7 @@ if ($nivelAcceso === 3) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sistema HHH 2026</title>
+    <title><?= htmlspecialchars(tenant_inmob_html_title()) ?></title>
     <!-- Favicons -->
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -262,7 +272,7 @@ if ($nivelAcceso === 3) {
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:4px;">
             <span style="font-size:9px; color:#666;"><?= htmlspecialchars($_SESSION['acceso_usuario'] ?? '') ?> (nivel <?= (int)($_SESSION['acceso_nivel'] ?? 0) ?>)</span>
             <div>
-                <?php if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
+                <?php if (!$esUsuarioSofia && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
                     <a href="gestionar_accesos.php" style="color:#007bff; font-size:9px; margin-right:6px;">Accesos</a>
                     <a href="respaldar_bd.php" style="color:#28a745; font-size:9px; margin-right:6px;">Respaldar</a>
                     <a href="restaurar_bd.php" style="color:#721c24; font-size:9px; margin-right:6px;" title="Restaurar BD desde archivo .sql">Restaurar</a>
@@ -304,6 +314,13 @@ if ($nivelAcceso === 3) {
         </div>
         
         <?php if (!$soloLectura): ?>
+            <?php if ($esUsuarioSofia): ?>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                <a href="propiedades.php" class="btn-abm-prop btn-admin-prop" style="flex: 1; min-width: 140px;">⚙️ Admin. Propiedades</a>
+                <a href="contrato_alquiler.php" class="btn-abm-prop btn-contrato" style="flex: 1; min-width: 140px;">📜 Contrato de Alquiler</a>
+                <a href="abm_indices.php" class="btn-abm-prop btn-indice" style="flex: 1; min-width: 140px;">📈 ABM INDICE IPC</a>
+            </div>
+            <?php else: ?>
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                 <a href="gestionar_finca.php?modo=completo" class="btn-abm-prop btn-finca" style="flex: 1;">Finca</a>
                 <a href="gestionar_azucares.php" class="btn-abm-prop" style="flex: 1;">Azucar</a>
@@ -319,6 +336,7 @@ if ($nivelAcceso === 3) {
                 <a href="abm_indices.php" class="btn-abm-prop btn-indice" style="flex: 0 1 auto; min-width: 90px;">📈 ABM INDICE IPC</a>
                 <button type="button" class="btn-abm-prop btn-tutoriales" style="flex: 0 1 auto; min-width: 90px; border: none; cursor: pointer;" onclick="abrirModalTutoriales()">🎬 Tutoriales</button>
             </div>
+            <?php endif; ?>
         <?php endif; ?>
 
     </div>
@@ -329,14 +347,14 @@ if ($nivelAcceso === 3) {
         <div class="cabecera-detalle">
             <div style="display:flex; align-items:center; gap:10px;">
                 <h2 id="tituloMovimientos" style="font-size:1rem; color:#007bff; margin:0;">DETALLE DE CUENTA</h2>
-                <?php if ($nivelAcceso === 3): ?>
+                <?php if ($nivelAcceso === 3 && !$esUsuarioSofia): ?>
                 <button type="button" class="btn-ant-cel" onclick="abrirModalAntCel()">Ant/cel</button>
                 <button type="button" class="btn-imprimir-estado" onclick="imprimirEstadoCuenta()">Imprimir estado de cuenta</button>
                 <?php endif; ?>
             </div>
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <div id="reloj-sistema"></div>
-                <?php if ($nivelAcceso >= 3): ?>
+                <?php if ($nivelAcceso >= 3 && !$esUsuarioSofia): ?>
                 <span id="migrar-saldo-control" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
                     <span style="font-size:11px;">Saldo actual: <strong id="migrar-saldo-actual" data-valor="0">--</strong></span>
                     <label style="font-size:11px;">Saldo objetivo:</label>
@@ -496,7 +514,7 @@ if ($nivelAcceso === 3) {
                 <button type="button" class="btn-exp" onclick="cargarExpensa(this)" data-concepto="SALUD PUBLICA">6. SALUD PUBLICA</button>
                 <button type="button" class="btn-exp btn-liquidar" onclick="abrirModalLiquidarExpensas()">LIQUIDAR EXPENSAS</button>
                 <button type="button" class="btn-exp btn-imprimir-exp" onclick="abrirImprimirExpensas()" style="background:#D4A5A5; color:#333; border-color:#D4A5A5;">IMPRIMIR EXPENSAS</button>
-                <?php if ($nivelAcceso === 3): ?>
+                <?php if ($nivelAcceso === 3 && !$esUsuarioSofia): ?>
                 <button type="button" id="btnBorrarLiqExp" class="btn-exp" onclick="abrirModalBorrarLiqExp()" style="display:none; background:#dc3545; color:white; border-color:#dc3545;">BORRAR LIQ EXP</button>
                 <?php endif; ?>
                 <button type="button" class="btn-exp" onclick="cargarExpensa(this)" data-concepto="SEGURO CONTRA INCENDIO">7. SEGURO INCENDIO</button>
@@ -590,7 +608,7 @@ if ($nivelAcceso === 3) {
         </div>
     </div>
 
-    <?php if ($nivelAcceso === 3): ?>
+    <?php if ($nivelAcceso === 3 && !$esUsuarioSofia): ?>
     <div id="modalBorrarTodasLiqExp" class="modal-overlay" onclick="if(event.target===this) cerrarModalBorrarTodasLiqExp()">
         <div class="modal-cobro" onclick="event.stopPropagation()">
             <h3>Borrar TODAS las liquidaciones de expensas</h3>
@@ -671,7 +689,7 @@ if ($nivelAcceso === 3) {
         </div>
     </div>
 
-    <?php if ($nivelAcceso === 3): ?>
+    <?php if ($nivelAcceso === 3 && !$esUsuarioSofia): ?>
     <script>
     var usuariosAnticipoLista = <?= json_encode(array_map(function($u) { return ['id' => (int)$u['id'], 'apellido' => $u['apellido']]; }, $usuarios_anticipo)) ?>;
     </script>
@@ -799,7 +817,7 @@ let esArrendadorUsuario = false;
 let movScrollData = null;
 let saldoActualCuenta = 0;
 /** Solo usuarios con acceso_nivel === 3 (borrar liquidaciones, etc.) */
-var accesoNivel3 = <?= $nivelAcceso === 3 ? 'true' : 'false' ?>;
+var accesoNivel3 = <?= ($nivelAcceso === 3 && !$esUsuarioSofia) ? 'true' : 'false' ?>;
 
 // Parsear monto: acepta 24.44 o 24,44 (teclado numérico). Evita que 24.44 se interprete como 2.444.
 function parseMonto(str) {

@@ -7,6 +7,8 @@
  */
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('HTTP/1.0 403 Forbidden');
     echo 'Sin permiso';
@@ -22,6 +24,14 @@ if (!isset($_POST['usuario_id']) || !isset($_POST['fecha']) || !isset($_POST['it
 $usuario_id = (int)$_POST['usuario_id'];
 if ($usuario_id < 1 || $usuario_id === ID_CAJA) {
     echo 'Error: Usuario no válido.';
+    exit;
+}
+if (tenant_inmob_es_sofia()) {
+    echo 'Error: Cobro en caja central no aplica en el ámbito inmobiliario.';
+    exit;
+}
+if (!tenant_inmob_usuario_id_visible($conexion, $usuario_id)) {
+    echo 'Error: Sin permiso.';
     exit;
 }
 

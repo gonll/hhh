@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
 propiedades_asegurar_columnas($conexion);
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
@@ -11,7 +13,8 @@ $ultima_ciudad = '';
 $ultimo_consorcio = '';
 $ultimo_propietario_id = '';
 $ultimo_propietario_nombre = '';
-$r = @mysqli_query($conexion, "SELECT p.ciudad, p.consorcio, p.propietario_id, u.apellido AS propietario_nombre FROM propiedades p LEFT JOIN usuarios u ON p.propietario_id = u.id ORDER BY p.propiedad_id DESC LIMIT 1");
+$wp = tenant_inmob_sql_propiedades($conexion, 'p');
+$r = @mysqli_query($conexion, "SELECT p.ciudad, p.consorcio, p.propietario_id, u.apellido AS propietario_nombre FROM propiedades p LEFT JOIN usuarios u ON p.propietario_id = u.id WHERE ($wp) ORDER BY p.propiedad_id DESC LIMIT 1");
 if ($r && $row = mysqli_fetch_assoc($r)) {
     $ultima_ciudad   = htmlspecialchars($row['ciudad'] ?? '');
     $ultimo_consorcio = htmlspecialchars($row['consorcio'] ?? '');
@@ -25,7 +28,7 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Nueva Propiedad - HHH</title>
+    <title><?= htmlspecialchars(tenant_inmob_html_title('Nueva Propiedad')) ?></title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
         .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }

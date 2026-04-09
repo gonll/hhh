@@ -15,6 +15,13 @@ if ($id <= 0) {
     exit;
 }
 
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+if (!tenant_inmob_propiedad_id_visible($conexion, $id)) {
+    echo json_encode(['ok' => true, 'fotos' => []]);
+    exit;
+}
+
 $res = mysqli_query($conexion, 'SELECT fotos_json FROM propiedades WHERE propiedad_id = ' . $id . ' LIMIT 1');
 $row = $res ? mysqli_fetch_assoc($res) : null;
 $fotos = $row ? propiedades_fotos_unificadas($id, $row['fotos_json'] ?? null) : [];

@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 include 'crear_tabla_arriendos.php';
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('HTTP/1.0 403 Forbidden');
@@ -15,6 +17,10 @@ if (isset($_POST['id'])) {
     
     // 1. Captura y limpieza de datos (Seguridad básica)
     $usuario_id = (int)$_POST['id'];
+    if (!tenant_inmob_usuario_id_visible($conexion, $usuario_id)) {
+        echo 'Sin permiso';
+        exit;
+    }
     $compro_in = strtoupper(trim($_POST['compro'] ?? ''));
     if ($compro_in === 'NIVELACION TRANSF') {
         require_once __DIR__ . '/includes_transferencias_libro.php';
@@ -58,6 +64,10 @@ if (isset($_POST['id'])) {
             }
             mysqli_stmt_close($stmt_apod);
         }
+    }
+    if ($cuenta_usuario_id !== $usuario_id && !tenant_inmob_usuario_id_visible($conexion, $cuenta_usuario_id)) {
+        echo 'Sin permiso';
+        exit;
     }
 
     // 2. Insertar en la cuenta del usuario (propietario si es arriendo con apoderado)
@@ -109,6 +119,9 @@ if (isset($_POST['id'])) {
         // Arriendos: ingreso y retiro NO impactan en caja
         $es_arriendo = ($compro === 'PGO ARRIENDO' || $compro === 'PRECIO DE LA BOLSA' || $compro === 'PRECIO AZUCAR' || (stripos($concepto, 'PAGO') !== false && (stripos($concepto, 'ARRIENDO') !== false || stripos($concepto, 'PRECIO REF') !== false)));
         if ($es_arriendo) $debe_grabar = false;
+        if (tenant_inmob_es_sofia()) {
+            $debe_grabar = false;
+        }
 
         if ($debe_grabar) {
             $concepto_caja = $nom_usuario ? ($nom_usuario . ' - ' . $concepto) : $concepto;

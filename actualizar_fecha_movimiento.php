@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('HTTP/1.0 403 Forbidden');
     echo 'Sin permiso';
@@ -25,6 +27,12 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_raw)) {
 
 if (!$fecha_ok) {
     echo 'Fecha inválida';
+    exit;
+}
+
+$r0 = mysqli_query($conexion, "SELECT usuario_id FROM cuentas WHERE movimiento_id = $movimiento_id LIMIT 1");
+if (!$r0 || !($row0 = mysqli_fetch_assoc($r0)) || !tenant_inmob_usuario_id_visible($conexion, (int)$row0['usuario_id'])) {
+    echo 'Sin permiso';
     exit;
 }
 

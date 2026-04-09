@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 
 if (!isset($_GET['id'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -9,6 +11,11 @@ if (!isset($_GET['id'])) {
 }
 
 $id = (int)$_GET['id'];
+if (!tenant_inmob_usuario_id_visible($conexion, $id)) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['error' => 'Sin permiso']);
+    exit;
+}
 $res_u = mysqli_query($conexion, "SELECT id, apellido, consorcio FROM usuarios WHERE id = $id LIMIT 1");
 $row_u = mysqli_fetch_assoc($res_u);
 if (!$row_u || stripos($row_u['apellido'], 'CONSORCIO') !== 0) {

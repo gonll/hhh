@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 include 'crear_tabla_cuentas_arriendo.php';
 include 'cargar_arriendos_cuentas.php';
 
@@ -9,6 +11,9 @@ if (!isset($_GET['id'])) {
 }
 
 $id = (int)$_GET['id'];
+if (!tenant_inmob_usuario_id_visible($conexion, $id)) {
+    die('Sin permiso');
+}
 $before_fecha = isset($_GET['before_fecha']) ? trim($_GET['before_fecha']) : '';
 $before_id = isset($_GET['before_id']) ? (int)$_GET['before_id'] : 0;
 $after_fecha = isset($_GET['after_fecha']) ? trim($_GET['after_fecha']) : '';

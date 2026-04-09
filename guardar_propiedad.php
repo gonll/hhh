@@ -41,6 +41,13 @@ if ($propiedad === '' || $propietario_id <= 0) {
     exit;
 }
 
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+if (!tenant_inmob_usuario_id_visible($conexion, $propietario_id)) {
+    header('Location: nueva_propiedad.php?error=1');
+    exit;
+}
+
 if ($padron !== '') {
     $stmt_ex = mysqli_prepare($conexion, "SELECT propiedad_id FROM propiedades WHERE padron = ? LIMIT 1");
     if ($stmt_ex) {
@@ -108,6 +115,13 @@ if ($tiene_media) {
 if ($stmt_ins && mysqli_stmt_execute($stmt_ins)) {
     $nuevo_id = (int)mysqli_insert_id($conexion);
     mysqli_stmt_close($stmt_ins);
+
+    if (tenant_inmob_es_sofia()) {
+        $aid = (int)($_SESSION['acceso_id'] ?? 0);
+        if ($aid > 0) {
+            mysqli_query($conexion, "UPDATE propiedades SET acceso_creador_id = $aid WHERE propiedad_id = $nuevo_id");
+        }
+    }
 
     $nuevas = propiedades_procesar_subida_fotos($nuevo_id, 'fotos');
     if ($tiene_media && count($nuevas) > 0) {

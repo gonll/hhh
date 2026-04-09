@@ -2,6 +2,8 @@
 include 'db.php';
 include 'crear_tabla_cuentas_arriendo.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 include 'helpers_contrato.php';
 
 if (!isset($_GET['id'])) {
@@ -25,6 +27,9 @@ if (!$res_mov || mysqli_num_rows($res_mov) == 0) {
 $mov = mysqli_fetch_assoc($res_mov);
 
 $usuario_id = (int)$mov['usuario_id'];
+if (!tenant_inmob_usuario_id_visible($conexion, $usuario_id)) {
+    die('Sin permiso');
+}
 $es_retiro = ((float)($mov['monto'] ?? 0)) < 0;
 $es_usuario_finca = (stripos($mov['usuario_nombre'] ?? '', 'FINCA') !== false);
 $firmante_consorcio = null;

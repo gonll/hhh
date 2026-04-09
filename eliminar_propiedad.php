@@ -17,6 +17,13 @@ if ($id <= 0) {
     exit;
 }
 
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+if (!tenant_inmob_propiedad_id_visible($conexion, $id)) {
+    echo "Sin permiso.";
+    exit;
+}
+
 // Verificar si la propiedad tiene un alquiler vigente
 $check = mysqli_query($conexion, "SELECT * FROM alquileres WHERE propiedad_id = $id AND estado = 'VIGENTE'");
 if (mysqli_num_rows($check) > 0) {

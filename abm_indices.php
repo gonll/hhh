@@ -1,30 +1,33 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=solo_lectura');
     exit;
 }
+$idx_acceso = tenant_inmob_indices_acceso_creador_valor($conexion);
 // Manejo de la carga manual o actualización
 if (isset($_POST['guardar_indice'])) {
-    $fecha = $_POST['fecha'];
-    $valor = $_POST['valor'];
+    $fecha = mysqli_real_escape_string($conexion, $_POST['fecha']);
+    $valor = (float)$_POST['valor'];
     $tipo = 'IPC';
 
-    $sql = "INSERT INTO indices (fecha, valor, tipo) VALUES ('$fecha', $valor, '$tipo') 
+    $sql = "INSERT INTO indices (acceso_creador_id, fecha, valor, tipo) VALUES ($idx_acceso, '$fecha', $valor, '$tipo') 
             ON DUPLICATE KEY UPDATE valor = $valor";
     mysqli_query($conexion, $sql);
     header("Location: abm_indices.php");
 }
 
-// OBTENER SOLO LOS ÚLTIMOS 8 ÍNDICES
-$res = mysqli_query($conexion, "SELECT * FROM indices ORDER BY fecha DESC LIMIT 8");
+// OBTENER SOLO LOS ÚLTIMOS 8 ÍNDICES del mismo ámbito
+$res = mysqli_query($conexion, "SELECT * FROM indices WHERE acceso_creador_id = $idx_acceso ORDER BY fecha DESC LIMIT 8");
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ABM Índices IPC - HHH</title>
+    <title><?= htmlspecialchars(tenant_inmob_html_title('ABM Índices IPC')) ?></title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
         .caja { background: white; padding: 15px; border-radius: 8px; width: 400px; margin: 20px auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }

@@ -147,6 +147,38 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
         .bloque-foto-mapa td { border: 1px solid #ccc; padding: 8px; vertical-align: top; width: 50%; }
         .bloque-foto-mapa .tit-cel { font-weight: bold; margin-bottom: 6px; color: #333; }
         .bloque-foto-mapa img { max-width: 100%; height: auto; max-height: 200px; display: block; margin: 0 auto; }
+        .mapa-pin-wrap {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+        }
+        .mapa-pin-wrap .mapa-pin {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 16px;
+            height: 16px;
+            margin-left: -8px;
+            margin-top: -20px;
+            border-radius: 50%;
+            background: #d32f2f;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+            z-index: 2;
+            pointer-events: none;
+        }
+        .mapa-pin-wrap .mapa-pin::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            margin-left: -4px;
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 8px solid #d32f2f;
+        }
         .bloque-foto-mapa .mapa-iframe-print {
             display: block; width: 100%; height: 220px; border: 1px solid #ccc; border-radius: 2px;
             background: #e8e8e8;
@@ -207,10 +239,16 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
             <td>
                 <div class="tit-cel">Ubicación</div>
                 <?php if ($tieneMapa && $mapaImgSrc !== ''): ?>
-                    <img src="<?= h($mapaImgSrc) ?>" alt="Mapa de ubicación">
+                    <div class="mapa-pin-wrap">
+                        <img src="<?= h($mapaImgSrc) ?>" alt="Mapa de ubicación">
+                        <span class="mapa-pin" aria-hidden="true"></span>
+                    </div>
                     <p class="coords">Zoom <?= (int) $zoomMapa ?> · <a href="<?= h($gmaps_link) ?>" target="_blank" rel="noopener">Google Maps</a><?php if (!empty($p['mapa_enlace'])): ?> · <a href="<?= h($p['mapa_enlace']) ?>" target="_blank" rel="noopener">Enlace guardado</a><?php endif; ?></p>
                 <?php elseif ($tieneMapa && $mapaUsarIframe && $osm_embed !== ''): ?>
-                    <iframe class="mapa-iframe-print" src="<?= h($osm_embed) ?>" title="Mapa de ubicación" loading="lazy"></iframe>
+                    <div class="mapa-pin-wrap">
+                        <iframe class="mapa-iframe-print" src="<?= h($osm_embed) ?>" title="Mapa de ubicación" loading="lazy"></iframe>
+                        <span class="mapa-pin" aria-hidden="true"></span>
+                    </div>
                     <p class="coords">Zoom <?= (int) $zoomMapa ?> · <a href="<?= h($gmaps_link) ?>" target="_blank" rel="noopener">Google Maps</a><?php if (!empty($p['mapa_enlace'])): ?> · <a href="<?= h($p['mapa_enlace']) ?>" target="_blank" rel="noopener">Enlace guardado</a><?php endif; ?></p>
                 <?php elseif (!empty($p['mapa_enlace'])): ?>
                     <p class="sin-dato" style="margin:0;">Mapa: enlace guardado (sin coordenadas en sistema).</p>

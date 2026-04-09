@@ -1,7 +1,10 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 
+$wp = tenant_inmob_sql_propiedades($conexion, 'p');
 $sql = "SELECT p.propiedad, p.consorcio,
         prop.apellido AS nombre_propietario,
         u.apellido AS nombre_inquilino,
@@ -18,24 +21,25 @@ $sql = "SELECT p.propiedad, p.consorcio,
         LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
         LEFT JOIN usuarios u ON a.inquilino1_id = u.id
         LEFT JOIN usuarios u2 ON a.inquilino2_id = u2.id
+        WHERE ($wp)
         ORDER BY p.consorcio ASC, p.propiedad ASC";
 $resultado = mysqli_query($conexion, $sql);
 
-$res_saldo_inq = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id IN (
-    SELECT inquilino1_id FROM alquileres WHERE estado = 'VIGENTE'
+$res_saldo_inq = mysqli_query($conexion, "SELECT COALESCE(SUM(c.monto), 0) AS total FROM cuentas c WHERE c.usuario_id IN (
+    SELECT a.inquilino1_id FROM alquileres a INNER JOIN propiedades p ON p.propiedad_id = a.propiedad_id WHERE a.estado = 'VIGENTE' AND ($wp)
     UNION
-    SELECT inquilino2_id FROM alquileres WHERE estado = 'VIGENTE' AND inquilino2_id IS NOT NULL
+    SELECT a.inquilino2_id FROM alquileres a INNER JOIN propiedades p ON p.propiedad_id = a.propiedad_id WHERE a.estado = 'VIGENTE' AND a.inquilino2_id IS NOT NULL AND ($wp)
 )");
 $saldo_total_inquilinos = ($res_saldo_inq && $r = mysqli_fetch_assoc($res_saldo_inq)) ? (float)$r['total'] : 0;
 
-$res_saldo_prop = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id IN (SELECT propietario_id FROM propiedades WHERE propietario_id IS NOT NULL)");
+$res_saldo_prop = mysqli_query($conexion, "SELECT COALESCE(SUM(c.monto), 0) AS total FROM cuentas c WHERE c.usuario_id IN (SELECT p.propietario_id FROM propiedades p WHERE p.propietario_id IS NOT NULL AND ($wp))");
 $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_saldo_prop)) ? (float)$r['total'] : 0;
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Imprimir - Propiedades</title>
+    <title><?= htmlspecialchars(tenant_inmob_html_title('Imprimir Propiedades')) ?></title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; margin: 15px; font-size: 12px; }
         .no-print { margin-bottom: 15px; }

@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 
 if ((int)($_SESSION['acceso_nivel'] ?? 0) < 3) {
     header('Content-Type: application/json; charset=utf-8');
@@ -26,6 +28,11 @@ $row_u = mysqli_fetch_assoc($res_u);
 if (!$row_u || stripos($row_u['apellido'], 'CONSORCIO') !== 0) {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['ok' => false, 'msg' => 'El usuario no es un Consorcio.']);
+    exit;
+}
+if (!tenant_inmob_usuario_id_visible($conexion, $consorcio_id)) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'msg' => 'Sin permiso.']);
     exit;
 }
 

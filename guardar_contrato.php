@@ -8,6 +8,9 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     exit;
 }
 
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo "Método no permitido";
     exit;
@@ -68,6 +71,17 @@ $nom_prop       = mysqli_real_escape_string($conexion, omitir_ciudad_provincia($
 if ($propiedad_id <= 0 || $inq1_id <= 0 || $cod1_id <= 0) {
     echo "Faltan datos obligatorios (propiedad, inquilino 1 o codeudor 1).";
     exit;
+}
+
+if (!tenant_inmob_propiedad_id_visible($conexion, $propiedad_id)) {
+    echo 'Propiedad no permitida en su ámbito.';
+    exit;
+}
+foreach ([$inq1_id, $inq2_id, $cod1_id, $cod2_id] as $uid) {
+    if ($uid !== null && (int)$uid > 0 && !tenant_inmob_usuario_id_visible($conexion, (int)$uid)) {
+        echo 'Una de las personas seleccionadas no pertenece a su ámbito.';
+        exit;
+    }
 }
 
 mysqli_begin_transaction($conexion);

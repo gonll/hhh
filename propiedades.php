@@ -1,22 +1,26 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 require_once __DIR__ . '/config_clave_borrado.php';
 require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
 propiedades_asegurar_columnas($conexion);
+$wp = tenant_inmob_sql_propiedades($conexion, 'p');
 $sql = "SELECT p.*, u.apellido as nombre_inquilino, a.fecha_inicio as inicio, a.fecha_fin as vencimiento,
         prop.apellido AS nombre_propietario
         FROM propiedades p 
         LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
         LEFT JOIN usuarios u ON a.inquilino1_id = u.id 
         LEFT JOIN usuarios prop ON prop.id = p.propietario_id
+        WHERE ($wp)
         ORDER BY p.consorcio ASC, p.propiedad ASC";
 $resultado = mysqli_query($conexion, $sql);
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
 $soloLectura = ($nivelAcceso < 2);
 
 $sumas_consorcios = array();
-$r_consorcios = mysqli_query($conexion, "SELECT consorcio, COALESCE(SUM(porcentaje), 0) AS total FROM propiedades WHERE porcentaje IS NOT NULL AND consorcio IS NOT NULL AND consorcio != '' GROUP BY consorcio ORDER BY consorcio ASC");
+$r_consorcios = mysqli_query($conexion, "SELECT p.consorcio, COALESCE(SUM(p.porcentaje), 0) AS total FROM propiedades p WHERE ($wp) AND p.porcentaje IS NOT NULL AND p.consorcio IS NOT NULL AND p.consorcio != '' GROUP BY p.consorcio ORDER BY p.consorcio ASC");
 if ($r_consorcios) {
     while ($row_cons = mysqli_fetch_assoc($r_consorcios)) {
         $sumas_consorcios[$row_cons['consorcio']] = (float)$row_cons['total'];
@@ -27,7 +31,7 @@ if ($r_consorcios) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Administración de Propiedades - HHH</title>
+    <title><?= htmlspecialchars(tenant_inmob_html_title('Administración de Propiedades')) ?></title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; }
         .contenedor { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 98vw; margin: auto; box-sizing: border-box; }
