@@ -13,8 +13,38 @@
  */
 
 if (!function_exists('tenant_inmob_es_sofia')) {
+    /**
+     * Marca si el acceso actual es ámbito Sofía (fila accesos por id de sesión; más fiable que solo el nombre en sesión).
+     * Debe llamarse tras conectar BD (p. ej. desde verificar_sesion.php).
+     */
+    function tenant_inmob_detectar_sofia_sesion($conexion): void
+    {
+        static $hecho = false;
+        if ($hecho) {
+            return;
+        }
+        $hecho = true;
+        $aid = (int) ($_SESSION['acceso_id'] ?? 0);
+        if ($aid <= 0) {
+            $_SESSION['tenant_es_sofia'] = 0;
+
+            return;
+        }
+        $r = mysqli_query($conexion, 'SELECT usuario FROM accesos WHERE id = ' . $aid . ' LIMIT 1');
+        if (!$r || !($row = mysqli_fetch_assoc($r))) {
+            $_SESSION['tenant_es_sofia'] = 0;
+
+            return;
+        }
+        $u = trim((string) ($row['usuario'] ?? ''));
+        $_SESSION['tenant_es_sofia'] = (strcasecmp($u, 'sofia') === 0) ? 1 : 0;
+    }
+
     function tenant_inmob_es_sofia(): bool
     {
+        if (isset($_SESSION['tenant_es_sofia'])) {
+            return (int) $_SESSION['tenant_es_sofia'] === 1;
+        }
         $u = trim((string) ($_SESSION['acceso_usuario'] ?? ''));
 
         return strcasecmp($u, 'sofia') === 0;
@@ -126,6 +156,28 @@ if (!function_exists('tenant_inmob_es_sofia')) {
                    OR a.codeudor1_id = u.id OR (a.codeudor2_id IS NOT NULL AND a.codeudor2_id = u.id)
             )");
         }
+        // Etiquetas antiguas de otro servidor apuntaban a otro id numérico en accesos: alinear al id de sesión actual (Sofía)
+        if ($tUsu) {
+            @mysqli_query($conexion, "UPDATE usuarios u INNER JOIN accesos a ON a.id = u.acceso_creador_id SET u.acceso_creador_id = $sid WHERE LOWER(TRIM(a.usuario)) = 'sofia' AND a.id <> $sid");
+        }
+        if ($tProp) {
+            @mysqli_query($conexion, "UPDATE propiedades p INNER JOIN accesos a ON a.id = p.acceso_creador_id SET p.acceso_creador_id = $sid WHERE LOWER(TRIM(a.usuario)) = 'sofia' AND a.id <> $sid");
+        }
+        if ($tIdx) {
+            @mysqli_query($conexion, "UPDATE indices i INNER JOIN accesos a ON a.id = i.acceso_creador_id SET i.acceso_creador_id = $sid WHERE i.acceso_creador_id <> 0 AND LOWER(TRIM(a.usuario)) = 'sofia' AND a.id <> $sid");
+        }
+        // Opcional .env: marcar import BGH con usuarios/propiedades aún en NULL (id mínimo = primer id del respaldo)
+        $env = $GLOBALS['HHH_ENV_CACHE'] ?? [];
+        if (is_array($env)) {
+            $minU = (int) ($env['SOFIA_AMBITO_MIN_USUARIO_ID'] ?? 0);
+            $minP = (int) ($env['SOFIA_AMBITO_MIN_PROPIEDAD_ID'] ?? 0);
+            if ($minU > 0 && $tUsu) {
+                @mysqli_query($conexion, "UPDATE usuarios SET acceso_creador_id = $sid WHERE id >= $minU AND id <> 1 AND acceso_creador_id IS NULL");
+            }
+            if ($minP > 0 && $tProp) {
+                @mysqli_query($conexion, "UPDATE propiedades SET acceso_creador_id = $sid WHERE propiedad_id >= $minP AND acceso_creador_id IS NULL");
+            }
+        }
     }
 
     function tenant_inmob_id_acceso_sofia_bd($conexion): int
@@ -145,22 +197,20 @@ if (!function_exists('tenant_inmob_es_sofia')) {
     }
 
     /**
-     * Id de acceso del ámbito Sofía: primero la fila `accesos` con usuario sofia; si no hay fila, la sesión actual (mismo login).
+     * Id numérico del ámbito Sofía para filtrar acceso_creador_id: el id de la fila accesos con la que se inició sesión.
+     * Así coincide con los datos aunque el export traiga otro id antiguo (la reparación lo alinea a este id).
      */
     function tenant_inmob_id_acceso_sofia_efectivo($conexion): int
     {
-        $sid = tenant_inmob_id_acceso_sofia_bd($conexion);
-        if ($sid > 0) {
-            return $sid;
-        }
         if (tenant_inmob_es_sofia()) {
             $sess = (int) ($_SESSION['acceso_id'] ?? 0);
             if ($sess > 0) {
                 return $sess;
             }
         }
+        $sid = tenant_inmob_id_acceso_sofia_bd($conexion);
 
-        return 0;
+        return $sid > 0 ? $sid : 0;
     }
 
     /** Fragmento SQL para filas de usuarios visibles según sesión (sin alias de tabla). */

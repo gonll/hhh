@@ -39,5 +39,7 @@ if ((int)($_SESSION['acceso_nivel'] ?? -1) === 0) {
     }
 }
 
+require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_detectar_sofia_sesion($conexion);
 tenant_inmob_aplicar_restriccion_sofia();
