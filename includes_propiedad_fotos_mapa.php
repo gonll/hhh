@@ -253,37 +253,40 @@ function propiedades_asegurar_columnas($conexion) {
     if ($done) {
         return propiedades_columna_existe($conexion, 'mapa_lat');
     }
-    if (propiedades_columna_existe($conexion, 'mapa_lat')
-        && propiedades_columna_existe($conexion, 'fotos_json')) {
+    $cols = [
+        'mapa_lat' => 'ADD COLUMN mapa_lat DECIMAL(10,7) DEFAULT NULL',
+        'mapa_lng' => 'ADD COLUMN mapa_lng DECIMAL(10,7) DEFAULT NULL',
+        'mapa_enlace' => 'ADD COLUMN mapa_enlace VARCHAR(768) DEFAULT NULL',
+        'fotos_json' => 'ADD COLUMN fotos_json TEXT DEFAULT NULL',
+    ];
+    $todas = true;
+    foreach (array_keys($cols) as $c) {
+        if (!propiedades_columna_existe($conexion, $c)) {
+            $todas = false;
+            break;
+        }
+    }
+    if ($todas) {
         $done = true;
         return true;
     }
-    $sql = "ALTER TABLE propiedades 
-            ADD COLUMN mapa_lat DECIMAL(10,7) DEFAULT NULL,
-            ADD COLUMN mapa_lng DECIMAL(10,7) DEFAULT NULL,
-            ADD COLUMN mapa_enlace VARCHAR(768) DEFAULT NULL,
-            ADD COLUMN fotos_json TEXT DEFAULT NULL";
-    if (!mysqli_query($conexion, $sql)) {
-        $err = mysqli_error($conexion);
-        error_log('propiedades_asegurar_columnas ALTER batch: ' . $err);
-        $alters = [
-            "ADD COLUMN mapa_lat DECIMAL(10,7) DEFAULT NULL",
-            "ADD COLUMN mapa_lng DECIMAL(10,7) DEFAULT NULL",
-            "ADD COLUMN mapa_enlace VARCHAR(768) DEFAULT NULL",
-            "ADD COLUMN fotos_json TEXT DEFAULT NULL",
-        ];
-        foreach ($alters as $fragment) {
-            if (!mysqli_query($conexion, 'ALTER TABLE propiedades ' . $fragment)) {
-                $e2 = mysqli_error($conexion);
-                if (stripos($e2, 'Duplicate column') === false) {
-                    error_log('propiedades_asegurar_columnas ALTER parcial: ' . $e2);
-                }
+    foreach ($cols as $nombre => $fragment) {
+        if (propiedades_columna_existe($conexion, $nombre)) {
+            continue;
+        }
+        $sql = 'ALTER TABLE propiedades ' . $fragment;
+        try {
+            mysqli_query($conexion, $sql);
+        } catch (mysqli_sql_exception $e) {
+            $msg = $e->getMessage();
+            if (stripos($msg, 'Duplicate column') === false && stripos($msg, 'duplicado') === false) {
+                error_log('propiedades_asegurar_columnas ALTER ' . $nombre . ': ' . $msg);
             }
         }
     }
     $ok = propiedades_columna_existe($conexion, 'mapa_lat');
     if (!$ok) {
-        error_log('propiedades_asegurar_columnas: las columnas mapa_lat/fotos_json no existen. Ejecute ALTER en MySQL con un usuario con permisos.');
+        error_log('propiedades_asegurar_columnas: mapa_lat no existe. Ejecute ALTER en MySQL con un usuario con permisos.');
     }
     $done = true;
     return $ok;

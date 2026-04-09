@@ -62,6 +62,31 @@ function orden_alquiler_ts($val) {
     return $ts !== false ? (int) $ts : 0;
 }
 
+function orden_alquiler_score_datos(array $d) {
+    $score = 0;
+    foreach (['precio_alquiler_pedido', 'actualizacion', 'monto_garantia'] as $k) {
+        if (trim((string)($d[$k] ?? '')) !== '') $score++;
+    }
+    foreach (['solicitante', 'garante1', 'garante2'] as $p) {
+        $persona = isset($d[$p]) && is_array($d[$p]) ? $d[$p] : [];
+        foreach (['nombre', 'dni', 'cuit', 'domicilio', 'email', 'celular'] as $k) {
+            if (trim((string)($persona[$k] ?? '')) !== '') $score++;
+        }
+    }
+    return $score;
+}
+
+function orden_alquiler_sanitizar_utf8($v) {
+    if (is_array($v)) {
+        $out = [];
+        foreach ($v as $k => $val) $out[$k] = orden_alquiler_sanitizar_utf8($val);
+        return $out;
+    }
+    if (!is_string($v)) return $v;
+    if (mb_check_encoding($v, 'UTF-8')) return $v;
+    return mb_convert_encoding($v, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+}
+
 function orden_alquiler_cargar_datos($propiedad_id) {
     $def = orden_alquiler_defaults();
     global $conexion;
@@ -91,9 +116,12 @@ function orden_alquiler_cargar_datos($propiedad_id) {
 
     // Elegir la versión más reciente por updated_at.
     if ($dbData && $fileData) {
-        return (orden_alquiler_ts($fileData['updated_at'] ?? '') > orden_alquiler_ts($dbData['updated_at'] ?? ''))
-            ? $fileData
-            : $dbData;
+        $tsFile = orden_alquiler_ts($fileData['updated_at'] ?? '');
+        $tsDb = orden_alquiler_ts($dbData['updated_at'] ?? '');
+        if ($tsFile > $tsDb) return $fileData;
+        if ($tsDb > $tsFile) return $dbData;
+        // Si timestamps empatan o faltan, quedarse con la versión que tenga más datos cargados.
+        return (orden_alquiler_score_datos($fileData) > orden_alquiler_score_datos($dbData)) ? $fileData : $dbData;
     }
     if ($dbData) return $dbData;
     if ($fileData) return $fileData;
@@ -108,8 +136,9 @@ function orden_alquiler_guardar_datos($propiedad_id, array $datos) {
     }
     global $conexion;
 
+    $datos = orden_alquiler_sanitizar_utf8($datos);
     $datos['updated_at'] = date('c');
-    $json = json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    $json = json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_INVALID_UTF8_SUBSTITUTE);
     $guardadoDb = false;
 
     // Guardado principal en base de datos
