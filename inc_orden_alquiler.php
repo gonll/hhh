@@ -43,38 +43,8 @@ function orden_alquiler_defaults() {
     ];
 }
 
-function orden_alquiler_cargar_datos($propiedad_id) {
+function orden_alquiler_normalizar_datos(array $j) {
     $def = orden_alquiler_defaults();
-    global $conexion;
-
-    // Prioridad: base de datos (más confiable en servidor)
-    if (isset($conexion) && orden_alquiler_asegurar_tabla($conexion)) {
-        $pid = (int) $propiedad_id;
-        $res = @mysqli_query($conexion, "SELECT datos_json FROM orden_alquiler_datos WHERE propiedad_id = $pid LIMIT 1");
-        if ($res && ($row = mysqli_fetch_assoc($res)) && !empty($row['datos_json'])) {
-            $j = json_decode((string) $row['datos_json'], true);
-            if (is_array($j)) {
-                foreach (['solicitante', 'garante1', 'garante2'] as $k) {
-                    if (!isset($j[$k]) || !is_array($j[$k])) {
-                        $j[$k] = orden_alquiler_persona_vacia();
-                    } else {
-                        $j[$k] = array_merge(orden_alquiler_persona_vacia(), $j[$k]);
-                    }
-                }
-                return array_merge($def, $j);
-            }
-        }
-    }
-
-    // Fallback: archivo JSON en disco
-    $f = orden_alquiler_json_file($propiedad_id);
-    if (!$f || !is_readable($f)) {
-        return $def;
-    }
-    $j = json_decode((string) @file_get_contents($f), true);
-    if (!is_array($j)) {
-        return $def;
-    }
     foreach (['solicitante', 'garante1', 'garante2'] as $k) {
         if (!isset($j[$k]) || !is_array($j[$k])) {
             $j[$k] = orden_alquiler_persona_vacia();
@@ -83,6 +53,52 @@ function orden_alquiler_cargar_datos($propiedad_id) {
         }
     }
     return array_merge($def, $j);
+}
+
+function orden_alquiler_ts($val) {
+    $s = trim((string) $val);
+    if ($s === '') return 0;
+    $ts = strtotime($s);
+    return $ts !== false ? (int) $ts : 0;
+}
+
+function orden_alquiler_cargar_datos($propiedad_id) {
+    $def = orden_alquiler_defaults();
+    global $conexion;
+    $dbData = null;
+    $fileData = null;
+
+    // Cargar desde base de datos (si está disponible)
+    if (isset($conexion) && orden_alquiler_asegurar_tabla($conexion)) {
+        $pid = (int) $propiedad_id;
+        $res = @mysqli_query($conexion, "SELECT datos_json FROM orden_alquiler_datos WHERE propiedad_id = $pid LIMIT 1");
+        if ($res && ($row = mysqli_fetch_assoc($res)) && !empty($row['datos_json'])) {
+            $j = json_decode((string) $row['datos_json'], true);
+            if (is_array($j)) {
+                $dbData = orden_alquiler_normalizar_datos($j);
+            }
+        }
+    }
+
+    // Cargar desde archivo JSON en disco (respaldo)
+    $f = orden_alquiler_json_file($propiedad_id);
+    if ($f && is_readable($f)) {
+        $j = json_decode((string) @file_get_contents($f), true);
+        if (is_array($j)) {
+            $fileData = orden_alquiler_normalizar_datos($j);
+        }
+    }
+
+    // Elegir la versión más reciente por updated_at.
+    if ($dbData && $fileData) {
+        return (orden_alquiler_ts($fileData['updated_at'] ?? '') > orden_alquiler_ts($dbData['updated_at'] ?? ''))
+            ? $fileData
+            : $dbData;
+    }
+    if ($dbData) return $dbData;
+    if ($fileData) return $fileData;
+
+    return $def;
 }
 
 function orden_alquiler_guardar_datos($propiedad_id, array $datos) {

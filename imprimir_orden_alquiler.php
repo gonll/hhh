@@ -4,6 +4,10 @@ include 'verificar_sesion.php';
 require_once __DIR__ . '/inc_orden_alquiler.php';
 require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 propiedades_asegurar_columnas($conexion);
 
 $nivelAcceso = (int) ($_SESSION['acceso_nivel'] ?? 0);
