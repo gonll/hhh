@@ -1,4 +1,14 @@
 <?php
+/**
+ * Fin de contrato de alquiler (propiedad).
+ *
+ * Política de cuenta del inquilino:
+ * - NO se borran movimientos en `cuentas` (ALQUILER, LIQ ALQUILER, depósito, etc.): el historial
+ *   y el estado de cuenta siguen mostrando todo lo liquidado con anterioridad.
+ * - La liquidación mensual automática (liquidar_alquileres_mes.php) solo procesa alquileres con
+ *   estado VIGENTE; al pasar este contrato a BAJA dejan de generarse cargos nuevos para ese
+ *   contrato hasta que se registre un contrato nuevo (nueva fila VIGENTE).
+ */
 ob_start();
 if (isset($_GET['debug']) && $_GET['debug'] === '1') {
     ini_set('display_errors', 1);

@@ -4,6 +4,11 @@
  * Actualización según incremento_alquiler_meses (1–6): coeficiente = producto de (1+IPC/100)
  * sobre los meses M-2 … M-(N+1) × 1,015 (misma lógica que bimestral con N=2).
  * Si corresponde actualización: concepto "ALQUILER ACTUALIZADO - [propiedad]".
+ *
+ * Solo contratos con estado = VIGENTE: si el contrato está en BAJA (fin de contrato), aquí no
+ * se inserta nada más para ese alquiler; los movimientos ya cargados en `cuentas` no se tocan.
+ * Contrato nuevo: nueva fila VIGENTE con su fecha_inicio; las comprobaciones usan fecha >= inicio
+ * para no mezclar con liquidaciones de contratos anteriores del mismo inquilino/propiedad.
  */
 if (!isset($conexion)) return;
 include_once __DIR__ . '/helpers_propiedad.php';
