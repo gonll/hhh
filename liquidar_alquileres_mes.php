@@ -31,13 +31,14 @@ if (!$contratos) return;
 while ($c = mysqli_fetch_assoc($contratos)) {
     $inquilino_id   = (int)$c['inquilino1_id'];
     $precio         = (float)$c['precio_convenido'];
-    $fecha_inicio   = $c['fecha_inicio'];
+    $fecha_inicio   = trim((string) $c['fecha_inicio']);
     $incr_meses     = max(1, min(6, (int) $c['incremento_alquiler_meses']));
     $nombre_prop    = mysqli_real_escape_string($conexion, strtoupper(omitir_ciudad_provincia(trim($c['nombre_propiedad']))));
     $concepto_base  = 'ALQUILER - ' . $nombre_prop;
     $concepto_act   = 'ALQUILER ACTUALIZADO - ' . strtoupper($nombre_prop);
+    $fi_esc = mysqli_real_escape_string($conexion, $fecha_inicio);
 
-    // Ya liquidado este mes si existe movimiento ALQUILER para esta propiedad (verificación por concepto)
+    // Ya liquidado este mes si existe movimiento ALQUILER de ESTE contrato (desde fecha_inicio)
     $concepto_base_esc = mysqli_real_escape_string($conexion, $concepto_base);
     $concepto_act_esc  = mysqli_real_escape_string($conexion, $concepto_act);
     $existe = mysqli_query($conexion,
@@ -46,11 +47,12 @@ while ($c = mysqli_fetch_assoc($contratos)) {
            AND comprobante = 'ALQUILER' 
            AND referencia = '$mes_actual'
            AND (concepto = '$concepto_base_esc' OR concepto = '$concepto_act_esc')
+           AND fecha >= '$fi_esc'
          LIMIT 1"
     );
     if ($existe && mysqli_num_rows($existe) > 0) continue;
 
-    // No liquidar este mes si ya existe LIQ ALQUILER para esta propiedad (contrato nuevo con mes prorrateado)
+    // No liquidar este mes si ya existe LIQ ALQUILER del contrato vigente (mes prorrateado)
     $nombre_prop_raw = strtoupper(omitir_ciudad_provincia(trim($c['nombre_propiedad'])));
     $nombre_prop_like = mysqli_real_escape_string($conexion, str_replace(['%', '_'], ['\\%', '\\_'], $nombre_prop_raw));
     $existe_liq = mysqli_query($conexion,
@@ -59,6 +61,7 @@ while ($c = mysqli_fetch_assoc($contratos)) {
            AND comprobante = 'LIQ ALQUILER' 
            AND referencia = '$mes_actual'
            AND concepto LIKE '%$nombre_prop_like%'
+           AND fecha >= '$fi_esc'
          LIMIT 1"
     );
     if ($existe_liq && mysqli_num_rows($existe_liq) > 0) continue;
@@ -73,12 +76,12 @@ while ($c = mysqli_fetch_assoc($contratos)) {
     $coef_actualizacion = liquidar_alquiler_coef_ipc($conexion, $incr_meses);
 
     if ($aplica_actualizacion && $coef_actualizacion > 0) {
-        // Buscar último monto de ALQUILER para esta propiedad (no de otras propiedades del mismo inquilino)
         $nombre_prop_like = mysqli_real_escape_string($conexion, str_replace(['%', '_'], ['\\%', '\\_'], $nombre_prop_raw));
         $ultimo = mysqli_query($conexion,
             "SELECT ABS(monto) AS ultimo_monto FROM cuentas 
              WHERE usuario_id = $inquilino_id AND comprobante = 'ALQUILER'
              AND concepto LIKE '%$nombre_prop_like%'
+             AND fecha >= '$fi_esc'
              ORDER BY fecha DESC, movimiento_id DESC LIMIT 1"
         );
         $base = $precio;
