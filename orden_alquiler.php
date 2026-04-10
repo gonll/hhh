@@ -1,6 +1,8 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
 require_once __DIR__ . '/inc_orden_alquiler.php';
 
@@ -26,6 +28,10 @@ $res = mysqli_query($conexion, 'SELECT * FROM propiedades WHERE propiedad_id = '
 $prop = $res ? mysqli_fetch_assoc($res) : null;
 if (!$prop) {
     header('Location: propiedades.php');
+    exit;
+}
+if (!tenant_inmob_propiedad_id_visible($conexion, $id)) {
+    header('Location: index.php?msg=sin_permiso');
     exit;
 }
 

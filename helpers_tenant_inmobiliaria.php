@@ -515,6 +515,8 @@ if (!function_exists('tenant_inmob_es_sofia')) {
             'guardar_contrato.php',
             'generar_word_contrato.php',
             'finalizar_contrato.php',
+            'orden_alquiler.php',
+            'imprimir_orden_alquiler.php',
             'abm_indices.php',
             'obtener_movimientos.php',
             'obtener_saldo_usuario.php',
