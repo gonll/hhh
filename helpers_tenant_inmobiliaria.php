@@ -9,6 +9,7 @@
  *   No se ven los registros del ámbito Sofía (acceso_creador_id = id de sofia).
  *
  * Los movimientos (cuentas) van ligados a usuarios: al filtrar personas por ámbito, los saldos quedan aislados.
+ * Caja central: en principal es el usuario id 1; en ámbito Sofía es otra fila `CAJA CENTRAL` con acceso_creador_id = Sofía (ver tenant_inmob_id_usuario_caja_central).
  * Si no existe usuario 'sofia' en `accesos`, no se aplica filtro (compatibilidad con bases antiguas).
  */
 
@@ -268,6 +269,36 @@ if (!function_exists('tenant_inmob_es_sofia')) {
         }
 
         return tenant_inmob_id_acceso_sofia_efectivo($conexion);
+    }
+
+    /**
+     * ID del usuario "CAJA CENTRAL" para la sesión actual.
+     * Principal: siempre id 1 (cuenta global de caja).
+     * Sofía: fila propia con acceso_creador_id = id de acceso Sofía (se crea si no existe), para no mezclar movimientos con el sistema principal.
+     */
+    function tenant_inmob_id_usuario_caja_central($conexion): int
+    {
+        tenant_inmob_asegurar_esquema($conexion);
+        if (!tenant_inmob_es_sofia()) {
+            return 1;
+        }
+        $sid = tenant_inmob_id_acceso_sofia_efectivo($conexion);
+        if ($sid <= 0) {
+            return 1;
+        }
+        $sid = (int) $sid;
+        $r = mysqli_query($conexion, 'SELECT id FROM usuarios WHERE UPPER(TRIM(apellido)) = \'CAJA CENTRAL\' AND acceso_creador_id = ' . $sid . ' LIMIT 1');
+        if ($r && ($row = mysqli_fetch_assoc($r))) {
+            return (int) $row['id'];
+        }
+        $sql = 'INSERT INTO usuarios (acceso_creador_id, apellido, dni, cuit, domicilio, email, celular, consorcio) VALUES ('
+            . $sid . ", 'CAJA CENTRAL', '0', '0', 'OFICINA', NULL, NULL, NULL)";
+        if (mysqli_query($conexion, $sql)) {
+            return (int) mysqli_insert_id($conexion);
+        }
+        $r2 = mysqli_query($conexion, 'SELECT id FROM usuarios WHERE UPPER(TRIM(apellido)) = \'CAJA CENTRAL\' AND acceso_creador_id = ' . $sid . ' LIMIT 1');
+
+        return ($r2 && ($row2 = mysqli_fetch_assoc($r2))) ? (int) $row2['id'] : 1;
     }
 
     function tenant_inmob_usuario_id_visible($conexion, int $usuario_id): bool

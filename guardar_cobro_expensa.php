@@ -8,12 +8,7 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     echo 'Sin permiso';
     exit;
 }
-if (tenant_inmob_es_sofia()) {
-    echo "Error: Esta operación usa la caja central y no está disponible en el ámbito inmobiliario.";
-    exit;
-}
-
-define('ID_CAJA', 1);
+$id_caja = tenant_inmob_id_usuario_caja_central($conexion);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['usuario_id'], $_POST['periodo'], $_POST['monto'])) {
     echo "Error: Faltan datos.";
@@ -181,7 +176,6 @@ if ($consorcio_param !== '') {
             echo "Error al grabar en Caja: " . mysqli_error($conexion);
             exit;
         }
-        $id_caja = ID_CAJA;
         mysqli_stmt_bind_param($stmt_caja, 'issssd', $id_caja, $fecha, $concepto_caja, $comprobante, $refer_periodo, $monto);
         if (!mysqli_stmt_execute($stmt_caja)) {
             echo "Error al grabar en Caja: " . mysqli_error($conexion);
@@ -286,8 +280,7 @@ if ($consorcio_param !== '') {
             echo "Error al grabar en Caja: " . mysqli_error($conexion);
             exit;
         }
-        $id_caja2 = ID_CAJA;
-        mysqli_stmt_bind_param($stmt_caja2, 'issssd', $id_caja2, $fecha, $concepto_caja, $comprobante, $refer_periodo, $monto);
+        mysqli_stmt_bind_param($stmt_caja2, 'issssd', $id_caja, $fecha, $concepto_caja, $comprobante, $refer_periodo, $monto);
         if (!mysqli_stmt_execute($stmt_caja2)) {
             echo "Error al grabar en Caja: " . mysqli_error($conexion);
             mysqli_stmt_close($stmt_caja2);

@@ -9,8 +9,8 @@ if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     echo 'Sin permiso';
     exit;
 }
-// ID del usuario CAJA (según index.php)
-define('ID_CAJA', 1);
+// ID del usuario CAJA (1 en principal; fila propia en ámbito Sofía)
+$id_caja = tenant_inmob_id_usuario_caja_central($conexion);
 
 // Verificamos que los datos hayan sido enviados mediante el método POST
 if (isset($_POST['id'])) {
@@ -88,7 +88,7 @@ if (isset($_POST['id'])) {
     $grabado_en_caja = false;
     $grabar_caja_param = isset($_POST['grabar_caja']) ? (int)$_POST['grabar_caja'] : -1;
     
-    if ($cuenta_usuario_id != ID_CAJA) {
+    if ($cuenta_usuario_id != $id_caja) {
         $stmt_usuario = mysqli_prepare($conexion, "SELECT apellido FROM usuarios WHERE id = ? LIMIT 1");
         if ($stmt_usuario) {
             mysqli_stmt_bind_param($stmt_usuario, 'i', $cuenta_usuario_id);
@@ -119,10 +119,6 @@ if (isset($_POST['id'])) {
         // Arriendos: ingreso y retiro NO impactan en caja
         $es_arriendo = ($compro === 'PGO ARRIENDO' || $compro === 'PRECIO DE LA BOLSA' || $compro === 'PRECIO AZUCAR' || (stripos($concepto, 'PAGO') !== false && (stripos($concepto, 'ARRIENDO') !== false || stripos($concepto, 'PRECIO REF') !== false)));
         if ($es_arriendo) $debe_grabar = false;
-        if (tenant_inmob_es_sofia()) {
-            $debe_grabar = false;
-        }
-
         if ($debe_grabar) {
             $concepto_caja = $nom_usuario ? ($nom_usuario . ' - ' . $concepto) : $concepto;
             $concepto_caja = mysqli_real_escape_string($conexion, $concepto_caja);
@@ -131,7 +127,6 @@ if (isset($_POST['id'])) {
                 echo "Error al grabar en Caja: " . mysqli_error($conexion);
                 exit;
             }
-            $id_caja = ID_CAJA;
             mysqli_stmt_bind_param($stmt_caja, 'issssd', $id_caja, $fecha, $concepto_caja, $compro, $refer, $monto);
             if (!mysqli_stmt_execute($stmt_caja)) {
                 echo "Error al grabar en Caja: " . mysqli_error($conexion);

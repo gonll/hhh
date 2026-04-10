@@ -3,6 +3,7 @@ include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
 tenant_inmob_asegurar_esquema($conexion);
+$id_caja_central = tenant_inmob_id_usuario_caja_central($conexion);
 require_once __DIR__ . '/config_clave_borrado.php';
 include 'respaldar_automatico.php'; // Respaldo automático diario
 $archivo_respaldo = hacerRespaldoAutomatico(); // Ejecutar respaldo si no se hizo hoy (retorna nombre de archivo si se hizo nuevo)
@@ -12,7 +13,7 @@ if (!tenant_inmob_es_sofia()) {
     }
     include 'liquidar_alquileres_mes.php'; // Liquidar alquileres del mes si aún no se cargaron (desde día 1)
 }
-// Consulta para listar usuarios, poniendo a "CAJA" (ID 1) primero, con fecha fin de contrato vigente
+// Consulta para listar usuarios, poniendo a CAJA CENTRAL primero (id 1 en principal; id propio en ámbito Sofía)
 // Excluye usuario técnico del libro Transferencias (movimientos de nivelación)
 $ap_excl_libro_transf = mysqli_real_escape_string($conexion, 'TRANSFERENCIAS (LIBRO)');
 $tw_usuarios = tenant_inmob_sql_usuarios($conexion, 'u');
@@ -25,7 +26,7 @@ $sql = "SELECT u.*,
          LIMIT 1) as fecha_fin_contrato
         FROM usuarios u 
         WHERE u.apellido <> '$ap_excl_libro_transf' AND ($tw_usuarios)
-        ORDER BY (u.id = 1) DESC, u.apellido ASC";
+        ORDER BY (u.id = " . (int) $id_caja_central . ") DESC, u.apellido ASC";
 $resultado = mysqli_query($conexion, $sql);
 
 // Consulta para detectar si falta el índice del mes actual (ámbito principal vs Sofía)
@@ -42,13 +43,13 @@ if ($nivelAcceso === 0) {
     header('Location: ' . (stripos($usuario, 'zafra') !== false ? 'cosecha.php' : 'partes_desde_cel.php'));
     exit;
 }
-// Usuarios para modal Ant/cel (nivel 3): todos excepto CAJA (id 1)
+// Usuarios para modal Ant/cel (nivel 3): todos excepto CAJA CENTRAL
 $usuarios_anticipo = [];
 $consorcios_lista = [];
 require_once __DIR__ . '/config_tutoriales.php';
 if ($nivelAcceso === 3) {
     $tw_ant = tenant_inmob_sql_usuarios($conexion, 'u');
-    $r_ant = mysqli_query($conexion, "SELECT u.id, u.apellido FROM usuarios u WHERE u.id != 1 AND ($tw_ant) ORDER BY u.apellido ASC");
+    $r_ant = mysqli_query($conexion, "SELECT u.id, u.apellido FROM usuarios u WHERE u.id != " . (int) $id_caja_central . " AND ($tw_ant) ORDER BY u.apellido ASC");
     if ($r_ant) {
         while ($u = mysqli_fetch_assoc($r_ant)) {
             $usuarios_anticipo[] = $u;
@@ -303,7 +304,7 @@ if ($nivelAcceso === 3) {
                                     $btnEdit
                                 </td>
                               </tr>";
-                        if ((int)$f['id'] === 1) {
+                        if (!$esUsuarioSofia && (int)$f['id'] === (int)$id_caja_central) {
                             echo "<tr class=\"fila-libro-transfer\" data-id=\"-99\" onclick=\"cargarLibroTransferencias(this)\">
                                 <td><span class=\"nombre-txt\">TRANSFERENCIAS</span></td>
                               </tr>";
@@ -809,6 +810,8 @@ if ($nivelAcceso === 3) {
 let uSel = null;
 /** Libro global transferencias (no caja): id ficticio en lista */
 const USUARIO_LIBRO_TRANSF = -99;
+/** Caja central: id 1 en sistema principal; id del usuario CAJA CENTRAL del ámbito Sofía */
+const ID_CAJA_USUARIO = <?= (int) $id_caja_central ?>;
 let tipo = ''; 
 let movSel = null;
 let esConsorcioUsuario = false;
@@ -903,7 +906,7 @@ function cargarMovimientos(fila, id) {
 
     var nomUsuario = fila.querySelector('.nombre-txt').innerText.toUpperCase().trim();
     esConsorcioUsuario = nomUsuario.indexOf("CONSORCIO") === 0;
-    var esCajaUsuario = (id === 1); // Caja tiene ID 1
+    var esCajaUsuario = (id === ID_CAJA_USUARIO);
     var panelCons = document.getElementById("panelConsorcio");
     var panelExtra = document.getElementById("panelBotonesExtra");
     var resumenLinea = document.getElementById("resumenConsorcioLinea");
@@ -1972,7 +1975,7 @@ function actualizarCobroCajaVuelto() {
 }
 
 function aceptarCobroCaja() {
-    if (!uSel || uSel === 1) { alert("Seleccioná un usuario válido."); return; }
+    if (!uSel || uSel === ID_CAJA_USUARIO) { alert("Seleccioná un usuario válido."); return; }
     if (!cobroCajaItem1 && !cobroCajaItem2) { alert("Seleccioná al menos un registro en la grilla."); return; }
     var dinero = parseMonto((document.getElementById("cobroCaja_dinero") || {}).value) || 0;
     if (isNaN(dinero) || dinero < 0) { alert("Ingresá un monto válido de dinero recibido."); return; }
@@ -2074,7 +2077,7 @@ function seleccionarFila(el, movimientoId, fecha, concepto, compro, ref, monto) 
     movSel = { movimientoId, fecha, concepto, compro, ref, monto, usuario: document.querySelector('.fila-seleccionada .nombre-txt').innerText };
     document.getElementById("btnWord").style.display = (uSel === USUARIO_LIBRO_TRANSF) ? "none" : "block";
     var panelCobro = document.getElementById("panelCobroCaja");
-    if (panelCobro && panelCobro.style.display !== "none" && uSel !== 1) {
+    if (panelCobro && panelCobro.style.display !== "none" && uSel !== ID_CAJA_USUARIO) {
         asignarCobroCajaItem(concepto, monto, ref);
     }
     if (uSel !== USUARIO_LIBRO_TRANSF && tipo === 'INGRESO' && concepto) {
@@ -2464,7 +2467,7 @@ function actualizarCheckGrabarCaja() {
     var chk = document.getElementById("ins_grabar_caja");
     var fila = document.getElementById("filaCheckCaja");
     if (!chk || !fila) return;
-    if (uSel === 1 || uSel === USUARIO_LIBRO_TRANSF) {
+    if (uSel === ID_CAJA_USUARIO || uSel === USUARIO_LIBRO_TRANSF) {
         fila.style.display = "none";
         return;
     }
@@ -2535,7 +2538,7 @@ function guardar() {
     }
     var compro = (document.getElementById("ins_compro").value || "").toUpperCase();
     var grabaEnCaja = (compro === "BOLETA" || compro === "EFVO" || compro === "ALQUILER EFVO" || compro === "VARIOS");
-    var grabarCaja = (uSel !== 1 && grabaEnCaja && compro !== "PGO ARRIENDO") ? 1 : 0;  /* PGO ARRIENDO nunca graba en Caja */
+    var grabarCaja = (uSel !== ID_CAJA_USUARIO && grabaEnCaja && compro !== "PGO ARRIENDO") ? 1 : 0;  /* PGO ARRIENDO nunca graba en Caja */
     let p = new URLSearchParams({ 
         id: uSel, 
         fecha: fechaTextoAISO(), 

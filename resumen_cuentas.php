@@ -1,6 +1,9 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+$id_caja_central = tenant_inmob_id_usuario_caja_central($conexion);
 
 date_default_timezone_set('America/Argentina/Buenos_Aires');
 
@@ -80,8 +83,8 @@ foreach ($filas as $f) {
     $total_general += $f['saldo'];
 }
 
-// Saldo cuenta Caja Central (usuario_id = 1)
-$res_caja = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id = 1");
+// Saldo cuenta Caja Central (id 1 principal; id propio en ámbito Sofía)
+$res_caja = mysqli_query($conexion, 'SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id = ' . (int) $id_caja_central);
 $saldo_caja_central = ($res_caja && $r = mysqli_fetch_assoc($res_caja)) ? (float)$r['total'] : 0;
 
 $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
