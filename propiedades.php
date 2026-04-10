@@ -185,7 +185,7 @@ if ($r_consorcios) {
                             <button onclick="imprimirContrato(<?= $f['propiedad_id'] ?>)" class="btn btn-print w-chico">IMPRIMIR CONTRATO</button>
                         <?php else: ?>
                             <button type="button" class="btn btn-baja w-grande" data-propiedad="<?= htmlspecialchars($f['propiedad'] ?? '', ENT_QUOTES, 'UTF-8') ?>" data-id="<?= (int)$f['propiedad_id'] ?>">BAJA PROP.</button>
-                            <button type="button" class="btn btn-imp-ord-alq w-grande" onclick="window.open('orden_alquiler.php?id=<?= $pid ?>', '_blank');" title="Orden de alquiler: condiciones, solicitante y garantes">IMP ORD ALQ.</button>
+                            <button type="button" class="btn btn-imp-ord-alq w-grande" onclick="window.open('orden_alquiler.php?id=<?= $pid ?>', '_blank');" title="Orden de alquiler o venta: condiciones, interesado, garantes o referencias e historial">IMP. ORDEN ALQ/VENTA</button>
                         <?php endif; ?>
                     </div>
                     <?php else: ?>

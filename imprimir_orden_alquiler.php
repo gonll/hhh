@@ -34,6 +34,7 @@ if (!tenant_inmob_propiedad_id_visible($conexion, $id)) {
 }
 
 $d = orden_alquiler_cargar_datos($id);
+$modoImp = (($d['modo_operacion'] ?? '') === 'venta') ? 'venta' : 'alquiler';
 
 $fotos = propiedades_fotos_unificadas($id, $p['fotos_json'] ?? null);
 $primeraFotoUrl = null;
@@ -123,7 +124,7 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Orden de alquiler — <?= h($p['propiedad'] ?? '') ?></title>
+    <title>Orden de alquiler/venta — <?= h($p['propiedad'] ?? '') ?></title>
     <style>
         /* Vista previa en pantalla: hoja A4 */
         html { box-sizing: border-box; }
@@ -145,6 +146,10 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
             background: #fff;
             box-shadow: 0 2px 14px rgba(0,0,0,0.2);
         }
+        .ficha-orden {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
         h1 { font-size: 17px; margin: 0 0 4px; }
         h2 { font-size: 14px; }
         .meta { font-size: 10px; color: #555; margin-bottom: 12px; }
@@ -153,7 +158,7 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
         table.datos th { background: #f0f0f0; width: 22%; }
         .detalle { white-space: pre-wrap; font-size: 11px; word-break: break-word; }
         .no-print { margin-bottom: 16px; }
-        .pie-doc { margin-top: 16px; font-size: 10px; color: #666; }
+        .pie-doc { margin-top: 12px; font-size: 9px; color: #666; }
         .bloque-foto-mapa { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 11px; }
         .bloque-foto-mapa td { border: 1px solid #ccc; padding: 8px; vertical-align: top; width: 50%; }
         .bloque-foto-mapa .tit-cel { font-weight: bold; margin-bottom: 6px; color: #333; }
@@ -197,30 +202,57 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
         .bloque-foto-mapa .coords { font-size: 9px; color: #555; margin-top: 6px; }
         .bloque-foto-mapa .sin-dato { color: #888; font-style: italic; }
 
-        /* Impresión: papel A4 con márgenes seguros */
+        /* Impresión: siempre A4, una ficha por hoja (sin cortar bloques internos) */
         @page {
-            size: A4;
-            margin: 12mm 10mm;
+            size: A4 portrait;
+            margin: 10mm 12mm;
         }
         @media print {
             body {
                 padding: 0;
+                margin: 0;
                 background: #fff;
+                font-size: 10px;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
             .no-print { display: none !important; }
             .hoja-a4 {
                 width: 100%;
                 max-width: none;
-                min-height: auto;
                 margin: 0;
                 padding: 0;
                 box-shadow: none;
                 box-sizing: border-box;
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
-            table.datos, .detalle, .bloque-foto-mapa { page-break-inside: avoid; }
-            h2 { page-break-after: avoid; }
-            .bloque-foto-mapa img,
-            .bloque-foto-mapa .mapa-iframe-print { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .ficha-orden {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            h1 { font-size: 15px; margin: 0 0 2px; }
+            h2 { font-size: 12px; margin: 10px 0 6px; page-break-after: avoid; }
+            .meta { font-size: 9px; margin-bottom: 8px; }
+            table.datos { font-size: 9px; margin-top: 4px; page-break-inside: avoid; }
+            table.datos th, table.datos td { padding: 4px 6px; }
+            .detalle { font-size: 9px; max-height: 42mm; overflow: hidden; }
+            .bloque-foto-mapa {
+                margin: 8px 0 10px;
+                font-size: 9px;
+                page-break-inside: avoid;
+            }
+            .bloque-foto-mapa td { padding: 6px; }
+            .bloque-foto-mapa img { max-height: 120px; }
+            .bloque-foto-mapa .mapa-iframe-print {
+                height: 130px;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .bloque-foto-mapa .coords { font-size: 8px; margin-top: 4px; }
+            table.datos, .detalle { page-break-inside: avoid; }
+            h3 { font-size: 11px; margin: 8px 0 4px !important; page-break-after: avoid; }
+            .pie-doc { margin-top: 8px; font-size: 8px; page-break-inside: avoid; }
         }
     </style>
 </head>
@@ -232,8 +264,9 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
     </div>
 
     <div class="hoja-a4">
-    <h1>Orden de alquiler</h1>
-    <p class="meta">Impreso: <?= h($fecha) ?> · Último guardado en formulario: <?= h($upd) ?></p>
+    <div class="ficha-orden">
+    <h1>Orden de <span style="color:#1e7e34;text-decoration:underline;">alquiler</span><span style="color:#333;">/</span><span style="color:#c82333;text-decoration:underline;">venta</span></h1>
+    <p class="meta">Impreso: <?= h($fecha) ?> · Último guardado en formulario: <?= h($upd) ?> · <strong>Modo:</strong> <?= $modoImp === 'venta' ? 'Venta' : 'Alquiler' ?></p>
 
     <table class="bloque-foto-mapa">
         <tr>
@@ -281,16 +314,23 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
 
     <h2 style="font-size:15px; margin-top:20px; border-bottom:1px solid #333; padding-bottom:4px;">Condiciones</h2>
     <table class="datos">
+        <?php if ($modoImp === 'venta'): ?>
+        <tr><th>Precio de venta pedido</th><td><?= h($d['precio_venta_pedido'] ?? '') !== '' ? h($d['precio_venta_pedido']) : '—' ?></td></tr>
+        <tr><th>Condiciones de venta</th><td class="detalle"><?= h($d['condiciones_venta'] ?? '') !== '' ? nl2br(h($d['condiciones_venta'])) : '—' ?></td></tr>
+        <tr><th>Seña / reserva</th><td><?= h($d['monto_garantia'] ?? '') !== '' ? h($d['monto_garantia']) : '—' ?></td></tr>
+        <?php else: ?>
         <tr><th>Precio de alquiler pedido</th><td><?= h($d['precio_alquiler_pedido'] ?? '') !== '' ? h($d['precio_alquiler_pedido']) : '—' ?></td></tr>
         <tr><th>Actualización</th><td class="detalle"><?= h($d['actualizacion'] ?? '') !== '' ? nl2br(h($d['actualizacion'])) : '—' ?></td></tr>
         <tr><th>Monto garantía</th><td><?= h($d['monto_garantia'] ?? '') !== '' ? h($d['monto_garantia']) : '—' ?></td></tr>
+        <?php endif; ?>
     </table>
 
-    <?= fila_persona('Solicitante', $d['solicitante'] ?? []) ?>
-    <?= fila_persona('Garante 1', $d['garante1'] ?? []) ?>
-    <?= fila_persona('Garante 2', $d['garante2'] ?? []) ?>
+    <?= fila_persona($modoImp === 'venta' ? 'Comprador / ofertante' : 'Solicitante', $d['solicitante'] ?? []) ?>
+    <?= fila_persona($modoImp === 'venta' ? 'Referencia / codeudor 1' : 'Garante 1', $d['garante1'] ?? []) ?>
+    <?= fila_persona($modoImp === 'venta' ? 'Referencia / codeudor 2' : 'Garante 2', $d['garante2'] ?? []) ?>
 
     <p class="pie-doc">Documento generado desde el sistema. Los datos de personas se utilizan como referencia para el contrato.</p>
+    </div>
     </div>
 </body>
 </html>

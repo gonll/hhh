@@ -35,9 +35,58 @@ if (!tenant_inmob_propiedad_id_visible($conexion, $id)) {
     exit;
 }
 
+$mostrador = trim((string) ($_SESSION['acceso_usuario'] ?? ''));
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_cambio_modo'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $modoNuevo = (isset($_POST['modo_operacion']) && $_POST['modo_operacion'] === 'venta') ? 'venta' : 'alquiler';
+    $prev = orden_alquiler_cargar_datos($id);
+    $modoAnt = (($prev['modo_operacion'] ?? '') === 'venta') ? 'venta' : 'alquiler';
+    $nuevaFila = null;
+    if ($modoAnt !== $modoNuevo) {
+        $prev['modo_operacion'] = $modoNuevo;
+        orden_alquiler_agregar_evento_historial($prev, 'cambio_modo', $modoNuevo, '', $mostrador, 'Selección alquiler/venta en pantalla');
+        orden_alquiler_guardar_datos($id, $prev);
+        $hc = $prev['historial'] ?? [];
+        $last = is_array($hc) && $hc !== [] ? $hc[count($hc) - 1] : null;
+        if (is_array($last)) {
+            $nuevaFila = [
+                'fecha_txt' => date('d/m/Y H:i'),
+                'tipo' => $last['tipo'] ?? '',
+                'tipo_txt' => oa_label_tipo_hist($last['tipo'] ?? ''),
+                'modo' => (($last['modo'] ?? '') === 'venta') ? 'venta' : 'alquiler',
+                'cliente' => (string) ($last['cliente'] ?? ''),
+                'mostrador' => (string) ($last['mostrador'] ?? ''),
+                'nota' => (string) ($last['nota'] ?? ''),
+            ];
+        }
+    }
+    echo json_encode(['ok' => true, 'modo' => $modoNuevo, 'historial_agregado' => $nuevaFila], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registrar_visita'])) {
+    $cliente = trim((string) ($_POST['cliente_visita'] ?? ''));
+    $modoVis = (isset($_POST['modo_visita']) && $_POST['modo_visita'] === 'venta') ? 'venta' : 'alquiler';
+    $nota = trim((string) ($_POST['nota_visita'] ?? ''));
+    $prev = orden_alquiler_cargar_datos($id);
+    orden_alquiler_agregar_evento_historial($prev, 'visita', $modoVis, $cliente, $mostrador, $nota);
+    if (orden_alquiler_guardar_datos($id, $prev)) {
+        header('Location: orden_alquiler.php?id=' . $id . '&ok_visita=1');
+        exit;
+    }
+    header('Location: orden_alquiler.php?id=' . $id . '&err_visita=1');
+    exit;
+}
+
 $mensaje = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_orden_alquiler'])) {
+    $prev = orden_alquiler_cargar_datos($id);
     $datos = orden_alquiler_post_a_datos();
+    $hist = isset($prev['historial']) && is_array($prev['historial']) ? $prev['historial'] : [];
+    $datos['historial'] = $hist;
+    $nomCli = trim((string) ($datos['solicitante']['nombre'] ?? ''));
+    orden_alquiler_agregar_evento_historial($datos, 'guardado', $datos['modo_operacion'], $nomCli, $mostrador, '');
     if (orden_alquiler_guardar_datos($id, $datos)) {
         header('Location: orden_alquiler.php?id=' . $id . '&ok=1');
         exit;
@@ -49,6 +98,14 @@ $datos = orden_alquiler_cargar_datos($id);
 if (isset($_GET['ok'])) {
     $mensaje = 'Datos guardados.';
 }
+if (isset($_GET['ok_visita'])) {
+    $mensaje = 'Visita registrada en el historial.';
+}
+if (isset($_GET['err_visita'])) {
+    $mensaje = 'No se pudo registrar la visita.';
+}
+
+$modoActual = (($datos['modo_operacion'] ?? '') === 'venta') ? 'venta' : 'alquiler';
 
 $fotos = propiedades_fotos_unificadas($id, $prop['fotos_json'] ?? null);
 $lat = isset($prop['mapa_lat']) && $prop['mapa_lat'] !== null && $prop['mapa_lat'] !== '' ? (float) $prop['mapa_lat'] : null;
@@ -104,6 +161,19 @@ function h($s) {
     return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 }
 
+function oa_label_tipo_hist($tipo) {
+    switch ((string) $tipo) {
+        case 'guardado':
+            return 'Guardado';
+        case 'cambio_modo':
+            return 'Cambio modo';
+        case 'visita':
+            return 'Visita';
+        default:
+            return (string) $tipo;
+    }
+}
+
 $s = $datos['solicitante'];
 $g1 = $datos['garante1'];
 $g2 = $datos['garante2'];
@@ -113,12 +183,18 @@ $g2 = $datos['garante2'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Orden de alquiler — <?= h($prop['propiedad'] ?? '') ?></title>
+    <title>Orden de alquiler/venta — <?= h($prop['propiedad'] ?? '') ?></title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 12px; font-size: 13px; }
         .wrap { max-width: 920px; margin: 0 auto; background: #fff; padding: 18px 20px 28px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-        h1 { font-size: 17px; color: #007bff; margin: 0 0 6px; text-transform: uppercase; }
+        h1 { font-size: 17px; color: #333; margin: 0 0 6px; text-transform: none; font-weight: 700; }
+        h1 .tit-prefijo { color: #007bff; text-transform: uppercase; font-size: 14px; }
+        h1 .tit-mod { cursor: pointer; text-decoration: underline; font-weight: 800; }
+        h1 .tit-mod-alq { color: #1e7e34; }
+        h1 .tit-mod-venta { color: #c82333; }
+        h1 .tit-mod.dim { opacity: 0.42; text-decoration: none; font-weight: 600; }
+        h1 .tit-sep { color: #555; text-decoration: none; font-weight: 600; margin: 0 2px; }
         .sub { color: #555; font-size: 12px; margin-bottom: 16px; }
         h2 { font-size: 13px; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 6px; margin: 22px 0 12px; }
         .msg { padding: 10px 12px; border-radius: 6px; margin-bottom: 14px; font-weight: bold; }
@@ -188,13 +264,23 @@ $g2 = $datos['garante2'];
         .galeria-mini { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
         .galeria-mini a { display: block; width: 72px; height: 72px; border-radius: 4px; overflow: hidden; border: 1px solid #ddd; }
         .galeria-mini img { width: 100%; height: 100%; object-fit: cover; }
+        .bloque-cond { display: none; }
+        .bloque-cond.activo { display: block; }
+        .tabla-hist { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
+        .tabla-hist th, .tabla-hist td { border: 1px solid #dee2e6; padding: 6px 8px; text-align: left; vertical-align: top; }
+        .tabla-hist th { background: #e9ecef; }
+        .reg-visita { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+        .reg-visita h3 { margin: 0 0 10px; font-size: 12px; color: #333; }
+        .reg-visita .grid2 { margin-top: 0; }
     </style>
 </head>
 <body>
 
 <div class="wrap">
-    <h1>Orden de alquiler</h1>
-    <p class="sub">Los datos de solicitante y garantes se utilizarán al generar el contrato. Guarde antes de imprimir.</p>
+    <h1>
+        <span class="tit-prefijo">Orden de </span><span id="tit-alq" class="tit-mod tit-mod-alq<?= $modoActual === 'alquiler' ? '' : ' dim' ?>" role="button" tabindex="0" title="Modo alquiler">alquiler</span><span class="tit-sep">/</span><span id="tit-venta" class="tit-mod tit-mod-venta<?= $modoActual === 'venta' ? '' : ' dim' ?>" role="button" tabindex="0" title="Modo venta">venta</span>
+    </h1>
+    <p class="sub">Elegí alquiler o venta en el título para adaptar la ficha. Los datos se usan como referencia para contrato u oferta. Guardá antes de imprimir.</p>
 
     <?php if ($mensaje !== ''): ?>
         <div class="msg <?= (strpos($mensaje, 'No se pudo') !== false) ? 'err' : 'ok' ?>"><?= h($mensaje) ?></div>
@@ -267,27 +353,118 @@ $g2 = $datos['garante2'];
     <p style="margin:0 0 12px; font-size:12px;"><a href="ver_propiedad.php?id=<?= $id ?>" target="_blank">Ficha de la propiedad</a></p>
     <?php endif; ?>
 
+    <div class="reg-visita">
+        <h3>Registrar visita (cliente que vio la ficha)</h3>
+        <form method="post" action="orden_alquiler.php?id=<?= (int) $id ?>">
+            <input type="hidden" name="propiedad_id" value="<?= (int) $id ?>">
+            <input type="hidden" name="registrar_visita" value="1">
+            <div class="grid2">
+                <div>
+                    <label for="cliente_visita">Cliente o interesado</label>
+                    <input type="text" name="cliente_visita" id="cliente_visita" placeholder="Nombre del interesado" autocomplete="off">
+                </div>
+                <div>
+                    <label for="modo_visita">Interés</label>
+                    <select name="modo_visita" id="modo_visita" style="width:100%; padding:8px 10px; border:1px solid #ced4da; border-radius:4px; font-size:13px;">
+                        <option value="alquiler"<?= $modoActual === 'alquiler' ? ' selected' : '' ?>>Alquiler</option>
+                        <option value="venta"<?= $modoActual === 'venta' ? ' selected' : '' ?>>Venta</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:12px;">
+                <label for="nota_visita">Nota (opcional)</label>
+                <textarea name="nota_visita" id="nota_visita" placeholder="Observaciones de la visita" style="min-height:48px;"></textarea>
+            </div>
+            <button type="submit" class="btn btn-print" style="margin-top:12px;">Registrar en historial</button>
+        </form>
+        <p class="nota" style="margin-bottom:0;">Quién mostró queda registrado con el usuario en sesión (<?= h($mostrador !== '' ? $mostrador : '—') ?>).</p>
+    </div>
+
+    <?php
+    $histRows = isset($datos['historial']) && is_array($datos['historial']) ? array_reverse($datos['historial']) : [];
+    ?>
+    <h2 style="margin-top:8px;">Histórico de visitas y cambios</h2>
+    <p class="nota">Incluye guardados del formulario, cambios entre alquiler y venta, y visitas registradas. Orden: más reciente arriba.</p>
+    <div style="overflow-x:auto;">
+        <table class="tabla-hist">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Modo</th>
+                    <th>Cliente / interesado</th>
+                    <th>Mostró</th>
+                    <th>Nota</th>
+                </tr>
+            </thead>
+            <tbody id="historial-tbody">
+                <?php if ($histRows === []): ?>
+                    <tr id="historial-vacio"><td colspan="6" class="sin-dato">Sin eventos aún.</td></tr>
+                <?php else: ?>
+                    <?php foreach ($histRows as $ev):
+                        if (!is_array($ev)) {
+                            continue;
+                        }
+                        $fRaw = trim((string) ($ev['fecha'] ?? ''));
+                        $tsEv = $fRaw !== '' ? strtotime($fRaw) : false;
+                        $fTxt = ($tsEv !== false) ? date('d/m/Y H:i', $tsEv) : '—';
+                        $modoEv = (($ev['modo'] ?? '') === 'venta') ? 'Venta' : 'Alquiler';
+                    ?>
+                    <tr>
+                        <td><?= h($fTxt) ?></td>
+                        <td><?= h(oa_label_tipo_hist($ev['tipo'] ?? '')) ?></td>
+                        <td><?= h($modoEv) ?></td>
+                        <td><?= h(trim((string) ($ev['cliente'] ?? '')) !== '' ? (string) $ev['cliente'] : '—') ?></td>
+                        <td><?= h(trim((string) ($ev['mostrador'] ?? '')) !== '' ? (string) $ev['mostrador'] : '—') ?></td>
+                        <td><?= h(trim((string) ($ev['nota'] ?? '')) !== '' ? (string) $ev['nota'] : '—') ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+
     <form method="post" action="orden_alquiler.php">
         <input type="hidden" name="propiedad_id" value="<?= (int) $id ?>">
         <input type="hidden" name="guardar_orden_alquiler" value="1">
+        <input type="hidden" name="modo_operacion" id="modo_operacion" value="<?= h($modoActual) ?>">
 
         <h2>Condiciones solicitadas</h2>
-        <div class="grid2">
-            <div>
-                <label for="precio_alquiler_pedido">Precio de alquiler pedido</label>
-                <input type="text" name="precio_alquiler_pedido" id="precio_alquiler_pedido" value="<?= h($datos['precio_alquiler_pedido']) ?>" placeholder="Ej: 150000 o 150.000,00" autocomplete="off">
+        <div id="bloque-cond-alq" class="bloque-cond<?= $modoActual === 'alquiler' ? ' activo' : '' ?>">
+            <div class="grid2">
+                <div>
+                    <label for="precio_alquiler_pedido">Precio de alquiler pedido</label>
+                    <input type="text" name="precio_alquiler_pedido" id="precio_alquiler_pedido" value="<?= h($datos['precio_alquiler_pedido']) ?>" placeholder="Ej: 150000 o 150.000,00" autocomplete="off">
+                </div>
+                <div></div>
             </div>
+            <div style="margin-top:12px;">
+                <label for="actualizacion">Actualización (índice / forma de ajuste)</label>
+                <textarea name="actualizacion" id="actualizacion" placeholder="Ej: IPC trimestral, porcentaje anual, etc."><?= h($datos['actualizacion']) ?></textarea>
+            </div>
+        </div>
+        <div id="bloque-cond-venta" class="bloque-cond<?= $modoActual === 'venta' ? ' activo' : '' ?>">
+            <div class="grid2">
+                <div>
+                    <label for="precio_venta_pedido">Precio de venta pedido</label>
+                    <input type="text" name="precio_venta_pedido" id="precio_venta_pedido" value="<?= h($datos['precio_venta_pedido'] ?? '') ?>" placeholder="Ej: USD o pesos" autocomplete="off">
+                </div>
+                <div></div>
+            </div>
+            <div style="margin-top:12px;">
+                <label for="condiciones_venta">Condiciones de venta / forma de pago</label>
+                <textarea name="condiciones_venta" id="condiciones_venta" placeholder="Ej: contado, financiación, escritura, etc."><?= h($datos['condiciones_venta'] ?? '') ?></textarea>
+            </div>
+        </div>
+        <div class="grid2" style="margin-top:12px;">
             <div>
-                <label for="monto_garantia">Monto garantía</label>
+                <label for="monto_garantia" id="lbl-monto-garantia"><?= $modoActual === 'venta' ? 'Seña / reserva (opc.)' : 'Monto garantía' ?></label>
                 <input type="text" name="monto_garantia" id="monto_garantia" value="<?= h($datos['monto_garantia']) ?>" placeholder="Ej: 300000" autocomplete="off">
             </div>
-        </div>
-        <div style="margin-top:12px;">
-            <label for="actualizacion">Actualización (índice / forma de ajuste)</label>
-            <textarea name="actualizacion" id="actualizacion" placeholder="Ej: IPC trimestral, porcentaje anual, etc."><?= h($datos['actualizacion']) ?></textarea>
+            <div></div>
         </div>
 
-        <h2>Solicitante (locatario previsto)</h2>
+        <h2 id="h2-solicitante"><?= $modoActual === 'venta' ? 'Comprador / ofertante (previsto)' : 'Solicitante (locatario previsto)' ?></h2>
         <div class="persona-box">
             <h3>Datos para el contrato</h3>
             <div class="grid2">
@@ -300,7 +477,7 @@ $g2 = $datos['garante2'];
             </div>
         </div>
 
-        <h2>Garante 1</h2>
+        <h2 id="h2-g1"><?= $modoActual === 'venta' ? 'Referencia / codeudor 1 (opc.)' : 'Garante 1' ?></h2>
         <div class="persona-box">
             <div class="grid2">
                 <div><label for="garante1_nombre">Apellido y nombre</label><input type="text" name="garante1_nombre" id="garante1_nombre" value="<?= h($g1['nombre']) ?>" autocomplete="off"></div>
@@ -312,7 +489,7 @@ $g2 = $datos['garante2'];
             </div>
         </div>
 
-        <h2>Garante 2</h2>
+        <h2 id="h2-g2"><?= $modoActual === 'venta' ? 'Referencia / codeudor 2 (opc.)' : 'Garante 2' ?></h2>
         <div class="persona-box">
             <div class="grid2">
                 <div><label for="garante2_nombre">Apellido y nombre</label><input type="text" name="garante2_nombre" id="garante2_nombre" value="<?= h($g2['nombre']) ?>" autocomplete="off"></div>
@@ -328,11 +505,94 @@ $g2 = $datos['garante2'];
 
         <div class="acciones">
             <button type="submit" class="btn btn-guardar">Guardar datos</button>
-            <a href="imprimir_orden_alquiler.php?id=<?= (int) $id ?>" target="_blank" class="btn btn-print">Vista imprimible</a>
+            <a href="imprimir_orden_alquiler.php?id=<?= (int) $id ?>" target="_blank" class="btn btn-print" id="link-imprimir-oa">Vista imprimible</a>
             <a href="propiedades.php" class="btn btn-volver">← Volver a propiedades</a>
         </div>
     </form>
 </div>
+
+<script>
+(function () {
+    var id = <?= (int) $id ?>;
+    var inpModo = document.getElementById('modo_operacion');
+    var titAlq = document.getElementById('tit-alq');
+    var titVen = document.getElementById('tit-venta');
+    var bAlq = document.getElementById('bloque-cond-alq');
+    var bVen = document.getElementById('bloque-cond-venta');
+    var h2Sol = document.getElementById('h2-solicitante');
+    var h2g1 = document.getElementById('h2-g1');
+    var h2g2 = document.getElementById('h2-g2');
+    var lblMonto = document.getElementById('lbl-monto-garantia');
+    var selVisita = document.getElementById('modo_visita');
+    var linkImp = document.getElementById('link-imprimir-oa');
+    var tbodyHist = document.getElementById('historial-tbody');
+
+    function textoTipoHist(t) {
+        var m = { guardado: 'Guardado', cambio_modo: 'Cambio modo', visita: 'Visita' };
+        return m[t] || t || '—';
+    }
+
+    function prependHistorial(fila) {
+        if (!tbodyHist || !fila) return;
+        var vac = document.getElementById('historial-vacio');
+        if (vac) vac.remove();
+        var tr = document.createElement('tr');
+        var c = function (txt) {
+            var td = document.createElement('td');
+            td.textContent = txt;
+            tr.appendChild(td);
+        };
+        c(fila.fecha_txt || '—');
+        c(fila.tipo_txt || textoTipoHist(fila.tipo));
+        c(fila.modo === 'venta' ? 'Venta' : 'Alquiler');
+        c(fila.cliente || '—');
+        c(fila.mostrador || '—');
+        c(fila.nota || '—');
+        tbodyHist.insertBefore(tr, tbodyHist.firstChild);
+    }
+
+    function aplicarModoUI(modo, conServidor) {
+        var esV = (modo === 'venta');
+        if (inpModo) inpModo.value = esV ? 'venta' : 'alquiler';
+        if (bAlq) bAlq.classList.toggle('activo', !esV);
+        if (bVen) bVen.classList.toggle('activo', esV);
+        if (titAlq) titAlq.classList.toggle('dim', esV);
+        if (titVen) titVen.classList.toggle('dim', !esV);
+        if (h2Sol) h2Sol.textContent = esV ? 'Comprador / ofertante (previsto)' : 'Solicitante (locatario previsto)';
+        if (h2g1) h2g1.textContent = esV ? 'Referencia / codeudor 1 (opc.)' : 'Garante 1';
+        if (h2g2) h2g2.textContent = esV ? 'Referencia / codeudor 2 (opc.)' : 'Garante 2';
+        if (lblMonto) lblMonto.textContent = esV ? 'Seña / reserva (opc.)' : 'Monto garantía';
+        if (selVisita) selVisita.value = esV ? 'venta' : 'alquiler';
+        if (linkImp) linkImp.href = 'imprimir_orden_alquiler.php?id=' + id;
+
+        if (conServidor) {
+            var fd = new FormData();
+            fd.append('ajax_cambio_modo', '1');
+            fd.append('propiedad_id', String(id));
+            fd.append('modo_operacion', esV ? 'venta' : 'alquiler');
+            fetch('orden_alquiler.php?id=' + id, { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j && j.historial_agregado) prependHistorial(j.historial_agregado);
+                })
+                .catch(function () {});
+        }
+    }
+
+    function bindTit(el, modo) {
+        if (!el) return;
+        el.addEventListener('click', function () { aplicarModoUI(modo, true); });
+        el.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                aplicarModoUI(modo, true);
+            }
+        });
+    }
+    bindTit(titAlq, 'alquiler');
+    bindTit(titVen, 'venta');
+})();
+</script>
 
 <?php include 'timeout_sesion_inc.php'; ?>
 </body>

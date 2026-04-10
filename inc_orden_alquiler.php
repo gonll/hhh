@@ -33,14 +33,49 @@ function orden_alquiler_persona_vacia() {
 
 function orden_alquiler_defaults() {
     return [
+        'modo_operacion' => 'alquiler',
         'precio_alquiler_pedido' => '',
+        'precio_venta_pedido' => '',
         'actualizacion' => '',
+        'condiciones_venta' => '',
         'monto_garantia' => '',
         'solicitante' => orden_alquiler_persona_vacia(),
         'garante1' => orden_alquiler_persona_vacia(),
         'garante2' => orden_alquiler_persona_vacia(),
+        'historial' => [],
         'updated_at' => '',
     ];
+}
+
+function orden_alquiler_normalizar_historial($h): array
+{
+    if (!is_array($h)) {
+        return [];
+    }
+    $tiposOk = ['visita' => true, 'guardado' => true, 'cambio_modo' => true];
+    $out = [];
+    foreach ($h as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $tipo = (string) ($row['tipo'] ?? '');
+        if (!isset($tiposOk[$tipo])) {
+            $tipo = 'visita';
+        }
+        $out[] = [
+            'fecha' => mb_substr(trim((string) ($row['fecha'] ?? '')), 0, 40),
+            'tipo' => $tipo,
+            'modo' => (($row['modo'] ?? '') === 'venta') ? 'venta' : 'alquiler',
+            'cliente' => mb_substr(trim((string) ($row['cliente'] ?? '')), 0, 500),
+            'mostrador' => mb_substr(trim((string) ($row['mostrador'] ?? '')), 0, 120),
+            'nota' => mb_substr(trim((string) ($row['nota'] ?? '')), 0, 500),
+        ];
+    }
+    if (count($out) > 200) {
+        $out = array_slice($out, -200);
+    }
+
+    return $out;
 }
 
 function orden_alquiler_normalizar_datos(array $j) {
@@ -52,7 +87,28 @@ function orden_alquiler_normalizar_datos(array $j) {
             $j[$k] = array_merge(orden_alquiler_persona_vacia(), $j[$k]);
         }
     }
+    $j['historial'] = orden_alquiler_normalizar_historial($j['historial'] ?? []);
+    $j['modo_operacion'] = (($j['modo_operacion'] ?? '') === 'venta') ? 'venta' : 'alquiler';
+
     return array_merge($def, $j);
+}
+
+function orden_alquiler_agregar_evento_historial(array &$datos, string $tipo, string $modo, string $cliente, string $mostrador, string $nota = ''): void
+{
+    if (!isset($datos['historial']) || !is_array($datos['historial'])) {
+        $datos['historial'] = [];
+    }
+    $datos['historial'][] = [
+        'fecha' => date('c'),
+        'tipo' => $tipo,
+        'modo' => $modo === 'venta' ? 'venta' : 'alquiler',
+        'cliente' => $cliente,
+        'mostrador' => $mostrador,
+        'nota' => $nota,
+    ];
+    if (count($datos['historial']) > 200) {
+        $datos['historial'] = array_slice($datos['historial'], -200);
+    }
 }
 
 function orden_alquiler_ts($val) {
@@ -64,7 +120,7 @@ function orden_alquiler_ts($val) {
 
 function orden_alquiler_score_datos(array $d) {
     $score = 0;
-    foreach (['precio_alquiler_pedido', 'actualizacion', 'monto_garantia'] as $k) {
+    foreach (['precio_alquiler_pedido', 'precio_venta_pedido', 'actualizacion', 'condiciones_venta', 'monto_garantia'] as $k) {
         if (trim((string)($d[$k] ?? '')) !== '') $score++;
     }
     foreach (['solicitante', 'garante1', 'garante2'] as $p) {
@@ -180,9 +236,14 @@ function orden_alquiler_post_a_datos() {
             'celular' => $p($pref . '_celular'),
         ];
     };
+    $modo = ($p('modo_operacion') === 'venta') ? 'venta' : 'alquiler';
+
     return [
+        'modo_operacion' => $modo,
         'precio_alquiler_pedido' => $p('precio_alquiler_pedido'),
+        'precio_venta_pedido' => $p('precio_venta_pedido'),
         'actualizacion' => $p('actualizacion'),
+        'condiciones_venta' => $p('condiciones_venta'),
         'monto_garantia' => $p('monto_garantia'),
         'solicitante' => $persona('solicitante'),
         'garante1' => $persona('garante1'),
