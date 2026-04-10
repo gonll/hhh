@@ -23,6 +23,7 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars(tenant_inmob_html_title('Contrato de Alquiler')) ?></title>
+    <?php tenant_inmob_echo_head_favicons(); ?>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
         .caja { background: white; padding: 12px; border-radius: 8px; max-width: 920px; width: 100%; margin: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); box-sizing: border-box; }
@@ -51,6 +52,7 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
 <body>
 
 <div class="caja">
+    <?php tenant_inmob_echo_header_bar_logo_rectangular('max-height:48px;margin:0 auto 12px;display:block;'); ?>
     <h3>Generar Contrato de Alquiler</h3>
     <form id="formContrato" autocomplete="off">
         <div class="grid-form">

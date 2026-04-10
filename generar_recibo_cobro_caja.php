@@ -94,6 +94,7 @@ header("Content-Disposition: attachment; filename=\"Recibo_Cobro_$nro_recibo.doc
 <html xmlns="http://www.w3.org/TR/REC-html40">
 <head>
 <meta charset="UTF-8">
+<?php tenant_inmob_echo_head_favicons(); ?>
 <style>
     @page { size: 210mm 148.5mm; margin: 6mm; }
     body { font-family: Arial, sans-serif; font-size: 9pt; margin: 0; padding: 5mm; line-height: 1.2; box-sizing: border-box; }
@@ -113,6 +114,7 @@ header("Content-Disposition: attachment; filename=\"Recibo_Cobro_$nro_recibo.doc
 </head>
 <body>
 <div class="recibo-wrap">
+    <?php tenant_inmob_echo_recibo_header_logo(); ?>
     <div class="titulo">R&nbsp;E&nbsp;C&nbsp;I&nbsp;B&nbsp;O&nbsp;&nbsp;&nbsp;Nº&nbsp;<?= htmlspecialchars($nro_recibo) ?></div>
     <div class="fecha"><?= $fecha_formateada ?></div>
     <div class="texto">Recibí de <strong><?= htmlspecialchars($usuario_nombre) ?></strong> la suma de pesos <strong><?= $monto_letras ?></strong> ($<?= $monto_numero ?>-) en concepto de las siguientes asignaciones<?= $periodo_cobrado !== '' ? ' — Período cobrado: ' . htmlspecialchars($periodo_cobrado) : '' ?>:</div>

@@ -4,17 +4,9 @@
  */
 if (!function_exists('generar_expensa_html_logo_src')) {
     function generar_expensa_html_logo_src() {
-        if (!empty($_SERVER['HTTP_HOST'])) {
-            $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-            $scheme = $https ? 'https' : 'http';
-            $script = $_SERVER['SCRIPT_NAME'] ?? '';
-            $dir = rtrim(str_replace('\\', '/', dirname($script)), '/');
-            if ($dir === '' || $dir === '.') {
-                $dir = '';
-            }
-            return $scheme . '://' . $_SERVER['HTTP_HOST'] . $dir . '/assets/logo.png';
-        }
-        return 'assets/logo.png';
+        require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+
+        return tenant_inmob_logo_src_expensa();
     }
 }
 

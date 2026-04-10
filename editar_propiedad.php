@@ -47,6 +47,7 @@ if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars(tenant_inmob_html_title('Editar Propiedad')) ?></title>
+    <?php tenant_inmob_echo_head_favicons(); ?>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
         .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
@@ -85,6 +86,7 @@ if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
 
 <?php $esNivel3 = isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3; ?>
 <div class="card" id="formularioEditar" style="display:<?= $esNivel3 ? 'block' : 'none' ?>;">
+    <?php tenant_inmob_echo_header_bar_logo_rectangular('max-height:44px;margin:0 auto 12px;display:block;'); ?>
     <h2>Editar datos de la propiedad</h2>
     <?php if (isset($_GET['error']) && $_GET['error'] === 'migracion'): ?>
     <div style="background:#fff3cd; color:#856404; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">La base de datos del servidor no tiene las columnas para fotos y mapa. Ejecute el SQL de migración con un usuario MySQL con permisos (ver mensaje en «nueva propiedad» o documentación del sistema).</div>

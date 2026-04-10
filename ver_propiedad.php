@@ -54,6 +54,7 @@ if ($tieneMapa) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars(tenant_inmob_html_title('Propiedad — Fotos y ubicación')) ?></title>
+    <?php tenant_inmob_echo_head_favicons(); ?>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 12px; }
         .card { background: white; max-width: 720px; margin: 0 auto; padding: 16px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
@@ -103,6 +104,7 @@ if ($tieneMapa) {
 <body>
 
 <div class="card">
+    <?php tenant_inmob_echo_header_bar_logo_rectangular('max-height:44px;margin:0 auto 12px;display:block;'); ?>
     <h1><?= htmlspecialchars($prop['propiedad'] ?? '') ?></h1>
     <div class="meta">
         <?php if (!empty($prop['ciudad'])): ?><div><strong>Ciudad:</strong> <?= htmlspecialchars($prop['ciudad']) ?></div><?php endif; ?>

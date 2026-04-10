@@ -29,6 +29,7 @@ if (!tenant_inmob_usuario_id_visible($conexion, $id)) {
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars(tenant_inmob_html_title('Editar persona')) ?></title>
+    <?php tenant_inmob_echo_head_favicons(); ?>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 380px; }
@@ -46,6 +47,7 @@ if (!tenant_inmob_usuario_id_visible($conexion, $id)) {
 <body>
 
 <div class="card">
+    <?php tenant_inmob_echo_header_bar_logo_rectangular('max-height:40px;margin:0 auto 12px;display:block;'); ?>
     <h2>Editar Usuario</h2>
     <form class="form-nav-enter" action="actualizar_usuario.php" method="POST">
         <input type="hidden" name="id" value="<?= $user['id'] ?>">

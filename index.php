@@ -69,18 +69,8 @@ if ($nivelAcceso === 3) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars(tenant_inmob_html_title()) ?></title>
-    <!-- Favicons -->
-    <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-
-    <!-- Apple -->
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-
-    <!-- Android / PWA -->
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+    <!-- Favicons (BGH cuadrado si sesión Sofía y archivo existe) -->
+    <?php tenant_inmob_echo_head_favicons(); ?>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: stretch; }
         .deploy-navbar { flex: 0 0 auto; margin-bottom: 8px; }
@@ -261,6 +251,7 @@ if ($nivelAcceso === 3) {
 
     <div class="contenedor-principal">
     <div class="contenedor-usuarios">
+        <?php tenant_inmob_echo_header_bar_logo_rectangular('max-height:40px;margin:0 auto 6px;display:block;'); ?>
         <?php if (isset($_GET['msg']) && ($_GET['msg'] === 'solo_lectura' || $_GET['msg'] === 'sin_permiso')): ?>
             <p style="font-size:10px; color:#856404; background:#fff3cd; padding:6px; border-radius:4px; margin:0 0 6px;">Su nivel solo permite consulta (sin altas, bajas ni modificaciones).</p>
         <?php endif; ?>
@@ -276,7 +267,8 @@ if ($nivelAcceso === 3) {
                 <?php if (!$esUsuarioSofia && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
                     <a href="gestionar_accesos.php" style="color:#007bff; font-size:9px; margin-right:6px;">Accesos</a>
                     <a href="respaldar_bd.php" style="color:#28a745; font-size:9px; margin-right:6px;">Respaldar</a>
-                    <a href="restaurar_bd.php" style="color:#721c24; font-size:9px; margin-right:6px;" title="Restaurar BD desde archivo .sql">Restaurar</a>
+                <?php elseif ($esUsuarioSofia && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
+                    <a href="respaldar_bd.php" style="color:#28a745; font-size:9px; margin-right:6px;">Respaldar</a>
                 <?php endif; ?>
                 <a href="<?= (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 1 && $_SESSION['acceso_nivel'] <= 3) ? 'respaldar_al_salir.php' : 'logout.php' ?>" style="color:#dc3545; font-size:9px;">Salir</a>
             </div>

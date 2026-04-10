@@ -218,6 +218,7 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Imprimir Expensas - Consorcio</title>
+    <?php tenant_inmob_echo_head_favicons(); ?>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -358,7 +359,7 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
                 'ultimo_mes_liq' => $ultimo_mes_liq,
                 'fecha_actual' => $fecha_actual,
                 'nombre_consorcio' => $nombre_consorcio,
-                'logo_src' => 'assets/logo.png',
+                'logo_src' => tenant_inmob_logo_src_expensa(),
             ]) ?>
             <div class="no-print expensa-acciones">
                 <button type="button" class="btn-icono-exp imprimir" title="Enviar a impresora" data-expensa-idx="<?= $idx ?>" onclick="imprimirExpensa(<?= $idx ?>)">🖨️</button>

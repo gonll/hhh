@@ -40,6 +40,7 @@ $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_sal
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars(tenant_inmob_html_title('Imprimir Propiedades')) ?></title>
+    <?php tenant_inmob_echo_head_favicons(); ?>
     <style>
         body { font-family: 'Segoe UI', sans-serif; margin: 15px; font-size: 12px; }
         .no-print { margin-bottom: 15px; }
@@ -65,6 +66,7 @@ $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_sal
     </style>
 </head>
 <body>
+    <?php tenant_inmob_echo_header_bar_logo_rectangular('max-height:52px;margin:0 auto 14px;display:block;'); ?>
     <div class="no-print">
         <button type="button" onclick="window.print();" style="background:#007bff; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold;">🖨️ Imprimir</button>
         <a href="propiedades.php" style="margin-left:10px; color:#007bff;">← Volver a Gestión de Propiedades</a>

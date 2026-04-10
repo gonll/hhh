@@ -28,6 +28,7 @@ $res = mysqli_query($conexion, "SELECT * FROM indices WHERE acceso_creador_id = 
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars(tenant_inmob_html_title('ABM Índices IPC')) ?></title>
+    <?php tenant_inmob_echo_head_favicons(); ?>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
         .caja { background: white; padding: 15px; border-radius: 8px; width: 400px; margin: 20px auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -49,6 +50,7 @@ $res = mysqli_query($conexion, "SELECT * FROM indices WHERE acceso_creador_id = 
 <body>
 
 <div class="caja">
+    <?php tenant_inmob_echo_header_bar_logo_rectangular('max-height:40px;margin:0 auto 12px;display:block;'); ?>
     <h3>Carga de Índice IPC</h3>
     <form method="POST" class="form-nav-enter" autocomplete="off">
         <label>Mes Correspondiente</label>

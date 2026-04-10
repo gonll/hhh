@@ -493,6 +493,7 @@ header("Content-Disposition: attachment; filename=\"Recibo_$nro_recibo.doc\"");
 </style>
 </head>
 <body>
+    <?php tenant_inmob_echo_recibo_header_logo(); ?>
     <div class="titulo">R&nbsp;E&nbsp;C&nbsp;I&nbsp;B&nbsp;O&nbsp;&nbsp;&nbsp;Nº&nbsp;<?= $nro_recibo ?></div>
     <p>&nbsp;</p>
     <div class="fecha"><?= $fecha_formateada ?></div>

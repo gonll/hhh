@@ -48,6 +48,7 @@ $saldo = $suma_antes;
 <head>
     <meta charset="UTF-8">
     <title>Movimientos - <?= htmlspecialchars($nombre) ?></title>
+    <?php tenant_inmob_echo_head_favicons(); ?>
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 15px; font-size: 11px; }
         h1 { font-size: 14px; margin: 0 0 10px; color: #333; }
@@ -64,6 +65,7 @@ $saldo = $suma_antes;
     </style>
 </head>
 <body>
+<?php tenant_inmob_echo_header_bar_logo_rectangular('max-height:48px;margin:0 auto 12px;display:block;'); ?>
 <h1>DETALLE DE CUENTA - <?= htmlspecialchars(strtoupper($nombre)) ?></h1>
 <p class="subtitulo">Últimos <?= $limit ?> movimientos — Impreso: <?= date('d/m/Y H:i') ?></p>
 <table>

@@ -32,6 +32,7 @@ if ($r_consorcios) {
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars(tenant_inmob_html_title('Administración de Propiedades')) ?></title>
+    <?php tenant_inmob_echo_head_favicons(); ?>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; }
         .contenedor { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 98vw; margin: auto; box-sizing: border-box; }
@@ -109,6 +110,7 @@ if ($r_consorcios) {
 <body onkeydown="var e=event||window.event;if((e.keyCode||e.which)===27){e.preventDefault();window.location.href='index.php';return false;}">
 
 <div class="contenedor">
+    <?php tenant_inmob_echo_header_bar_logo_rectangular('max-height:48px;margin:0 auto 12px;display:block;'); ?>
     <div class="encabezado">
         <h2>Gestión de Propiedades</h2>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">

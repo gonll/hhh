@@ -352,6 +352,144 @@ if (!function_exists('tenant_inmob_es_sofia')) {
         return 'NULL';
     }
 
+    /** Nombres probados en la raíz del proyecto (algunos sistemas guardan .jpg.jpeg). */
+    function tenant_inmob_bgh_logo_cuadrado_filenames(): array
+    {
+        return ['Logobghcuadrado.jpg', 'Logobghcuadrado.jpg.jpeg', 'Logobghcuadrado.jpeg'];
+    }
+
+    function tenant_inmob_bgh_logo_rectangular_filenames(): array
+    {
+        return ['Logobghrectangular.jpg', 'Logobghrectangular.jpg.jpeg', 'Logobghrectangular.jpeg'];
+    }
+
+    /**
+     * Href relativo al directorio de la app para páginas en la raíz del proyecto.
+     */
+    function tenant_inmob_bgh_logo_cuadrado_href(): ?string
+    {
+        if (!tenant_inmob_es_sofia()) {
+            return null;
+        }
+        foreach (tenant_inmob_bgh_logo_cuadrado_filenames() as $name) {
+            $p = __DIR__ . DIRECTORY_SEPARATOR . $name;
+            if (is_readable($p)) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    function tenant_inmob_bgh_logo_rectangular_href(): ?string
+    {
+        if (!tenant_inmob_es_sofia()) {
+            return null;
+        }
+        foreach (tenant_inmob_bgh_logo_rectangular_filenames() as $name) {
+            $p = __DIR__ . DIRECTORY_SEPARATOR . $name;
+            if (is_readable($p)) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    /** URL absoluta (misma lógica que expensas) para impresión / mail. */
+    function tenant_inmob_public_file_url(string $relativeFromAppRoot): string
+    {
+        $rel = ltrim(str_replace('\\', '/', $relativeFromAppRoot), '/');
+        if (!empty($_SERVER['HTTP_HOST'])) {
+            $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+            $scheme = $https ? 'https' : 'http';
+            $script = $_SERVER['SCRIPT_NAME'] ?? '';
+            $dir = rtrim(str_replace('\\', '/', dirname($script)), '/');
+            if ($dir === '' || $dir === '.' || $dir === '/') {
+                $prefix = '';
+            } else {
+                $prefix = $dir;
+            }
+            return $scheme . '://' . $_SERVER['HTTP_HOST'] . $prefix . '/' . $rel;
+        }
+
+        return $rel;
+    }
+
+    function tenant_inmob_bgh_logo_cuadrado_absolute_url(): ?string
+    {
+        $h = tenant_inmob_bgh_logo_cuadrado_href();
+
+        return $h !== null ? tenant_inmob_public_file_url($h) : null;
+    }
+
+    /** Logo chico para hojas de expensa (cuadrado). */
+    function tenant_inmob_logo_src_expensa(): string
+    {
+        $abs = tenant_inmob_bgh_logo_cuadrado_absolute_url();
+        if ($abs !== null) {
+            return $abs;
+        }
+        if (!empty($_SERVER['HTTP_HOST'])) {
+            $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+            $scheme = $https ? 'https' : 'http';
+            $script = $_SERVER['SCRIPT_NAME'] ?? '';
+            $dir = rtrim(str_replace('\\', '/', dirname($script)), '/');
+            if ($dir === '' || $dir === '.') {
+                $dir = '';
+            }
+
+            return $scheme . '://' . $_SERVER['HTTP_HOST'] . $dir . '/assets/logo.png';
+        }
+
+        return 'assets/logo.png';
+    }
+
+    /**
+     * Favicons: con Sofía y archivo BGH cuadrado → pestaña / icono móvil BGH; si no, iconos estándar del sistema.
+     */
+    function tenant_inmob_echo_head_favicons(): void
+    {
+        $bgh = tenant_inmob_bgh_logo_cuadrado_href();
+        if ($bgh !== null) {
+            $e = htmlspecialchars($bgh, ENT_QUOTES, 'UTF-8');
+            echo "    <link rel=\"icon\" type=\"image/jpeg\" href=\"{$e}\" sizes=\"any\">\n";
+            echo "    <link rel=\"apple-touch-icon\" href=\"{$e}\">\n";
+
+            return;
+        }
+        echo "    <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\">\n";
+        echo "    <link rel=\"icon\" type=\"image/png\" sizes=\"16x16\" href=\"/favicon-16x16.png\">\n";
+        echo "    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/favicon-32x32.png\">\n";
+        echo "    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\">\n";
+        echo "    <link rel=\"manifest\" href=\"/site.webmanifest\">\n";
+        echo "    <link rel=\"icon\" type=\"image/png\" sizes=\"192x192\" href=\"/android-chrome-192x192.png\">\n";
+        echo "    <link rel=\"icon\" type=\"image/png\" sizes=\"512x512\" href=\"/android-chrome-512x512.png\">\n";
+    }
+
+    /** Cabecera horizontal (logo rectangular); si no hay rectangular pero sí cuadrado, usa el cuadrado. */
+    function tenant_inmob_echo_header_bar_logo_rectangular(string $imgStyle = 'max-height:44px;margin:0 auto 10px;display:block;'): void
+    {
+        $h = tenant_inmob_bgh_logo_rectangular_href() ?? tenant_inmob_bgh_logo_cuadrado_href();
+        if ($h === null) {
+            return;
+        }
+        $e = htmlspecialchars($h, ENT_QUOTES, 'UTF-8');
+        $s = htmlspecialchars($imgStyle, ENT_QUOTES, 'UTF-8');
+        echo '<div class="tenant-bgh-logo-bar" style="text-align:center;width:100%;"><img src="' . $e . '" alt="BGH Inmobiliaria" style="' . $s . '"></div>';
+    }
+
+    /** Bloque centrado para recibos Word/HTML (prefiere rectangular). */
+    function tenant_inmob_echo_recibo_header_logo(): void
+    {
+        $h = tenant_inmob_bgh_logo_rectangular_href() ?? tenant_inmob_bgh_logo_cuadrado_href();
+        if ($h === null) {
+            return;
+        }
+        $e = htmlspecialchars($h, ENT_QUOTES, 'UTF-8');
+        echo '<div style="text-align:center;margin-bottom:6px;"><img src="' . $e . '" alt="BGH Inmobiliaria" style="max-height:44px;"></div>';
+    }
+
     /** Lista de scripts permitidos para el usuario Sofía (resto del sistema bloqueado por URL). */
     function tenant_inmob_sofia_scripts_permitidos(): array
     {
@@ -359,6 +497,7 @@ if (!function_exists('tenant_inmob_es_sofia')) {
             'index.php',
             'logout.php',
             'respaldar_al_salir.php',
+            'respaldar_bd.php',
             'registro.php',
             'procesar.php',
             'editar_usuario.php',
