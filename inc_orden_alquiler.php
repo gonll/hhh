@@ -7,16 +7,19 @@ if (!defined('HHH_ROOT')) {
 }
 
 function orden_alquiler_asegurar_tabla($conexion) {
-    if (!$conexion) return false;
-    static $ok = null;
-    if ($ok !== null) return $ok;
+    if (!$conexion) {
+        return false;
+    }
+    // No cachear fallos: en algunos servidores el primer CREATE puede fallar por permisos
+    // aunque la tabla ya exista; SHOW TABLES confirma si podemos usar la BD.
     $sql = "CREATE TABLE IF NOT EXISTS orden_alquiler_datos (
         propiedad_id INT NOT NULL PRIMARY KEY,
         datos_json LONGTEXT NOT NULL,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci";
-    $ok = (bool) @mysqli_query($conexion, $sql);
-    return $ok;
+    @mysqli_query($conexion, $sql);
+    $chk = @mysqli_query($conexion, "SHOW TABLES LIKE 'orden_alquiler_datos'");
+    return ($chk && mysqli_num_rows($chk) > 0);
 }
 
 function orden_alquiler_json_file($propiedad_id) {
@@ -197,14 +200,18 @@ function orden_alquiler_guardar_datos($propiedad_id, array $datos) {
     $json = json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_INVALID_UTF8_SUBSTITUTE);
     $guardadoDb = false;
 
-    // Guardado principal en base de datos
+    // Guardado principal en base de datos (prepared: evita fallos con comillas y JSON largo)
     if ($json !== false && isset($conexion) && orden_alquiler_asegurar_tabla($conexion)) {
         $pid = (int) $propiedad_id;
-        $jsonEsc = mysqli_real_escape_string($conexion, $json);
-        $sql = "INSERT INTO orden_alquiler_datos (propiedad_id, datos_json, updated_at)
-                VALUES ($pid, '$jsonEsc', NOW())
-                ON DUPLICATE KEY UPDATE datos_json = VALUES(datos_json), updated_at = NOW()";
-        $guardadoDb = (bool) @mysqli_query($conexion, $sql);
+        $sql = 'INSERT INTO orden_alquiler_datos (propiedad_id, datos_json, updated_at)
+                VALUES (?, ?, NOW())
+                ON DUPLICATE KEY UPDATE datos_json = VALUES(datos_json), updated_at = NOW()';
+        $stmt = @mysqli_prepare($conexion, $sql);
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'is', $pid, $json);
+            $guardadoDb = (bool) mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
     }
 
     // Mantener también archivo JSON como respaldo/compatibilidad
@@ -218,7 +225,7 @@ function orden_alquiler_guardar_datos($propiedad_id, array $datos) {
     if (!$f) {
         return $guardadoDb;
     }
-    $guardadoFile = $json !== false && (bool) @file_put_contents($f, $json);
+    $guardadoFile = $json !== false && (bool) @file_put_contents($f, $json, LOCK_EX);
     return $guardadoDb || $guardadoFile;
 }
 

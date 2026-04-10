@@ -50,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_cambio_modo'])) 
         $hc = $prev['historial'] ?? [];
         $last = is_array($hc) && $hc !== [] ? $hc[count($hc) - 1] : null;
         if (is_array($last)) {
+            $nReal = is_array($hc) ? count($hc) : 0;
             $nuevaFila = [
                 'fecha_txt' => date('d/m/Y H:i'),
                 'tipo' => $last['tipo'] ?? '',
@@ -58,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_cambio_modo'])) 
                 'cliente' => (string) ($last['cliente'] ?? ''),
                 'mostrador' => (string) ($last['mostrador'] ?? ''),
                 'nota' => (string) ($last['nota'] ?? ''),
+                'historial_real_idx' => $nReal > 0 ? $nReal - 1 : 0,
             ];
         }
     }
@@ -71,11 +73,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registrar_visita'])) 
     $nota = trim((string) ($_POST['nota_visita'] ?? ''));
     $prev = orden_alquiler_cargar_datos($id);
     orden_alquiler_agregar_evento_historial($prev, 'visita', $modoVis, $cliente, $mostrador, $nota);
+    $prev = orden_alquiler_normalizar_datos($prev);
     if (orden_alquiler_guardar_datos($id, $prev)) {
         header('Location: orden_alquiler.php?id=' . $id . '&ok_visita=1');
         exit;
     }
     header('Location: orden_alquiler.php?id=' . $id . '&err_visita=1');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['borrar_historial_registro'])) {
+    $rid = (int) ($_POST['historial_real_idx'] ?? -1);
+    $prev = orden_alquiler_cargar_datos($id);
+    $hist = isset($prev['historial']) && is_array($prev['historial']) ? $prev['historial'] : [];
+    if ($rid >= 0 && $rid < count($hist)) {
+        array_splice($hist, $rid, 1);
+        $prev['historial'] = $hist;
+        $prev = orden_alquiler_normalizar_datos($prev);
+        if (orden_alquiler_guardar_datos($id, $prev)) {
+            header('Location: orden_alquiler.php?id=' . $id . '&ok_hist_borrado=1');
+            exit;
+        }
+    }
+    header('Location: orden_alquiler.php?id=' . $id . '&err_hist_borrado=1');
     exit;
 }
 
@@ -103,6 +123,12 @@ if (isset($_GET['ok_visita'])) {
 }
 if (isset($_GET['err_visita'])) {
     $mensaje = 'No se pudo registrar la visita.';
+}
+if (isset($_GET['ok_hist_borrado'])) {
+    $mensaje = 'Registro eliminado del historial.';
+}
+if (isset($_GET['err_hist_borrado'])) {
+    $mensaje = 'No se pudo eliminar el registro del historial.';
 }
 
 $modoActual = (($datos['modo_operacion'] ?? '') === 'venta') ? 'venta' : 'alquiler';
@@ -269,6 +295,12 @@ $g2 = $datos['garante2'];
         .tabla-hist { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
         .tabla-hist th, .tabla-hist td { border: 1px solid #dee2e6; padding: 6px 8px; text-align: left; vertical-align: top; }
         .tabla-hist th { background: #e9ecef; }
+        .btn-borrar-hist {
+            background: #dc3545; color: #fff; border: none; border-radius: 4px;
+            width: 28px; height: 28px; line-height: 1; font-size: 18px; font-weight: bold;
+            cursor: pointer; padding: 0; vertical-align: middle;
+        }
+        .btn-borrar-hist:hover { background: #c82333; }
         .reg-visita { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
         .reg-visita h3 { margin: 0 0 10px; font-size: 12px; color: #333; }
         .reg-visita .grid2 { margin-top: 0; }
@@ -355,7 +387,7 @@ $g2 = $datos['garante2'];
 
     <div class="reg-visita">
         <h3>Registrar visita (cliente que vio la ficha)</h3>
-        <form method="post" action="orden_alquiler.php?id=<?= (int) $id ?>">
+        <form method="post" action="orden_alquiler.php">
             <input type="hidden" name="propiedad_id" value="<?= (int) $id ?>">
             <input type="hidden" name="registrar_visita" value="1">
             <div class="grid2">
@@ -381,10 +413,12 @@ $g2 = $datos['garante2'];
     </div>
 
     <?php
-    $histRows = isset($datos['historial']) && is_array($datos['historial']) ? array_reverse($datos['historial']) : [];
+    $histRaw = isset($datos['historial']) && is_array($datos['historial']) ? $datos['historial'] : [];
+    $nHist = count($histRaw);
+    $histRows = $nHist > 0 ? array_reverse($histRaw, false) : [];
     ?>
     <h2 style="margin-top:8px;">Histórico de visitas y cambios</h2>
-    <p class="nota">Incluye guardados del formulario, cambios entre alquiler y venta, y visitas registradas. Orden: más reciente arriba.</p>
+    <p class="nota">Incluye guardados del formulario, cambios entre alquiler y venta, y visitas registradas. Orden: más reciente arriba. Usá × para borrar una línea.</p>
     <div style="overflow-x:auto;">
         <table class="tabla-hist">
             <thead>
@@ -395,16 +429,18 @@ $g2 = $datos['garante2'];
                     <th>Cliente / interesado</th>
                     <th>Mostró</th>
                     <th>Nota</th>
+                    <th style="width:40px;" aria-label="Eliminar"></th>
                 </tr>
             </thead>
             <tbody id="historial-tbody">
                 <?php if ($histRows === []): ?>
-                    <tr id="historial-vacio"><td colspan="6" class="sin-dato">Sin eventos aún.</td></tr>
+                    <tr id="historial-vacio"><td colspan="7" class="sin-dato">Sin eventos aún.</td></tr>
                 <?php else: ?>
-                    <?php foreach ($histRows as $ev):
+                    <?php foreach ($histRows as $displayIdx => $ev):
                         if (!is_array($ev)) {
                             continue;
                         }
+                        $realIdx = $nHist - 1 - (int) $displayIdx;
                         $fRaw = trim((string) ($ev['fecha'] ?? ''));
                         $tsEv = $fRaw !== '' ? strtotime($fRaw) : false;
                         $fTxt = ($tsEv !== false) ? date('d/m/Y H:i', $tsEv) : '—';
@@ -417,6 +453,14 @@ $g2 = $datos['garante2'];
                         <td><?= h(trim((string) ($ev['cliente'] ?? '')) !== '' ? (string) $ev['cliente'] : '—') ?></td>
                         <td><?= h(trim((string) ($ev['mostrador'] ?? '')) !== '' ? (string) $ev['mostrador'] : '—') ?></td>
                         <td><?= h(trim((string) ($ev['nota'] ?? '')) !== '' ? (string) $ev['nota'] : '—') ?></td>
+                        <td style="text-align:center;vertical-align:middle;">
+                            <form method="post" action="orden_alquiler.php" style="margin:0;display:inline;" onsubmit="return confirm('¿Eliminar este registro del historial?');">
+                                <input type="hidden" name="propiedad_id" value="<?= (int) $id ?>">
+                                <input type="hidden" name="borrar_historial_registro" value="1">
+                                <input type="hidden" name="historial_real_idx" value="<?= (int) $realIdx ?>">
+                                <button type="submit" class="btn-borrar-hist" title="Eliminar registro">×</button>
+                            </form>
+                        </td>
                     </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -548,6 +592,40 @@ $g2 = $datos['garante2'];
         c(fila.cliente || '—');
         c(fila.mostrador || '—');
         c(fila.nota || '—');
+        var tdDel = document.createElement('td');
+        tdDel.style.textAlign = 'center';
+        tdDel.style.verticalAlign = 'middle';
+        if (typeof fila.historial_real_idx === 'number') {
+            var form = document.createElement('form');
+            form.method = 'post';
+            form.action = 'orden_alquiler.php';
+            form.style.margin = '0';
+            form.style.display = 'inline';
+            form.onsubmit = function () { return window.confirm('¿Eliminar este registro del historial?'); };
+            var inpPid = document.createElement('input');
+            inpPid.type = 'hidden';
+            inpPid.name = 'propiedad_id';
+            inpPid.value = String(id);
+            var inpBr = document.createElement('input');
+            inpBr.type = 'hidden';
+            inpBr.name = 'borrar_historial_registro';
+            inpBr.value = '1';
+            var inpIx = document.createElement('input');
+            inpIx.type = 'hidden';
+            inpIx.name = 'historial_real_idx';
+            inpIx.value = String(fila.historial_real_idx);
+            var btn = document.createElement('button');
+            btn.type = 'submit';
+            btn.className = 'btn-borrar-hist';
+            btn.title = 'Eliminar registro';
+            btn.appendChild(document.createTextNode('\u00D7'));
+            form.appendChild(inpPid);
+            form.appendChild(inpBr);
+            form.appendChild(inpIx);
+            form.appendChild(btn);
+            tdDel.appendChild(form);
+        }
+        tr.appendChild(tdDel);
         tbodyHist.insertBefore(tr, tbodyHist.firstChild);
     }
 

@@ -1,0 +1,34 @@
+{
+    "modo_operacion": "alquiler",
+    "precio_alquiler_pedido": "",
+    "precio_venta_pedido": "",
+    "actualizacion": "",
+    "condiciones_venta": "",
+    "monto_garantia": "",
+    "solicitante": {
+        "nombre": "",
+        "dni": "",
+        "cuit": "",
+        "domicilio": "",
+        "email": "",
+        "celular": ""
+    },
+    "garante1": {
+        "nombre": "",
+        "dni": "",
+        "cuit": "",
+        "domicilio": "",
+        "email": "",
+        "celular": ""
+    },
+    "garante2": {
+        "nombre": "",
+        "dni": "",
+        "cuit": "",
+        "domicilio": "",
+        "email": "",
+        "celular": ""
+    },
+    "historial": [],
+    "updated_at": "2026-04-10T22:50:34+02:00"
+}
