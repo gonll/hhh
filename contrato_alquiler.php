@@ -114,8 +114,8 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
             </div>
 
             <div>
-                <label>Plazo (meses)</label>
-                <input type="number" id="plazo" class="nav-enter" value="24" required readonly title="Se ajusta según el destino elegido">
+                <label>Plazo (meses) <span class="hint-destino">(por defecto según destino; puede cambiarse)</span></label>
+                <input type="number" id="plazo" class="nav-enter" value="24" required min="1" max="600" step="1" title="Se carga según destino; puede editarse antes de guardar" onchange="recalcularFechaFin()" oninput="recalcularFechaFin()">
             </div>
             <div>
                 <label>Incremento del alquiler (cada cuántos meses)</label>

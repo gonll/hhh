@@ -1,9 +1,17 @@
 <?php
 /**
  * Acciones de deploy (solo ENVIRONMENT=dev).
- * Recibe POST action: subir_codigo | subir_db
+ * POST action: subir_codigo | subir_db
+ * Requiere sesión nivel ≥ 3.
  */
-include __DIR__ . '/db.php';
+include __DIR__ . '/verificar_sesion.php';
+
+if (!isset($_SESSION['acceso_nivel']) || (int)$_SESSION['acceso_nivel'] < 3) {
+    header('HTTP/1.0 403 Forbidden');
+    die('Sin permiso para deploy');
+}
+
+require_once __DIR__ . '/includes/respaldo_db_util.php';
 
 if (!defined('ENVIRONMENT') || ENVIRONMENT !== 'dev') {
     header('Location: index.php');
@@ -34,6 +42,7 @@ if ($action === 'subir_codigo') {
                 'method' => 'POST',
                 'header' => 'Content-Type: application/x-www-form-urlencoded',
                 'content' => 'uuid=' . rawurlencode($uuid),
+                'timeout' => 120,
             ],
         ]);
         $resp = @file_get_contents($urlGit, false, $ctx);
@@ -44,7 +53,9 @@ if ($action === 'subir_codigo') {
             $syncOk = isset($json['ok']) && $json['ok'] === true;
             if (!$syncOk && is_array($json)) {
                 $serverError = isset($json['error']) ? $json['error'] : '';
-                if (!empty($json['output'])) $serverError .= ' ' . $json['output'];
+                if (!empty($json['output'])) {
+                    $serverError .= ' ' . $json['output'];
+                }
             } elseif ($resp !== false && $json === null && trim($resp) !== '') {
                 $serverError = 'Servidor no devolvió JSON (¿error PHP?): ' . substr(trim($resp), 0, 200);
             }
@@ -53,7 +64,9 @@ if ($action === 'subir_codigo') {
         }
         if (!$syncOk) {
             $msg = 'Push ok, pero falló pull en el servidor.';
-            if ($serverError !== '') $msg .= ' ' . $serverError;
+            if ($serverError !== '') {
+                $msg .= ' ' . $serverError;
+            }
             header('Location: index.php?deploy=error&msg=' . urlencode($msg));
             exit;
         }
@@ -66,25 +79,24 @@ if ($action === 'subir_db') {
     $url = trim($env['DEPLOY_URL'] ?? '');
     $uuid = trim($env['DEPLOY_UUID'] ?? '');
     if ($url === '' || $uuid === '') {
-        header('Location: index.php?deploy=error&msg=' . urlencode('Faltan DEPLOY_URL o DEPLOY_UUID en .env'));
+        header('Location: index.php?deploy=error&msg=' . urlencode('Faltan DEPLOY_URL o DEPLOY_UUID en .env (ej. DEPLOY_URL=https://sitio.com/sync/sync_db.php)'));
         exit;
     }
-    $host = $env['DB_HOST'] ?? 'localhost';
-    $user = $env['DB_USER'] ?? '';
-    $pass = $env['DB_PASS'] ?? '';
-    $base = $env['DB_NAME'] ?? '';
-    $tmp = sys_get_temp_dir() . '/deploy_dump_' . date('Ymd_His') . '.sql';
-    $escPass = str_replace("'", "'\\''", $pass);
-    $cmd = 'mysqldump -h ' . escapeshellarg($host) . ' -u ' . escapeshellarg($user) . " -p'" . $escPass . "' " . escapeshellarg($base) . ' > ' . escapeshellarg($tmp) . ' 2>&1';
-    exec($cmd, $dumpOut, $dumpCode);
-    if ($dumpCode !== 0 || !is_readable($tmp)) {
-        $err = implode("\n", $dumpOut);
-        @unlink($tmp);
-        header('Location: index.php?deploy=error&msg=' . urlencode('Dump falló: ' . $err));
+
+    $tmp = generarSqlDumpLocalToFile($conexion, $env);
+    if ($tmp === null || !is_readable($tmp)) {
+        header('Location: index.php?deploy=error&msg=' . urlencode('No se pudo generar el dump local (mysqldump o PHP). Revise credenciales en .env.'));
         exit;
     }
+
     $dumpContent = file_get_contents($tmp);
     @unlink($tmp);
+
+    if ($dumpContent === false || strlen($dumpContent) < 50) {
+        header('Location: index.php?deploy=error&msg=' . urlencode('El dump generado está vacío o es inválido.'));
+        exit;
+    }
+
     $ctx = stream_context_create([
         'http' => [
             'method' => 'POST',
@@ -93,11 +105,38 @@ if ($action === 'subir_db') {
                 'X-Deploy-UUID: ' . $uuid,
             ],
             'content' => $dumpContent,
+            'timeout' => 600,
+            'ignore_errors' => true,
         ],
     ]);
     $resp = @file_get_contents($url, false, $ctx);
-    $ok = ($resp !== false);
-    header('Location: index.php?deploy=' . ($ok ? 'ok' : 'error') . ($ok ? '' : '&msg=' . urlencode('Error al enviar el dump al servidor')));
+    $httpErr = '';
+    if (isset($http_response_header) && is_array($http_response_header) && isset($http_response_header[0])) {
+        $status = $http_response_header[0];
+        if (!preg_match('/\s(200|201)\s/', $status)) {
+            $httpErr = $status;
+        }
+    }
+
+    $ok = false;
+    $msgErr = 'Error al enviar o aplicar el dump en el servidor.';
+    if ($resp !== false) {
+        $json = @json_decode($resp, true);
+        if (is_array($json) && isset($json['ok']) && $json['ok'] === true) {
+            $ok = true;
+        } elseif (is_array($json) && !empty($json['error'])) {
+            $msgErr = $json['error'];
+        } elseif ($resp !== false && trim($resp) !== '') {
+            $msgErr = 'Respuesta no válida: ' . substr(trim(strip_tags($resp)), 0, 300);
+        }
+    } else {
+        $msgErr = 'No se pudo conectar a DEPLOY_URL. Revise HTTPS, firewall y que sync/sync_db.php exista en el servidor.';
+    }
+    if (!$ok && $httpErr !== '') {
+        $msgErr = $httpErr . ' — ' . $msgErr;
+    }
+
+    header('Location: index.php?deploy=' . ($ok ? 'ok' : 'error') . ($ok ? '' : '&msg=' . urlencode($msgErr)));
     exit;
 }
 

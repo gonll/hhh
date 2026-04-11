@@ -5,18 +5,22 @@
  */
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
+$twTransf = tenant_inmob_sql_usuarios($conexion, 'u');
 include 'crear_tabla_cuentas_arriendo.php';
 include 'cargar_arriendos_cuentas.php';
 
 $comps = "'TRANSFERENCIA','ALQUILER TRANSF','EXP/TRANSF','NIVELACION TRANSF'";
 $filtroCompro = "UPPER(TRIM(c.comprobante)) IN ($comps)";
+$filtroAmbito = "($twTransf)";
 
 $before_fecha = isset($_GET['before_fecha']) ? trim($_GET['before_fecha']) : '';
 $before_id = isset($_GET['before_id']) ? (int)$_GET['before_id'] : 0;
 $after_fecha = isset($_GET['after_fecha']) ? trim($_GET['after_fecha']) : '';
 $after_id = isset($_GET['after_id']) ? (int)$_GET['after_id'] : 0;
 
-$res_total = mysqli_query($conexion, "SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas c WHERE $filtroCompro");
+$res_total = mysqli_query($conexion, "SELECT COALESCE(SUM(c.monto), 0) AS total FROM cuentas c INNER JOIN usuarios u ON u.id = c.usuario_id WHERE $filtroCompro AND $filtroAmbito");
 $total_cuenta = ($r = mysqli_fetch_assoc($res_total)) ? (float)$r['total'] : 0;
 
 $es_arrendador = false;
@@ -30,7 +34,7 @@ if ($load_older) {
     $sql = "SELECT * FROM (
             SELECT c.*, u.apellido AS nom_cuenta FROM cuentas c
             INNER JOIN usuarios u ON u.id = c.usuario_id
-            WHERE $filtroCompro
+            WHERE $filtroCompro AND $filtroAmbito
             AND (c.fecha < '$bf_esc' OR (c.fecha = '$bf_esc' AND c.movimiento_id < $before_id))
             ORDER BY c.fecha DESC, c.movimiento_id DESC LIMIT 10) AS sub
             ORDER BY fecha ASC, movimiento_id ASC";
@@ -39,7 +43,7 @@ if ($load_older) {
     $af_esc = mysqli_real_escape_string($conexion, $after_fecha);
     $sql = "SELECT c.*, u.apellido AS nom_cuenta FROM cuentas c
             INNER JOIN usuarios u ON u.id = c.usuario_id
-            WHERE $filtroCompro
+            WHERE $filtroCompro AND $filtroAmbito
             AND (c.fecha > '$af_esc' OR (c.fecha = '$af_esc' AND c.movimiento_id > $after_id))
             ORDER BY c.fecha ASC, c.movimiento_id ASC LIMIT 10";
     $res = mysqli_query($conexion, $sql);
@@ -47,7 +51,7 @@ if ($load_older) {
     $sql = "SELECT * FROM (
             SELECT c.*, u.apellido AS nom_cuenta FROM cuentas c
             INNER JOIN usuarios u ON u.id = c.usuario_id
-            WHERE $filtroCompro
+            WHERE $filtroCompro AND $filtroAmbito
             ORDER BY c.fecha DESC, c.movimiento_id DESC LIMIT 30) AS sub
             ORDER BY fecha ASC, movimiento_id ASC";
     $res = mysqli_query($conexion, $sql);
@@ -77,11 +81,11 @@ if (count($filas) > 0) {
     $last_id = (int)$last['movimiento_id'];
 
     $bf_esc = mysqli_real_escape_string($conexion, $first_fecha);
-    $r_older = mysqli_query($conexion, "SELECT 1 FROM cuentas c WHERE $filtroCompro AND (c.fecha < '$bf_esc' OR (c.fecha = '$bf_esc' AND c.movimiento_id < $first_id)) LIMIT 1");
+    $r_older = mysqli_query($conexion, "SELECT 1 FROM cuentas c INNER JOIN usuarios u ON u.id = c.usuario_id WHERE $filtroCompro AND $filtroAmbito AND (c.fecha < '$bf_esc' OR (c.fecha = '$bf_esc' AND c.movimiento_id < $first_id)) LIMIT 1");
     $has_more_older = ($r_older && mysqli_num_rows($r_older) > 0);
 
     $lf_esc = mysqli_real_escape_string($conexion, $last_fecha);
-    $r_newer = mysqli_query($conexion, "SELECT 1 FROM cuentas c WHERE $filtroCompro AND (c.fecha > '$lf_esc' OR (c.fecha = '$lf_esc' AND c.movimiento_id > $last_id)) LIMIT 1");
+    $r_newer = mysqli_query($conexion, "SELECT 1 FROM cuentas c INNER JOIN usuarios u ON u.id = c.usuario_id WHERE $filtroCompro AND $filtroAmbito AND (c.fecha > '$lf_esc' OR (c.fecha = '$lf_esc' AND c.movimiento_id > $last_id)) LIMIT 1");
     $has_more_newer = ($r_newer && mysqli_num_rows($r_newer) > 0);
 }
 
@@ -91,7 +95,7 @@ if (count($filas) > 0) {
     $pf_esc = mysqli_real_escape_string($conexion, $primera['fecha']);
     $pid = (int)$primera['movimiento_id'];
     $monto_primera = (float)($primera['monto'] ?? 0);
-    $r_sum = mysqli_query($conexion, "SELECT COALESCE(SUM(c.monto), 0) AS s FROM cuentas c WHERE $filtroCompro AND (c.fecha > '$pf_esc' OR (c.fecha = '$pf_esc' AND c.movimiento_id > $pid))");
+    $r_sum = mysqli_query($conexion, "SELECT COALESCE(SUM(c.monto), 0) AS s FROM cuentas c INNER JOIN usuarios u ON u.id = c.usuario_id WHERE $filtroCompro AND $filtroAmbito AND (c.fecha > '$pf_esc' OR (c.fecha = '$pf_esc' AND c.movimiento_id > $pid))");
     $suma_despues = ($r_sum && $row = mysqli_fetch_assoc($r_sum)) ? (float)$row['s'] : 0;
     $suma_antes = $total_cuenta - $suma_despues - $monto_primera;
 }

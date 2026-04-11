@@ -72,6 +72,10 @@ if ($propiedad_id <= 0 || $inq1_id <= 0 || $cod1_id <= 0) {
     echo "Faltan datos obligatorios (propiedad, inquilino 1 o codeudor 1).";
     exit;
 }
+if ($plazo < 1 || $plazo > 600) {
+    echo 'Plazo inválido: debe ser entre 1 y 600 meses.';
+    exit;
+}
 
 if (!tenant_inmob_propiedad_id_visible($conexion, $propiedad_id)) {
     echo 'Propiedad no permitida en su ámbito.';

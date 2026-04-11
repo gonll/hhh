@@ -15,9 +15,48 @@
         <input type="hidden" name="action" value="subir_codigo">
         <button type="submit" style="background:#17a2b8; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer;">Subir código</button>
     </form>
-    <form method="post" action="deploy_accion.php" style="display: inline; margin: 0;" onsubmit="return confirm('¿Generar dump de la base local y enviarlo al servidor?');">
+    <form id="formSubirDb" method="post" action="deploy_accion.php" style="display: inline; margin: 0;">
         <input type="hidden" name="action" value="subir_db">
         <button type="submit" style="background:#6c757d; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer;">Subir base de datos</button>
     </form>
+    <a href="bajar_bd_servidor.php" id="linkBajarBd" style="background:#495057; color:white; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; text-decoration:none; display:inline-block;">Bajar BD del servidor</a>
+    <script>
+    (function () {
+        function confirmarTriple(pasos) {
+            for (var i = 0; i < pasos.length; i++) {
+                if (!window.confirm('Paso ' + (i + 1) + ' de 3:\n\n' + pasos[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        var formSubir = document.getElementById('formSubirDb');
+        if (formSubir) {
+            formSubir.addEventListener('submit', function (e) {
+                if (!confirmarTriple([
+                    'Va a generar un volcado de la base LOCAL y enviarlo al SERVIDOR. Esto puede sobrescribir datos en producción. ¿Desea continuar?',
+                    'Segunda confirmación: la operación puede tardar varios minutos y afectar a todos los usuarios del sistema en línea. ¿Está seguro?',
+                    'Tercera y última confirmación: si pulsa Aceptar, se ejecutará el envío. No hay deshacer. ¿Proceder?'
+                ])) {
+                    e.preventDefault();
+                }
+            });
+        }
+        var linkBajar = document.getElementById('linkBajarBd');
+        if (linkBajar) {
+            linkBajar.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (!confirmarTriple([
+                    'Va a DESCARGAR desde el servidor un archivo .sql con toda la base de datos. ¿Desea continuar?',
+                    'Segunda confirmación: el archivo puede ser muy grande. Asegúrese de guardarlo en un lugar seguro. ¿Continuar?',
+                    'Tercera y última confirmación: se iniciará la descarga del volcado del servidor. ¿Proceder?'
+                ])) {
+                    return;
+                }
+                window.location.href = linkBajar.getAttribute('href');
+            });
+        }
+    })();
+    </script>
     <?php endif; ?>
 </div>

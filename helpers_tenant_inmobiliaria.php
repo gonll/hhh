@@ -307,7 +307,7 @@ if (!function_exists('tenant_inmob_es_sofia')) {
             return false;
         }
         if ($usuario_id === -99) {
-            return !tenant_inmob_es_sofia();
+            return true;
         }
         $w = tenant_inmob_sql_usuarios($conexion, 'u');
         $r = mysqli_query($conexion, "SELECT 1 FROM usuarios u WHERE u.id = $usuario_id AND ($w) LIMIT 1");
@@ -519,11 +519,13 @@ if (!function_exists('tenant_inmob_es_sofia')) {
             'imprimir_orden_alquiler.php',
             'abm_indices.php',
             'obtener_movimientos.php',
+            'obtener_movimientos_transferencias.php',
             'obtener_saldo_usuario.php',
             'obtener_propiedades_propietario.php',
             'obtener_resumen_consorcio.php',
             'obtener_siguiente_mes_liq_exp.php',
             'guardar_movimiento.php',
+            'guardar_movimiento_transferencias_libro.php',
             'eliminar_movimiento.php',
             'verificar_clave_borrado.php',
             'imprimir_movimientos.php',
@@ -537,6 +539,7 @@ if (!function_exists('tenant_inmob_es_sofia')) {
             'eliminar_liq_expensas_periodo.php',
             'borrar_todos_liq_expensas.php',
             'buscar_personas.php',
+            'usuario_servicios_observ_api.php',
         ];
     }
 

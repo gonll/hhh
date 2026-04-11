@@ -3,6 +3,8 @@ include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
 tenant_inmob_asegurar_esquema($conexion);
+require_once __DIR__ . '/includes_usuario_servicios_observ.php';
+usuario_servicios_observ_asegurar_tabla($conexion);
 $id_caja_central = tenant_inmob_id_usuario_caja_central($conexion);
 require_once __DIR__ . '/config_clave_borrado.php';
 include 'respaldar_automatico.php'; // Respaldo automático diario
@@ -37,6 +39,7 @@ $falta_indice = ($res_check && mysqli_num_rows($res_check) == 0);
 $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
 $soloLectura = ($nivelAcceso < 2);
 $esUsuarioSofia = tenant_inmob_es_sofia();
+$mostrar_btn_serv_observ = usuario_servicios_observ_sesion_operador_autorizado();
 // Nivel 0: usuario zafra → Cosecha; resto → Partes desde cel
 if ($nivelAcceso === 0) {
     $usuario = (string)($_SESSION['acceso_usuario'] ?? '');
@@ -121,6 +124,45 @@ if ($nivelAcceso === 3) {
         @media (max-width: 768px) { .btn-ant-cel { display: inline-block; } }
         .btn-imprimir-estado { display: inline-block; background: #D4A5A5; color: #333; border: 1px solid #D4A5A5; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
         .btn-imprimir-estado:hover { background: #C89595; }
+        .btn-serv-observ { display: none; background: #5a6268; color: white; border: 1px solid #5a6268; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-serv-observ:hover { background: #484f55; }
+        .modal-serv-observ { background: white; padding: 16px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); width: min(920px, 96vw); max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box; }
+        .modal-serv-observ h3 { margin: 0 0 10px; color: #007bff; font-size: 14px; }
+        .modal-serv-observ .tabla-so { width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; }
+        .modal-serv-observ .tabla-so th { background: #007bff; color: white; padding: 4px 3px; text-align: left; }
+        .modal-serv-observ .tabla-so td { border: 1px solid #ddd; padding: 4px 3px; vertical-align: top; word-wrap: break-word; }
+        .modal-serv-observ .tabla-so tr:nth-child(even) { background: #f9f9f9; }
+        .modal-serv-observ .tabla-so .so-c-serv,
+        .modal-serv-observ .tabla-so .so-c-fecha,
+        .modal-serv-observ .tabla-so .so-c-monto { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .modal-serv-observ .tabla-so .so-c-monto { text-align: right; font-variant-numeric: tabular-nums; }
+        .modal-serv-observ .wrap-scroll {
+            flex: 0 0 auto;
+            max-height: 220px;
+            overflow-x: auto;
+            overflow-y: scroll;
+            margin-bottom: 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            scrollbar-gutter: stable;
+        }
+        .modal-serv-observ .wrap-scroll::-webkit-scrollbar { width: 10px; }
+        .modal-serv-observ .wrap-scroll::-webkit-scrollbar-thumb { background: #bbb; border-radius: 5px; }
+        .modal-serv-observ .so-filtro-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; font-size: 11px; }
+        .modal-serv-observ .so-filtro-row label { font-weight: bold; margin: 0; }
+        .modal-serv-observ .so-filtro-row select { min-width: 170px; padding: 5px 8px; font-size: 11px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .modal-serv-observ .form-so { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; font-size: 11px; padding-top: 10px; border-top: 1px solid #eee; }
+        .modal-serv-observ .form-so label { font-weight: bold; display: block; margin-bottom: 2px; }
+        .modal-serv-observ .form-so input, .modal-serv-observ .form-so select, .modal-serv-observ .form-so textarea { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
+        .modal-serv-observ .form-so textarea { min-height: 52px; resize: vertical; }
+        .modal-serv-observ .form-so .span-2 { grid-column: 1 / -1; }
+        .modal-serv-observ .btns-so { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .modal-serv-observ .btns-so button { padding: 8px 14px; border: none; border-radius: 4px; font-weight: bold; font-size: 12px; cursor: pointer; }
+        .btn-so-guardar { background: #28a745; color: white; }
+        .btn-so-nuevo { background: #17a2b8; color: white; }
+        .btn-so-cerrar { background: #6c757d; color: white; }
+        .btn-so-eliminar { background: #dc3545; color: white; }
+        .btn-so-mini { padding: 4px 8px !important; font-size: 10px !important; }
         /* Modal Ant/cel responsive - pantalla completa en cel con 3 secciones */
         .modal-ant-cel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; align-items: center; justify-content: center; padding: 10px; box-sizing: border-box; }
         .modal-ant-cel-overlay.activo { display: flex; }
@@ -217,12 +259,33 @@ if ($nivelAcceso === 3) {
             border-radius: 4px; border: 1px solid #ffeeba; text-align: center; font-weight: bold;
         }
 
-        /* Sin icono de fecha en campo fecha y sin flechitas en campo monto */
+        /* Sin icono de fecha en la mayoría de los date; sin flechitas en campo monto */
         input[type="date"]::-webkit-calendar-picker-indicator {
             opacity: 0;
             cursor: text;
             width: 100%;
             height: 100%;
+        }
+        /* Fila de carga: un solo control fecha nativo; el valor elegido queda visible al salir */
+        #ins_fecha::-webkit-calendar-picker-indicator {
+            opacity: 1;
+            cursor: pointer;
+            width: 1.1em;
+            height: 1.1em;
+            padding: 0 2px;
+        }
+        /* Serv/Observ: mismo problema que ins_fecha — el indicador a pantalla completa rompe vista/valor en WebKit */
+        #so_fecha::-webkit-calendar-picker-indicator {
+            opacity: 1;
+            cursor: pointer;
+            width: 1.1em;
+            height: 1.1em;
+            padding: 0 2px;
+        }
+        #so_fecha {
+            color: #212529;
+            background: #fff;
+            box-sizing: border-box;
         }
         input[type="date"]::-webkit-inner-spin-button { display: none; }
         input[type="text"].input-monto { -moz-appearance: textfield; }
@@ -270,7 +333,7 @@ if ($nivelAcceso === 3) {
                 <?php elseif ($esUsuarioSofia && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
                     <a href="respaldar_bd.php" style="color:#28a745; font-size:9px; margin-right:6px;">Respaldar</a>
                 <?php endif; ?>
-                <a href="<?= (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 1 && $_SESSION['acceso_nivel'] <= 3) ? 'respaldar_al_salir.php' : 'logout.php' ?>" style="color:#dc3545; font-size:9px;">Salir</a>
+                <a href="<?= (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 1 && $_SESSION['acceso_nivel'] <= 3) ? 'respaldar_al_salir.php' : 'logout.php' ?>" style="color:#dc3545; font-size:9px; display:inline-flex; align-items:center; gap:3px; text-decoration:none;" title="Cerrar sesión"><span style="font-size:12px; line-height:1;" aria-hidden="true">&#x1F1E6;&#x1F1F7;</span> Salir</a>
             </div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -296,7 +359,7 @@ if ($nivelAcceso === 3) {
                                     $btnEdit
                                 </td>
                               </tr>";
-                        if (!$esUsuarioSofia && (int)$f['id'] === (int)$id_caja_central) {
+                        if ((int)$f['id'] === (int)$id_caja_central) {
                             echo "<tr class=\"fila-libro-transfer\" data-id=\"-99\" onclick=\"cargarLibroTransferencias(this)\">
                                 <td><span class=\"nombre-txt\">TRANSFERENCIAS</span></td>
                               </tr>";
@@ -338,8 +401,11 @@ if ($nivelAcceso === 3) {
         <button id="btnWord" class="btn-word-recibo" onclick="generarWord()">📄 RECIBO WORD</button>
         
         <div class="cabecera-detalle">
-            <div style="display:flex; align-items:center; gap:10px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <h2 id="tituloMovimientos" style="font-size:1rem; color:#007bff; margin:0;">DETALLE DE CUENTA</h2>
+                <?php if ($mostrar_btn_serv_observ): ?>
+                <button type="button" id="btnServObserv" class="btn-serv-observ" onclick="abrirModalServObserv()">Serv/Observ</button>
+                <?php endif; ?>
                 <?php if ($nivelAcceso === 3 && !$esUsuarioSofia): ?>
                 <button type="button" class="btn-ant-cel" onclick="abrirModalAntCel()">Ant/cel</button>
                 <button type="button" class="btn-imprimir-estado" onclick="imprimirEstadoCuenta()">Imprimir estado de cuenta</button>
@@ -402,9 +468,8 @@ if ($nivelAcceso === 3) {
                         <td colspan="3"></td>
                     </tr>
                     <tr>
-                        <td class="al-cen" style="position:relative;">
-                            <input type="text" id="ins_fecha" style="width:95%" placeholder="dd/mm/aaaa" maxlength="10" title="Formato: dd/mm/aaaa. Doble clic: calendario." onfocus="cursorAlInicioFecha()" ondblclick="abrirCalendarioFecha(event)">
-                            <input type="date" id="ins_fecha_cal" style="display:none; position:absolute; left:0; top:0; width:95%; height:100%; margin:0; border:1px solid #007bff; box-sizing:border-box; font-size:inherit;">
+                        <td class="al-cen">
+                            <input type="date" id="ins_fecha" style="width:95%; box-sizing:border-box; border:1px solid #ced4da; border-radius:2px; font-size:inherit;" title="Fecha del movimiento (formato según el navegador). Clic para abrir el calendario." onfocus="insFechaAlEnfocar()" onclick="insFechaClickAbrirCal()">
                         </td>
                         <td><input type="text" id="ins_concepto" style="width:95%" onfocus="ponerFechaActual()" oninput="actualizarCheckGrabarCaja()"></td>
                         <td>
@@ -427,7 +492,7 @@ if ($nivelAcceso === 3) {
                         </td>
                         <td><input type="text" id="ins_refer" style="width:95%"></td>
                         <td><input type="text" id="ins_monto" class="input-monto" inputmode="decimal" placeholder="0" style="width:95%; text-align:right;"></td>
-                        <td colspan="2"><button onclick="guardar()" style="background:#28a745; color:white; width:100%; border:none; padding:5px; font-weight:bold; cursor:pointer;">OK</button></td>
+                        <td colspan="2"><button type="button" onclick="guardar()" style="background:#28a745; color:white; width:100%; border:none; padding:5px; font-weight:bold; cursor:pointer;">OK</button></td>
                     </tr>
                 </tfoot>
             </table>
@@ -797,6 +862,79 @@ if ($nivelAcceso === 3) {
         </div>
     </div>
 
+    <div id="modalServObserv" class="modal-overlay" onclick="if(event.target===this) cerrarModalServObserv()">
+        <div class="modal-serv-observ" onclick="event.stopPropagation()">
+            <h3 id="modalServObservTitulo">Servicios / Observaciones</h3>
+            <p id="modalServObservSub" style="margin:0 0 10px; font-size:12px; color:#333;"></p>
+            <div class="so-filtro-row">
+                <label for="so_filtro_servicio">Ver servicio</label>
+                <select id="so_filtro_servicio" onchange="renderTablaServObservFiltrada()">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="wrap-scroll">
+                <table class="tabla-so">
+                    <colgroup>
+                        <col class="so-col-serv" style="width:11%;">
+                        <col class="so-col-fecha" style="width:9%;">
+                        <col style="width:26%;">
+                        <col style="width:10%;">
+                        <col class="so-col-monto" style="width:11%;">
+                        <col style="width:23%;">
+                        <col id="colServObsAcciones" class="so-col-acc" style="width:10%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="so-c-serv">Serv.</th>
+                            <th class="so-c-fecha">Fecha</th>
+                            <th>Detalle</th>
+                            <th>Per.</th>
+                            <th class="so-c-monto">Monto</th>
+                            <th>Observación</th>
+                            <th id="thServObsAcciones">Acc.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaServObservBody"></tbody>
+                </table>
+            </div>
+            <div id="panelFormServObserv">
+                <p style="font-size:10px; color:#666; margin:0 0 8px;">Se muestran los <strong>6 últimos</strong> registros (orden: servicio y fecha). Arriba puede <strong>filtrar</strong> por un servicio. Use el formulario para alta o modificación.</p>
+                <input type="hidden" id="so_id" value="">
+                <div class="form-so">
+                    <div>
+                        <label for="so_servicio">Servicio</label>
+                        <select id="so_servicio"></select>
+                    </div>
+                    <div>
+                        <label for="so_fecha">Fecha</label>
+                        <input type="date" id="so_fecha" onfocus="soFechaAsegurarHoy()">
+                    </div>
+                    <div class="span-2">
+                        <label for="so_detalle">Detalle</label>
+                        <input type="text" id="so_detalle" maxlength="500" placeholder="Descripción del movimiento">
+                    </div>
+                    <div>
+                        <label for="so_periodo">Período</label>
+                        <input type="text" id="so_periodo" maxlength="50" placeholder="Ej: 03/2026">
+                    </div>
+                    <div>
+                        <label for="so_monto">Monto</label>
+                        <input type="text" id="so_monto" class="input-monto" inputmode="decimal" placeholder="0">
+                    </div>
+                    <div class="span-2">
+                        <label for="so_observacion">Observación</label>
+                        <textarea id="so_observacion" placeholder="Notas adicionales (opcional)"></textarea>
+                    </div>
+                </div>
+                <div class="btns-so">
+                    <button type="button" class="btn-so-nuevo" onclick="resetFormServObserv()">Limpiar / Nuevo</button>
+                    <button type="button" class="btn-so-guardar" id="btnSoGuardar" onclick="guardarServObserv()">Guardar</button>
+                    <button type="button" class="btn-so-cerrar" onclick="cerrarModalServObserv()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script src="informe_azucar.js"></script>
 <script>
 let uSel = null;
@@ -813,6 +951,291 @@ let movScrollData = null;
 let saldoActualCuenta = 0;
 /** Solo usuarios con acceso_nivel === 3 (borrar liquidaciones, etc.) */
 var accesoNivel3 = <?= ($nivelAcceso === 3 && !$esUsuarioSofia) ? 'true' : 'false' ?>;
+var soloLecturaCuenta = <?= $soloLectura ? 'true' : 'false' ?>;
+var servObservGuardando = false;
+
+(function initSoFechaModal() {
+    var el = document.getElementById('so_fecha');
+    if (!el || el.dataset.soFechaInit) return;
+    el.dataset.soFechaInit = '1';
+    function fijarValorVisible() {
+        var v = el.value;
+        if (!v) return;
+        el.setAttribute('value', v);
+        el.defaultValue = v;
+    }
+    el.addEventListener('input', fijarValorVisible);
+    el.addEventListener('change', fijarValorVisible);
+})();
+
+function actualizarVisibilidadBtnServObserv() {
+    var btn = document.getElementById('btnServObserv');
+    if (!btn) return;
+    var ok = uSel && uSel > 0 && uSel !== ID_CAJA_USUARIO && uSel !== USUARIO_LIBRO_TRANSF && esPropietarioOInquilino;
+    btn.style.display = ok ? 'inline-block' : 'none';
+}
+
+function abrirModalServObserv() {
+    if (!uSel || uSel <= 0 || uSel === ID_CAJA_USUARIO || uSel === USUARIO_LIBRO_TRANSF) {
+        alert('Seleccioná una persona en la lista.');
+        return;
+    }
+    var tit = document.getElementById('tituloMovimientos');
+    document.getElementById('modalServObservTitulo').textContent = 'Servicios / Observaciones';
+    document.getElementById('modalServObservSub').textContent = tit ? tit.innerText : '';
+    var th = document.getElementById('thServObsAcciones');
+    var colAcc = document.getElementById('colServObsAcciones');
+    var panel = document.getElementById('panelFormServObserv');
+    if (th) th.style.display = soloLecturaCuenta ? 'none' : '';
+    if (colAcc) colAcc.style.display = soloLecturaCuenta ? 'none' : '';
+    if (panel) panel.style.display = soloLecturaCuenta ? 'none' : 'block';
+    document.getElementById('modalServObserv').classList.add('visible');
+    var filtro = document.getElementById('so_filtro_servicio');
+    if (filtro) filtro.value = '';
+    resetFormServObserv();
+    cargarListaServObserv();
+}
+
+function cerrarModalServObserv() {
+    var m = document.getElementById('modalServObserv');
+    if (m) m.classList.remove('visible');
+}
+
+/** Fecha Serv/Observ: si está vacía, usa hoy para que el calendario abra en el mes actual. */
+function soFechaAsegurarHoy() {
+    var modal = document.getElementById('modalServObserv');
+    var el = document.getElementById('so_fecha');
+    if (!modal || !el || !modal.classList.contains('visible')) return;
+    if ((el.value || '').trim() !== '') return;
+    var h = new Date();
+    var iso = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+    el.value = iso;
+    el.setAttribute('value', iso);
+    el.defaultValue = iso;
+}
+
+function resetFormServObserv() {
+    var elId = document.getElementById('so_id');
+    if (elId) elId.value = '';
+    var hoy = new Date();
+    var y = hoy.getFullYear(), mo = String(hoy.getMonth() + 1).padStart(2, '0'), d = String(hoy.getDate()).padStart(2, '0');
+    var fi = document.getElementById('so_fecha');
+    if (fi) {
+        var iso = y + '-' + mo + '-' + d;
+        fi.value = iso;
+        fi.setAttribute('value', iso);
+        fi.defaultValue = iso;
+    }
+    var det = document.getElementById('so_detalle');
+    if (det) det.value = '';
+    var per = document.getElementById('so_periodo');
+    if (per) per.value = '';
+    var mon = document.getElementById('so_monto');
+    if (mon) mon.value = '';
+    var ob = document.getElementById('so_observacion');
+    if (ob) ob.value = '';
+    var sel = document.getElementById('so_servicio');
+    if (sel && sel.options.length) sel.selectedIndex = 0;
+}
+
+function poblarSelectServicios(servicios) {
+    var s = document.getElementById('so_servicio');
+    if (!s) return;
+    var lista = servicios && servicios.length ? servicios : ['Edet', 'Sat', 'Cisi', 'Gas', 'Expensas', 'Observaciones'];
+    s.innerHTML = '';
+    lista.forEach(function(name) {
+        var o = document.createElement('option');
+        o.value = name;
+        o.textContent = name;
+        s.appendChild(o);
+    });
+}
+
+function poblarFiltroServiciosObserv(servicios) {
+    var sel = document.getElementById('so_filtro_servicio');
+    if (!sel) return;
+    var prev = sel.value;
+    var lista = servicios && servicios.length ? servicios : ['Edet', 'Sat', 'Cisi', 'Gas', 'Expensas', 'Observaciones'];
+    sel.innerHTML = '';
+    var o0 = document.createElement('option');
+    o0.value = '';
+    o0.textContent = 'Todos los servicios';
+    sel.appendChild(o0);
+    lista.forEach(function(name) {
+        var o = document.createElement('option');
+        o.value = name;
+        o.textContent = name;
+        sel.appendChild(o);
+    });
+    if (prev === '' || lista.indexOf(prev) >= 0) {
+        sel.value = prev;
+    } else {
+        sel.value = '';
+    }
+}
+
+/** Lista completa en memoria (6 últimos); el filtro solo afecta la vista. */
+function renderTablaServObservFiltrada() {
+    var tbody = document.getElementById('tablaServObservBody');
+    if (!tbody) return;
+    var colSpan = soloLecturaCuenta ? 6 : 7;
+    var all = window._servObservItemsAll || [];
+    var filtroEl = document.getElementById('so_filtro_servicio');
+    var filtro = filtroEl ? (filtroEl.value || '').trim() : '';
+    var items = filtro ? all.filter(function(it) { return it.servicio === filtro; }) : all.slice();
+
+    if (all.length === 0) {
+        var msgVac = soloLecturaCuenta ? 'Sin registros.' : 'Sin registros. Complete el formulario y guarde para agregar.';
+        tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center;padding:16px;color:#666;">' + msgVac + '</td></tr>';
+        return;
+    }
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center;padding:16px;color:#666;">Ningún registro entre los 6 últimos para este servicio.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = '';
+    items.forEach(function(it) {
+        var tr = document.createElement('tr');
+        var montoStr = montoCompactoServObs(it.monto);
+        var tds = '<td class="so-c-serv" title="' + escapeHtmlServObs(it.servicio) + '">' + escapeHtmlServObs(it.servicio) + '</td>' +
+            '<td class="so-c-fecha">' + escapeHtmlServObs(fechaISOaMostrarServObsCorta(it.fecha)) + '</td>' +
+            '<td>' + escapeHtmlServObs(it.detalle) + '</td>' +
+            '<td>' + escapeHtmlServObs(it.periodo || '') + '</td>' +
+            '<td class="so-c-monto" title="' + escapeHtmlServObs(String(it.monto)) + '">' + montoStr + '</td>' +
+            '<td style="font-size:9px;">' + escapeHtmlServObs(it.observacion || '') + '</td>';
+        if (!soloLecturaCuenta) {
+            tds += '<td><button type="button" class="btn-so-mini btn-so-nuevo" onclick="editarServObserv(' + it.id + ')">Editar</button> ' +
+                '<button type="button" class="btn-so-mini btn-so-eliminar" onclick="eliminarServObserv(' + it.id + ')">Borrar</button></td>';
+        }
+        tr.innerHTML = tds;
+        tbody.appendChild(tr);
+    });
+}
+
+function fechaISOaMostrarServObs(iso) {
+    if (!iso || String(iso).length < 10) return '';
+    var p = String(iso).substring(0, 10).split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+}
+
+/** Fecha corta (dd/mm/aa) para filas compactas del modal Serv/Observ */
+function fechaISOaMostrarServObsCorta(iso) {
+    if (!iso || String(iso).length < 10) return '';
+    var p = String(iso).substring(0, 10).split('-');
+    var yy = p[0].length === 4 ? p[0].substring(2) : p[0];
+    return p[2] + '/' + p[1] + '/' + yy;
+}
+
+function montoCompactoServObs(n) {
+    if (n == null || isNaN(n)) return '0';
+    var x = Number(n);
+    var s = x.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return s.length > 12 ? x.toFixed(0) : s;
+}
+
+function escapeHtmlServObs(str) {
+    if (str == null) return '';
+    var d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
+function cargarListaServObserv() {
+    var tbody = document.getElementById('tablaServObservBody');
+    if (!tbody || !uSel) return;
+    var colSpan = soloLecturaCuenta ? 6 : 7;
+    tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center;padding:16px;">Cargando…</td></tr>';
+    fetch('usuario_servicios_observ_api.php?action=list&usuario_id=' + encodeURIComponent(uSel))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) {
+                tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="color:red;text-align:center;">' + escapeHtmlServObs(data.error || 'Error') + '</td></tr>';
+                return;
+            }
+            poblarSelectServicios(data.servicios);
+            poblarFiltroServiciosObserv(data.servicios);
+            var items = data.items || [];
+            window._servObservItemsAll = items;
+            window._servObservItems = items;
+            renderTablaServObservFiltrada();
+        })
+        .catch(function() {
+            tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="color:red;text-align:center;">Error de red</td></tr>';
+        });
+}
+
+function editarServObserv(id) {
+    var items = window._servObservItemsAll || window._servObservItems || [];
+    var it = null;
+    for (var i = 0; i < items.length; i++) {
+        if (items[i].id === id) { it = items[i]; break; }
+    }
+    if (!it) return;
+    document.getElementById('so_id').value = String(it.id);
+    document.getElementById('so_servicio').value = it.servicio;
+    var fiso = (it.fecha || '').substring(0, 10);
+    var fEl = document.getElementById('so_fecha');
+    if (fEl) {
+        fEl.value = fiso;
+        if (fiso) {
+            fEl.setAttribute('value', fiso);
+            fEl.defaultValue = fiso;
+        }
+    }
+    document.getElementById('so_detalle').value = it.detalle || '';
+    document.getElementById('so_periodo').value = it.periodo || '';
+    document.getElementById('so_monto').value = it.monto != null ? String(it.monto) : '';
+    document.getElementById('so_observacion').value = it.observacion || '';
+}
+
+function guardarServObserv() {
+    if (soloLecturaCuenta || servObservGuardando) return;
+    servObservGuardando = true;
+    var fd = new URLSearchParams();
+    fd.append('action', 'save');
+    var sid = (document.getElementById('so_id').value || '').trim();
+    if (sid) fd.append('id', sid);
+    fd.append('usuario_id', String(uSel));
+    fd.append('servicio', document.getElementById('so_servicio').value);
+    fd.append('fecha', document.getElementById('so_fecha').value);
+    fd.append('detalle', document.getElementById('so_detalle').value);
+    fd.append('periodo', document.getElementById('so_periodo').value);
+    fd.append('monto', document.getElementById('so_monto').value || '0');
+    fd.append('observacion', document.getElementById('so_observacion').value);
+    fetch('usuario_servicios_observ_api.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            servObservGuardando = false;
+            if (!data.ok) {
+                alert(data.error || 'Error');
+                return;
+            }
+            resetFormServObserv();
+            cargarListaServObserv();
+        })
+        .catch(function() {
+            servObservGuardando = false;
+            alert('Error de red');
+        });
+}
+
+function eliminarServObserv(id) {
+    if (soloLecturaCuenta || !confirm('¿Eliminar este registro?')) return;
+    var fd = new URLSearchParams();
+    fd.append('action', 'delete');
+    fd.append('id', String(id));
+    fd.append('usuario_id', String(uSel));
+    fetch('usuario_servicios_observ_api.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) {
+                alert(data.error || 'Error');
+                return;
+            }
+            cargarListaServObserv();
+        })
+        .catch(function() { alert('Error de red'); });
+}
 
 // Parsear monto: acepta 24.44 o 24,44 (teclado numérico). Evita que 24.44 se interprete como 2.444.
 function parseMonto(str) {
@@ -929,6 +1352,7 @@ function cargarMovimientos(fila, id) {
         if (btnCobroExpTransf) btnCobroExpTransf.style.display = "none";
         if (btnCobroExpEfvo) btnCobroExpEfvo.style.display = "none";
         if (btnSueldoExtras) btnSueldoExtras.style.display = "none";
+        actualizarVisibilidadBtnServObserv();
     } else {
         fetch('obtener_propiedades_propietario.php?id=' + id)
             .then(function(r) { return r.json(); })
@@ -943,12 +1367,15 @@ function cargarMovimientos(fila, id) {
                     panelCobroCaja.style.display = esInquilino ? "block" : "none";
                     if (esInquilino) resetCobroCaja();
                 }
+                actualizarVisibilidadBtnServObserv();
             })
             .catch(function() {
                 if (btnCobroExpTransf) btnCobroExpTransf.style.display = "none";
                 if (btnCobroExpEfvo) btnCobroExpEfvo.style.display = "none";
                 if (btnSueldoExtras) btnSueldoExtras.style.display = "block";
                 if (panelCobroCaja) panelCobroCaja.style.display = "none";
+                esPropietarioOInquilino = false;
+                actualizarVisibilidadBtnServObserv();
             });
     }
     if (!esConsorcioUsuario) {
@@ -1029,6 +1456,8 @@ function cargarMovimientos(fila, id) {
 
 function cargarLibroTransferencias(fila) {
     uSel = USUARIO_LIBRO_TRANSF;
+    esPropietarioOInquilino = false;
+    actualizarVisibilidadBtnServObserv();
     document.querySelectorAll("#cuerpo tr").forEach(function(r) { r.classList.remove("fila-seleccionada"); });
     fila.classList.add("fila-seleccionada");
 
@@ -2137,6 +2566,9 @@ function generarWord() {
 // Orden de campos al cargar movimiento (Enter pasa al siguiente)
 const CAMPOS_MOV = ['ins_fecha', 'ins_concepto', 'ins_compro', 'ins_refer', 'ins_monto'];
 
+/** Evita doble grabación (doble clic OK, Enter repetido, etc.) mientras el fetch está en curso. */
+var guardarMovimientoEnCurso = false;
+
 var cartelExpensasTimer = null;
 function mostrarCartelExpensasPrimero(inp) {
     if (!esPropietarioOInquilino) return;
@@ -2157,12 +2589,6 @@ function mostrarCartelExpensasPrimero(inp) {
         filaCarga.addEventListener("keydown", function(e) {
             if (e.key === "Escape") {
                 filaCarga.style.display = "none";
-                var inpCal = document.getElementById("ins_fecha_cal");
-                if (inpCal && inpCal.style.display === "block") {
-                    inpCal.style.display = "none";
-                    var inpTexto = document.getElementById("ins_fecha");
-                    if (inpTexto) inpTexto.style.visibility = "";
-                }
                 var insFecha = document.getElementById("ins_fecha");
                 var insConcepto = document.getElementById("ins_concepto");
                 var insRefer = document.getElementById("ins_refer");
@@ -2180,6 +2606,11 @@ function mostrarCartelExpensasPrimero(inp) {
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        var modalServObs = document.getElementById('modalServObserv');
+        if (modalServObs && modalServObs.classList.contains('visible')) {
+            cerrarModalServObserv();
+            return;
+        }
         var modalBorrarTodas = document.getElementById('modalBorrarTodasLiqExp');
         if (modalBorrarTodas && modalBorrarTodas.classList.contains('visible')) {
             cerrarModalBorrarTodasLiqExp();
@@ -2207,6 +2638,7 @@ document.addEventListener('keydown', function(e) {
         }
     }
     if (e.key !== 'Enter') return;
+    if (e.repeat) return;
     const filaCarga = document.getElementById("filaCarga");
     if (filaCarga.style.display === 'none') return;
     const id = document.activeElement.id;
@@ -2223,54 +2655,22 @@ document.addEventListener('keydown', function(e) {
 function ponerFechaActual() {
     var inpFecha = document.getElementById("ins_fecha");
     if (!inpFecha || document.getElementById("filaCarga").style.display === "none") return;
-    if ((inpFecha.value || "").trim() !== "") return; /* No sobrescribir si el usuario ya ingresó otra fecha */
+    if ((inpFecha.value || "").trim() !== "") return;
     var hoy = new Date();
-    var d = String(hoy.getDate()).padStart(2, '0');
-    var m = String(hoy.getMonth() + 1).padStart(2, '0');
-    var a = hoy.getFullYear();
-    inpFecha.value = d + '/' + m + '/' + a;
+    inpFecha.value = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
 }
 
-function cursorAlInicioFecha() {
-    var inp = document.getElementById("ins_fecha");
-    if (!inp) return;
-    setTimeout(function() { inp.setSelectionRange(0, 0); inp.focus(); }, 0);
+/** Al enfocar la fecha de carga: si está vacía, pone hoy (AAAA-MM-DD). */
+function insFechaAlEnfocar() {
+    var filaCarga = document.getElementById("filaCarga");
+    var inpFecha = document.getElementById("ins_fecha");
+    if (!inpFecha || !filaCarga || filaCarga.style.display === "none") return;
+    ponerFechaActual();
 }
 
-function abrirCalendarioFecha(e) {
-    e.preventDefault();
-    var inpTexto = document.getElementById("ins_fecha");
-    var inpCal = document.getElementById("ins_fecha_cal");
-    if (!inpTexto || !inpCal) return;
-    var v = (inpTexto.value || "").trim().split(/[\/\-\.]/);
-    if (v.length === 3) {
-        var d = v[0].padStart(2, '0'), m = v[1].padStart(2, '0'), a = v[2];
-        if (a.length === 2) a = '20' + a;
-        inpCal.value = a + '-' + m + '-' + d;
-    } else {
-        var hoy = new Date();
-        inpCal.value = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
-    }
-    inpTexto.style.visibility = 'hidden';
-    inpCal.style.display = 'block';
-    inpCal.focus();
-    if (inpCal.showPicker) inpCal.showPicker();
-    function cerrarCal() {
-        var val = inpCal.value;
-        if (val) {
-            var p = val.split('-');
-            inpTexto.value = p[2] + '/' + p[1] + '/' + p[0];
-        }
-        inpCal.style.display = 'none';
-        inpTexto.style.visibility = '';
-        inpTexto.focus();
-        inpCal.removeEventListener('change', onCambio);
-        inpCal.removeEventListener('blur', onBlur);
-    }
-    function onCambio() { cerrarCal(); }
-    function onBlur() { setTimeout(cerrarCal, 150); }
-    inpCal.addEventListener('change', onCambio);
-    inpCal.addEventListener('blur', onBlur);
+/** Refuerza la fecha por defecto al hacer clic (el calendario lo abre el propio input type=date). */
+function insFechaClickAbrirCal() {
+    ponerFechaActual();
 }
 
 function cursorInicioAntFecha() {
@@ -2304,20 +2704,41 @@ function abrirCalendarioAntFecha(e) {
     inpCal.style.display = 'block';
     inpCal.focus();
     if (inpCal.showPicker) inpCal.showPicker();
-    function cerrarCal() {
+    var cerradoAnt = false;
+    function syncCalATextoAnt() {
         var val = inpCal.value;
         if (val) {
             var p = val.split('-');
-            inpTexto.value = p[2] + '/' + p[1] + '/' + p[0];
+            if (p.length === 3) inpTexto.value = p[2] + '/' + p[1] + '/' + p[0];
         }
+    }
+    function cerrarCal() {
+        if (cerradoAnt) return;
+        cerradoAnt = true;
+        syncCalATextoAnt();
         inpCal.style.display = 'none';
         inpTexto.style.visibility = '';
-        inpTexto.focus();
         inpCal.removeEventListener('change', onCambio);
         inpCal.removeEventListener('blur', onBlur);
+        inpCal.removeEventListener('input', onInputCalAnt);
+        setTimeout(function() {
+            var modalAnt = document.getElementById('modalAntCel');
+            var ae = document.activeElement;
+            if (!modalAnt || !ae || !modalAnt.contains(ae) || ae === inpCal || ae === inpTexto) {
+                inpTexto.focus();
+            }
+        }, 0);
     }
+    function onInputCalAnt() { syncCalATextoAnt(); }
     function onCambio() { cerrarCal(); }
-    function onBlur() { setTimeout(cerrarCal, 150); }
+    function onBlur() {
+        syncCalATextoAnt();
+        setTimeout(function() {
+            syncCalATextoAnt();
+            cerrarCal();
+        }, 200);
+    }
+    inpCal.addEventListener('input', onInputCalAnt);
     inpCal.addEventListener('change', onCambio);
     inpCal.addEventListener('blur', onBlur);
 }
@@ -2473,6 +2894,7 @@ function actualizarCheckGrabarCaja() {
 function fechaTextoAISO() {
     var v = (document.getElementById("ins_fecha").value || "").trim();
     if (!v) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
     var partes = v.split(/[\/\-\.]/);
     if (partes.length !== 3) return v;
     var d = partes[0].padStart(2, '0'), mes = partes[1].padStart(2, '0'), anio = partes[2];
@@ -2481,6 +2903,7 @@ function fechaTextoAISO() {
 }
 
 function guardar() {
+    if (guardarMovimientoEnCurso) return;
     let m = parseMonto(document.getElementById("ins_monto").value);
     if(isNaN(m) || !uSel) return;
     if (uSel === USUARIO_LIBRO_TRANSF) {
@@ -2491,7 +2914,7 @@ function guardar() {
         }
         var iso = fechaTextoAISO();
         if (!iso || iso.length !== 10) {
-            alert('Indique una fecha válida (dd/mm/aaaa).');
+            alert('Indique una fecha válida.');
             return;
         }
         var montoAbs = Math.abs(m);
@@ -2506,6 +2929,7 @@ function guardar() {
         fd.append('monto', String(montoAbs));
         var refL = (document.getElementById("ins_refer").value || '').trim();
         if (refL) fd.append('refer', refL);
+        guardarMovimientoEnCurso = true;
         fetch('guardar_movimiento_transferencias_libro.php', { method: 'POST', body: fd })
             .then(function(r) { return r.text(); })
             .then(function(txt) {
@@ -2520,7 +2944,8 @@ function guardar() {
                 document.getElementById("ins_refer").value = "";
                 document.getElementById("ins_monto").value = "";
             })
-            .catch(function() { alert('Error de red.'); });
+            .catch(function() { alert('Error de red.'); })
+            .finally(function() { guardarMovimientoEnCurso = false; });
         return;
     }
     var montoAbs = Math.abs(m);
@@ -2540,6 +2965,7 @@ function guardar() {
         monto: (tipo === 'INGRESO' ? Math.abs(m) : -Math.abs(m)),
         grabar_caja: grabarCaja
     });
+    guardarMovimientoEnCurso = true;
     fetch('guardar_movimiento.php', { method: 'POST', body: p })
     .then(r => r.text())
     .then(txt => {
@@ -2552,7 +2978,9 @@ function guardar() {
         document.getElementById("ins_concepto").value = "";
         document.getElementById("ins_refer").value = "";
         document.getElementById("ins_monto").value = "";
-    });
+    })
+    .catch(function() { alert('Error de red.'); })
+    .finally(function() { guardarMovimientoEnCurso = false; });
 }
 
 <?php if ($archivo_respaldo !== null && $archivo_respaldo !== false): ?>
