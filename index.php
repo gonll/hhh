@@ -333,7 +333,7 @@ if ($nivelAcceso === 3) {
                 <?php elseif ($esUsuarioSofia && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
                     <a href="respaldar_bd.php" style="color:#28a745; font-size:9px; margin-right:6px;">Respaldar</a>
                 <?php endif; ?>
-                <a href="<?= (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 1 && $_SESSION['acceso_nivel'] <= 3) ? 'respaldar_al_salir.php' : 'logout.php' ?>" style="color:#dc3545; font-size:9px; display:inline-flex; align-items:center; gap:3px; text-decoration:none;" title="Cerrar sesión"><span style="font-size:12px; line-height:1;" aria-hidden="true">&#x1F1E6;&#x1F1F7;</span> Salir</a>
+                <a href="<?= (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 1 && $_SESSION['acceso_nivel'] <= 3) ? 'respaldar_al_salir.php' : 'logout.php' ?>" style="color:#dc3545; font-size:9px;">Salir</a>
             </div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
