@@ -100,6 +100,8 @@ $nombre_usu = $row_usu ? mysqli_real_escape_string($conexion, strtoupper($row_us
 
 $grabar_caja = isset($_POST['efvo']) && ($_POST['efvo'] === '1' || $_POST['efvo'] === 'true');
 $comprobante = $grabar_caja ? 'EXP/EFVO' : 'EXP/TRANSF';
+// Espejo consorcio/propietario: no usar EXP/TRANSF para no duplicar líneas en el libro Transferencias (una sola por transferencia).
+$comprobante_espejo_exp = $grabar_caja ? 'EXP/EFVO' : 'COBRO EXP TRANSF';
 $refer_periodo = mysqli_real_escape_string($conexion, $periodo);
 
 // Si es pago por consorcio (Recibo N°): UN SOLO registro por cuenta
@@ -153,7 +155,7 @@ if ($consorcio_param !== '') {
         echo "Error al grabar en Consorcio: " . mysqli_error($conexion);
         exit;
     }
-    mysqli_stmt_bind_param($stmt_cta, 'issssd', $consorcio_id, $fecha, $concepto_consorcio, $comprobante, $refer_periodo, $monto);
+    mysqli_stmt_bind_param($stmt_cta, 'issssd', $consorcio_id, $fecha, $concepto_consorcio, $comprobante_espejo_exp, $refer_periodo, $monto);
     if (!mysqli_stmt_execute($stmt_cta)) {
         echo "Error al grabar en Consorcio: " . mysqli_error($conexion);
         mysqli_stmt_close($stmt_cta);
@@ -229,7 +231,7 @@ if ($consorcio_param !== '') {
         echo "Error al grabar en Consorcio: " . mysqli_error($conexion);
         exit;
     }
-    mysqli_stmt_bind_param($stmt_cta2, 'issssd', $consorcio_id, $fecha, $concepto_consorcio, $comprobante, $refer_periodo, $monto);
+    mysqli_stmt_bind_param($stmt_cta2, 'issssd', $consorcio_id, $fecha, $concepto_consorcio, $comprobante_espejo_exp, $refer_periodo, $monto);
     if (!mysqli_stmt_execute($stmt_cta2)) {
         echo "Error al grabar en Consorcio: " . mysqli_error($conexion);
         mysqli_stmt_close($stmt_cta2);
@@ -263,7 +265,7 @@ if ($consorcio_param !== '') {
             echo "Error al grabar en propietario: " . mysqli_error($conexion);
             exit;
         }
-        mysqli_stmt_bind_param($stmt_prop_cta, 'issssd', $propietario_id, $fecha, $concepto_prop, $comprobante, $refer_periodo, $monto);
+        mysqli_stmt_bind_param($stmt_prop_cta, 'issssd', $propietario_id, $fecha, $concepto_prop, $comprobante_espejo_exp, $refer_periodo, $monto);
         if (!mysqli_stmt_execute($stmt_prop_cta)) {
             echo "Error al grabar en propietario: " . mysqli_error($conexion);
             mysqli_stmt_close($stmt_prop_cta);

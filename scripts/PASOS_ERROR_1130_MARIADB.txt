@@ -1,0 +1,76 @@
+================================================================================
+ERROR 1130: Host 'localhost' is not allowed (MariaDB / XAMPP en Windows)
+================================================================================
+
+Significa que MariaDB no tiene ninguna cuenta válida para "root" desde tu PC
+(o la tabla de usuarios quedó mal tras un restore o cambio de versión).
+
+No se soluciona solo con .env: hay que reparar permisos DENTRO de MariaDB.
+
+--------------------------------------------------------------------------------
+OPCIÓN A — Reparar con skip-grant-tables (recomendado, no borra tus bases)
+--------------------------------------------------------------------------------
+
+1) Panel XAMPP → botón "Stop" en MySQL (o MariaDB).
+
+2) Abrir con Bloc de notas (como administrador si hace falta):
+      C:\xampp\mysql\bin\my.ini
+
+3) Buscar la sección [mysqld] y DEBAJO de la primera línea [mysqld] agregar:
+
+      skip-grant-tables
+
+   Guardar el archivo.
+
+4) Panel XAMPP → Start en MySQL.
+
+5) Abrir CMD o PowerShell y ejecutar:
+
+      C:\xampp\mysql\bin\mysql.exe -u root
+
+   Debería entrar sin contraseña.
+
+6) Pegar y ejecutar (Enter al final de cada bloque si hace falta):
+
+      FLUSH PRIVILEGES;
+
+      GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' IDENTIFIED BY '' WITH GRANT OPTION;
+      GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' IDENTIFIED BY '' WITH GRANT OPTION;
+
+      FLUSH PRIVILEGES;
+      EXIT;
+
+   Si tu root tiene contraseña, cambia IDENTIFIED BY '' por IDENTIFIED BY 'tu_clave'
+   y pon la misma en el archivo .env del proyecto (DB_PASS=...).
+
+7) Volver a editar my.ini y BORRAR la línea skip-grant-tables (importante).
+
+8) Panel XAMPP → Stop y luego Start en MySQL.
+
+9) Probar de nuevo login.php y, si usás .env, DB_HOST=127.0.0.1 o localhost.
+
+--------------------------------------------------------------------------------
+OPCIÓN B — MariaDB 10.4+ (si GRANT falla arriba)
+--------------------------------------------------------------------------------
+
+Dentro de mysql -u root (con skip-grant-tables activo):
+
+      FLUSH PRIVILEGES;
+      ALTER USER 'root'@'localhost' IDENTIFIED BY '';
+      CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED BY '';
+      GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
+      GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION;
+      FLUSH PRIVILEGES;
+
+Si ALTER USER no existe el usuario, ver en MariaDB:
+
+      SELECT user,host FROM mysql.user;
+
+--------------------------------------------------------------------------------
+OPCIÓN C — XAMPP nuevo (solo si no importa perder datos locales)
+--------------------------------------------------------------------------------
+
+Respaldar antes las carpetas htdocs y exportar bases con mysqldump si podés.
+Reinstalar XAMPP o copiar carpeta mysql\data limpia desde instalador nuevo.
+
+================================================================================

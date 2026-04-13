@@ -1,0 +1,9 @@
+-- Ejecutar SOLO cuando MySQL/MariaDB está arrancado con skip-grant-tables en my.ini
+-- Ver PASOS_ERROR_1130_MARIADB.txt
+
+FLUSH PRIVILEGES;
+
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' IDENTIFIED BY '' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' IDENTIFIED BY '' WITH GRANT OPTION;
+
+FLUSH PRIVILEGES;
