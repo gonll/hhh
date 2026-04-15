@@ -53,8 +53,10 @@ if ($padron !== '') {
     if ($stmt_ex) {
         mysqli_stmt_bind_param($stmt_ex, 'si', $padron, $id);
         mysqli_stmt_execute($stmt_ex);
-        $existe = mysqli_stmt_get_result($stmt_ex);
-        if ($existe && mysqli_num_rows($existe) > 0) {
+        // Compatible con servidores sin mysqlnd (evita mysqli_stmt_get_result y posibles HTTP 500).
+        mysqli_stmt_bind_result($stmt_ex, $propiedad_dup);
+        $hay_duplicado = mysqli_stmt_fetch($stmt_ex);
+        if ($hay_duplicado) {
             mysqli_stmt_close($stmt_ex);
             header('Location: editar_propiedad.php?id=' . $id . '&error=padron_duplicado');
             exit;
