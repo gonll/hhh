@@ -14,6 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['propiedad_id'])) {
 
 propiedades_asegurar_columnas($conexion);
 $tiene_media = propiedades_columna_existe($conexion, 'mapa_lat') && propiedades_columna_existe($conexion, 'fotos_json');
+$padron_max = propiedades_asegurar_padron_largo($conexion, 120);
+if ($padron_max <= 0) {
+    // Fallback defensivo para evitar errores fatales en servidores con esquema antiguo/restringido.
+    $padron_max = 12;
+}
 
 $id        = (int)$_POST['propiedad_id'];
 $propiedad = trim($_POST['propiedad'] ?? '');
@@ -24,6 +29,13 @@ $porcentaje_raw = str_replace(',', '.', $porcentaje_raw);
 $porcentaje = $porcentaje_raw !== '' ? (float)$porcentaje_raw : null;
 $padron    = trim($_POST['padron'] ?? '');
 $detalle   = trim($_POST['detalle'] ?? '');
+if ($padron_max > 0) {
+    $len_pad = function_exists('mb_strlen') ? mb_strlen($padron, 'UTF-8') : strlen($padron);
+    if ($len_pad > $padron_max) {
+        header('Location: editar_propiedad.php?id=' . (int)($_POST['propiedad_id'] ?? 0) . '&error=padron_largo');
+        exit;
+    }
+}
 
 $mapa_lat = null;
 $mapa_lng = null;

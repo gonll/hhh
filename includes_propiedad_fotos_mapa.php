@@ -245,6 +245,46 @@ function propiedades_columna_existe($conexion, $columna) {
 }
 
 /**
+ * Devuelve el largo máximo actual de la columna padron (VARCHAR/CHAR), o null si no se puede determinar.
+ */
+function propiedades_padron_largo_max($conexion) {
+    $r = mysqli_query($conexion, "SHOW COLUMNS FROM propiedades LIKE 'padron'");
+    if (!$r || !($row = mysqli_fetch_assoc($r))) {
+        return null;
+    }
+    $tipo = strtolower((string)($row['Type'] ?? ''));
+    if (preg_match('/^(?:var)?char\((\d+)\)/', $tipo, $m)) {
+        return (int)$m[1];
+    }
+    return null;
+}
+
+/**
+ * Asegura un tamaño mínimo para padron para permitir textos largos (ej. "Padron origen ... sub ...").
+ * Retorna el largo efectivo detectado luego del intento.
+ */
+function propiedades_asegurar_padron_largo($conexion, $minLargo = 120) {
+    $minLargo = (int)$minLargo;
+    if ($minLargo < 20) {
+        $minLargo = 20;
+    }
+    $maxActual = propiedades_padron_largo_max($conexion);
+    if ($maxActual === null) {
+        return 0;
+    }
+    if ($maxActual >= $minLargo) {
+        return $maxActual;
+    }
+    try {
+        mysqli_query($conexion, "ALTER TABLE propiedades MODIFY COLUMN padron VARCHAR($minLargo) NOT NULL");
+    } catch (Throwable $e) {
+        error_log('propiedades_asegurar_padron_largo: ' . $e->getMessage());
+    }
+    $nuevoMax = propiedades_padron_largo_max($conexion);
+    return ($nuevoMax === null) ? $maxActual : $nuevoMax;
+}
+
+/**
  * Crea columnas si faltan. En servidores sin permiso ALTER, ver error_log o ejecutar SQL manualmente.
  * @return bool true si mapa_lat existe al final (o ya existía)
  */

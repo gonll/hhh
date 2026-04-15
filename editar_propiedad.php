@@ -92,6 +92,8 @@ if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
     <div style="background:#fff3cd; color:#856404; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">La base de datos del servidor no tiene las columnas para fotos y mapa. Ejecute el SQL de migración con un usuario MySQL con permisos (ver mensaje en «nueva propiedad» o documentación del sistema).</div>
     <?php elseif (isset($_GET['error']) && $_GET['error'] === 'padron_duplicado'): ?>
     <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Falta dato o corregir.</div>
+    <?php elseif (isset($_GET['error']) && $_GET['error'] === 'padron_largo'): ?>
+    <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">El padrón supera el largo permitido por la base de datos de este servidor. Solicite ampliar la columna PADRON en MySQL.</div>
     <?php endif; ?>
     <?php if (isset($_GET['ok']) && $_GET['ok'] === '1'): ?>
     <div style="background:#d4edda; color:#155724; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">

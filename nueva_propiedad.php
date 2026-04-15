@@ -76,6 +76,8 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
     <div style="background:#fff3cd; color:#856404; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">La base de datos del servidor no tiene las columnas para fotos y mapa. Un usuario MySQL con permiso ALTER debe ejecutar el SQL en el servidor (phpMyAdmin o consola), o dar permiso ALTER al usuario de la aplicación.</div>
     <?php elseif (isset($_GET['error']) && ($_GET['error'] === '1' || $_GET['error'] === 'padron_duplicado')): ?>
     <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">Falta dato o corregir.</div>
+    <?php elseif (isset($_GET['error']) && $_GET['error'] === 'padron_largo'): ?>
+    <div style="background:#f8d7da; color:#721c24; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px;">El padrón supera el largo permitido por la base de datos de este servidor. Solicite ampliar la columna PADRON en MySQL.</div>
     <?php endif; ?>
     <form class="form-nav-enter" action="guardar_propiedad.php" method="POST" enctype="multipart/form-data" onsubmit="return validarPropietario()">
         <label>Propiedad *</label>
