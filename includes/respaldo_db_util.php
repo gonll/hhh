@@ -25,6 +25,29 @@ if (!function_exists('normalizarCollationDump')) {
     }
 }
 
+if (!function_exists('respaldoBDConexionGlobal')) {
+    /**
+     * Abre una conexión directa/global a la BD definida en .env (sin depender del contexto actual).
+     * @return mysqli|null
+     */
+    function respaldoBDConexionGlobal() {
+        $env = @parse_ini_file(__DIR__ . '/../.env') ?: [];
+        $host = $env['DB_HOST'] ?? 'localhost';
+        $user = $env['DB_USER'] ?? '';
+        $pass = $env['DB_PASS'] ?? '';
+        $name = $env['DB_NAME'] ?? '';
+        if ($name === '' || $user === '') {
+            return null;
+        }
+        $cx = @mysqli_connect($host, $user, $pass, $name);
+        if (!$cx) {
+            return null;
+        }
+        @mysqli_set_charset($cx, 'utf8mb4');
+        return $cx;
+    }
+}
+
 if (!function_exists('respaldoBDPorPHP')) {
     /**
      * Respaldo de BD usando solo PHP/mysqli (sin mysqldump).

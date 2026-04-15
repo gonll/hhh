@@ -2,6 +2,10 @@
 include 'verificar_sesion.php';
 include 'db.php';
 require_once __DIR__ . '/includes/respaldo_db_util.php';
+$connRespaldo = respaldoBDConexionGlobal();
+if (!$connRespaldo && isset($conexion) && $conexion instanceof mysqli) {
+    $connRespaldo = $conexion; // fallback
+}
 
 // Verificar nivel de acceso (solo nivel 3 puede respaldar)
 if (!isset($_SESSION['acceso_nivel']) || $_SESSION['acceso_nivel'] < 3) {
@@ -26,7 +30,7 @@ $ruta_completa = $es_windows
     : (sys_get_temp_dir() . DIRECTORY_SEPARATOR . $nombre_archivo);
 
 // En Linux/servidor: usar PHP directamente (más fiable; mysqldump suele fallar por permisos)
-$usar_php_directo = !$es_windows && isset($conexion);
+$usar_php_directo = !$es_windows && ($connRespaldo instanceof mysqli);
 
 // Buscar mysqldump: Windows XAMPP, Linux típico, o en PATH
 $mysqldump = null;
@@ -64,7 +68,7 @@ $comando = escapeshellarg($mysqldump) . " --host=" . escapeshellarg($servidor) .
 
 // Ejecutar respaldo
 if ($usar_php_directo) {
-    respaldoBDPorPHP($conexion, $ruta_completa);
+    respaldoBDPorPHP($connRespaldo, $ruta_completa);
 } else {
     exec($comando, $salida, $codigo_error);
     if (isset($tmp_cnf) && file_exists($tmp_cnf)) @unlink($tmp_cnf);
@@ -76,8 +80,8 @@ if ($usar_php_directo) {
             @unlink($ruta_completa);
         }
     }
-    if (!$dump_valido && isset($conexion)) {
-        respaldoBDPorPHP($conexion, $ruta_completa);
+    if (!$dump_valido && ($connRespaldo instanceof mysqli)) {
+        respaldoBDPorPHP($connRespaldo, $ruta_completa);
     }
 }
 
@@ -109,6 +113,9 @@ if (file_exists($ruta_completa) && filesize($ruta_completa) > 0) {
     
     // Eliminar archivo temporal después de descargar
     @unlink($ruta_completa);
+    if ($connRespaldo !== $conexion && $connRespaldo instanceof mysqli) {
+        @mysqli_close($connRespaldo);
+    }
     exit;
 } else {
     // Error en el respaldo
@@ -149,6 +156,9 @@ if (file_exists($ruta_completa) && filesize($ruta_completa) > 0) {
     </body>
     </html>
     <?php
+    if ($connRespaldo !== $conexion && $connRespaldo instanceof mysqli) {
+        @mysqli_close($connRespaldo);
+    }
     exit;
 }
 ?>

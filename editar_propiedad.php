@@ -106,7 +106,10 @@ if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
     <?php if (!empty($_GET['fotos_aviso'])): ?>
     <div style="background:#fff3cd; color:#856404; padding:8px; border-radius:4px; margin-bottom:10px; font-size:11px; white-space:pre-wrap;"><?= htmlspecialchars($_GET['fotos_aviso'], ENT_QUOTES, 'UTF-8') ?></div>
     <?php endif; ?>
-    <a href="ver_propiedad.php?id=<?= (int)$prop['propiedad_id'] ?>" class="link-ver" target="_blank" rel="noopener">Ver fotos y ubicación en pantalla completa</a>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;">
+        <a href="ver_propiedad.php?id=<?= (int)$prop['propiedad_id'] ?>" class="link-ver" target="_blank" rel="noopener" style="margin-bottom:0;">Ver fotos y ubicación en pantalla completa</a>
+        <a href="propiedades.php" class="link-ver" style="margin-bottom:0; font-weight:bold;">← Volver</a>
+    </div>
     <form class="form-nav-enter" action="actualizar_propiedad.php" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="propiedad_id" value="<?= $prop['propiedad_id'] ?>">
         

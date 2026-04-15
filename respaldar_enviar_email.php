@@ -7,27 +7,32 @@
  * @return bool true si se generó y envió correctamente
  */
 function respaldarYEnviarPorEmail($conexion, $contexto = 'ingreso') {
-    if (!$conexion) return false;
+    require_once __DIR__ . '/includes/respaldo_db_util.php';
+    $connRespaldo = respaldoBDConexionGlobal();
+    if (!$connRespaldo && $conexion instanceof mysqli) {
+        $connRespaldo = $conexion; // fallback por compatibilidad
+    }
+    if (!$connRespaldo) return false;
 
     $out = "-- MySQL dump generado por PHP " . date('Y-m-d H:i:s') . "\n\n";
     $out .= "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n";
-    $res = mysqli_query($conexion, "SHOW TABLES");
+    $res = mysqli_query($connRespaldo, "SHOW TABLES");
     if (!$res) return false;
     while ($row = mysqli_fetch_array($res)) {
         $tabla = $row[0];
-        $out .= "DROP TABLE IF EXISTS `" . mysqli_real_escape_string($conexion, $tabla) . "`;\n";
-        $res2 = mysqli_query($conexion, "SHOW CREATE TABLE `" . mysqli_real_escape_string($conexion, $tabla) . "`");
+        $out .= "DROP TABLE IF EXISTS `" . mysqli_real_escape_string($connRespaldo, $tabla) . "`;\n";
+        $res2 = mysqli_query($connRespaldo, "SHOW CREATE TABLE `" . mysqli_real_escape_string($connRespaldo, $tabla) . "`");
         if ($res2 && $r = mysqli_fetch_row($res2)) {
             $out .= $r[1] . ";\n\n";
         }
-        $res3 = mysqli_query($conexion, "SELECT * FROM `" . mysqli_real_escape_string($conexion, $tabla) . "`");
+        $res3 = mysqli_query($connRespaldo, "SELECT * FROM `" . mysqli_real_escape_string($connRespaldo, $tabla) . "`");
         if ($res3 && mysqli_num_rows($res3) > 0) {
             $fields = mysqli_fetch_fields($res3);
             $cols = $fields ? array_map(function($f) { return "`" . $f->name . "`"; }, $fields) : [];
             mysqli_data_seek($res3, 0);
             while ($r = mysqli_fetch_row($res3)) {
-                $vals = array_map(function($v) use ($conexion) {
-                    return $v === null ? 'NULL' : "'" . mysqli_real_escape_string($conexion, $v) . "'";
+                $vals = array_map(function($v) use ($connRespaldo) {
+                    return $v === null ? 'NULL' : "'" . mysqli_real_escape_string($connRespaldo, $v) . "'";
                 }, $r);
                 $out .= "INSERT INTO `$tabla` (" . implode(',', $cols) . ") VALUES (" . implode(',', $vals) . ");\n";
             }
@@ -61,5 +66,8 @@ function respaldarYEnviarPorEmail($conexion, $contexto = 'ingreso') {
     $cuerpo_mail = '<p>Se adjunta el respaldo de la base de datos <strong>sistemahhh26</strong> generado ' . $txt_ctx . ' del sistema el ' . date('d/m/Y H:i') . '.</p>';
     @enviar_mail_smtp_con_adjunto('hyllback@gmail.com', $asunto_mail, $cuerpo_mail, $ruta_completa, 'application/sql');
     @unlink($ruta_completa);
+    if ($connRespaldo !== $conexion && $connRespaldo instanceof mysqli) {
+        @mysqli_close($connRespaldo);
+    }
     return true;
 }
