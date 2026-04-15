@@ -317,6 +317,18 @@ window.addEventListener('keydown', function(e) {
         volverPrincipal();
     }
 }, true);
+
+// Si el usuario toca "Atrás" del navegador desde esta pantalla, volver al panel principal.
+(function() {
+    try {
+        history.pushState({ desdePropiedades: true }, '', window.location.href);
+        window.addEventListener('popstate', function() {
+            window.location.href = 'index.php';
+        });
+    } catch (e) {
+        // Sin soporte de History API, no hacer nada.
+    }
+})();
 </script>
 <?php include 'timeout_sesion_inc.php'; ?>
 </body>
