@@ -6,6 +6,18 @@ if (!defined('HHH_ROOT')) {
     define('HHH_ROOT', dirname(__FILE__));
 }
 
+function orden_alquiler_str_limit(string $s, int $max): string
+{
+    $s = trim($s);
+    if ($max <= 0 || $s === '') {
+        return $max <= 0 ? '' : $s;
+    }
+    if (function_exists('mb_substr')) {
+        return mb_substr($s, 0, $max);
+    }
+    return substr($s, 0, $max);
+}
+
 function orden_alquiler_asegurar_tabla($conexion) {
     if (!$conexion) {
         return false;
@@ -66,12 +78,12 @@ function orden_alquiler_normalizar_historial($h): array
             $tipo = 'visita';
         }
         $out[] = [
-            'fecha' => mb_substr(trim((string) ($row['fecha'] ?? '')), 0, 40),
+            'fecha' => orden_alquiler_str_limit((string) ($row['fecha'] ?? ''), 40),
             'tipo' => $tipo,
             'modo' => (($row['modo'] ?? '') === 'venta') ? 'venta' : 'alquiler',
-            'cliente' => mb_substr(trim((string) ($row['cliente'] ?? '')), 0, 500),
-            'mostrador' => mb_substr(trim((string) ($row['mostrador'] ?? '')), 0, 120),
-            'nota' => mb_substr(trim((string) ($row['nota'] ?? '')), 0, 500),
+            'cliente' => orden_alquiler_str_limit((string) ($row['cliente'] ?? ''), 500),
+            'mostrador' => orden_alquiler_str_limit((string) ($row['mostrador'] ?? ''), 120),
+            'nota' => orden_alquiler_str_limit((string) ($row['nota'] ?? ''), 500),
         ];
     }
     if (count($out) > 200) {
@@ -142,8 +154,12 @@ function orden_alquiler_sanitizar_utf8($v) {
         return $out;
     }
     if (!is_string($v)) return $v;
-    if (mb_check_encoding($v, 'UTF-8')) return $v;
-    return mb_convert_encoding($v, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+    if (function_exists('mb_check_encoding') && function_exists('mb_convert_encoding')) {
+        if (mb_check_encoding($v, 'UTF-8')) return $v;
+        return mb_convert_encoding($v, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+    }
+    // Sin mbstring, devolvemos el texto tal cual para evitar errores fatales (HTTP 500).
+    return $v;
 }
 
 function orden_alquiler_cargar_datos($propiedad_id) {

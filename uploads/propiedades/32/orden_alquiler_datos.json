@@ -1,0 +1,43 @@
+{
+    "modo_operacion": "alquiler",
+    "precio_alquiler_pedido": "520000",
+    "precio_venta_pedido": "",
+    "actualizacion": "Indice IPC, último disponible al 1° de mes correspondiente al mes de la actualización. Bimestralmente.",
+    "condiciones_venta": "",
+    "monto_garantia": "520000",
+    "solicitante": {
+        "nombre": "",
+        "dni": "",
+        "cuit": "",
+        "domicilio": "",
+        "email": "",
+        "celular": ""
+    },
+    "garante1": {
+        "nombre": "",
+        "dni": "",
+        "cuit": "",
+        "domicilio": "",
+        "email": "",
+        "celular": ""
+    },
+    "garante2": {
+        "nombre": "",
+        "dni": "",
+        "cuit": "",
+        "domicilio": "",
+        "email": "",
+        "celular": ""
+    },
+    "historial": [
+        {
+            "fecha": "2026-04-15T21:49:02+02:00",
+            "tipo": "guardado",
+            "modo": "alquiler",
+            "cliente": "",
+            "mostrador": "adminhugo",
+            "nota": ""
+        }
+    ],
+    "updated_at": "2026-04-15T21:49:02+02:00"
+}
