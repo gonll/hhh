@@ -212,9 +212,10 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
                 padding: 0;
                 margin: 0;
                 background: #fff;
-                font-size: 10px;
+                font-size: 9px;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                zoom: 0.82;
             }
             .no-print { display: none !important; }
             .hoja-a4 {
@@ -231,28 +232,28 @@ $upd = !empty($d['updated_at']) ? date('d/m/Y H:i', strtotime($d['updated_at']))
                 page-break-inside: avoid;
                 break-inside: avoid;
             }
-            h1 { font-size: 15px; margin: 0 0 2px; }
-            h2 { font-size: 12px; margin: 10px 0 6px; page-break-after: avoid; }
-            .meta { font-size: 9px; margin-bottom: 8px; }
-            table.datos { font-size: 9px; margin-top: 4px; page-break-inside: avoid; }
-            table.datos th, table.datos td { padding: 4px 6px; }
-            .detalle { font-size: 9px; max-height: 42mm; overflow: hidden; }
+            h1 { font-size: 13px; margin: 0 0 1px; }
+            h2 { font-size: 11px; margin: 6px 0 4px; page-break-after: avoid; }
+            .meta { font-size: 8px; margin-bottom: 5px; }
+            table.datos { font-size: 8px; margin-top: 3px; page-break-inside: avoid; }
+            table.datos th, table.datos td { padding: 3px 5px; }
+            .detalle { font-size: 8px; max-height: 26mm; overflow: hidden; }
             .bloque-foto-mapa {
-                margin: 8px 0 10px;
-                font-size: 9px;
+                margin: 5px 0 6px;
+                font-size: 8px;
                 page-break-inside: avoid;
             }
-            .bloque-foto-mapa td { padding: 6px; }
-            .bloque-foto-mapa img { max-height: 120px; }
+            .bloque-foto-mapa td { padding: 4px; }
+            .bloque-foto-mapa img { max-height: 90px; }
             .bloque-foto-mapa .mapa-iframe-print {
-                height: 130px;
+                height: 95px;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            .bloque-foto-mapa .coords { font-size: 8px; margin-top: 4px; }
+            .bloque-foto-mapa .coords { font-size: 7px; margin-top: 2px; }
             table.datos, .detalle { page-break-inside: avoid; }
-            h3 { font-size: 11px; margin: 8px 0 4px !important; page-break-after: avoid; }
-            .pie-doc { margin-top: 8px; font-size: 8px; page-break-inside: avoid; }
+            h3 { font-size: 10px; margin: 5px 0 3px !important; page-break-after: avoid; }
+            .pie-doc { margin-top: 4px; font-size: 7px; page-break-inside: avoid; }
         }
     </style>
 </head>

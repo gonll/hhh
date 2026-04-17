@@ -78,6 +78,7 @@ $textoEnvio = implode("\n", $lineasTexto);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vta del Mes</title>
     <style>
+        @page { size: A4 portrait; margin: 8mm; }
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 980px; margin: 0 auto; }
         h1 { text-align: center; color: #6f42c1; margin: 0 0 8px; }
@@ -95,8 +96,20 @@ $textoEnvio = implode("\n", $lineasTexto);
         .total { margin-top: 14px; text-align: right; font-weight: bold; font-size: 16px; background: #f2ebff; border: 1px solid #d7c5ff; padding: 10px; border-radius: 4px; }
         @media print {
             .no-print { display: none !important; }
-            body { margin: 0; background: #fff; }
-            .container { box-shadow: none; }
+            html, body { width: 210mm; height: 297mm; }
+            body { margin: 0; background: #fff; font-size: 10px; line-height: 1.15; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .container { max-width: none; width: 100%; box-shadow: none; border-radius: 0; padding: 0; }
+            h1 { font-size: 16px; margin: 0 0 4px; }
+            .fecha { font-size: 10px; margin-bottom: 8px; }
+            table { table-layout: fixed; width: 100%; }
+            th, td { padding: 4px 5px; font-size: 9.5px; }
+            th:nth-child(1), td:nth-child(1) { width: 26%; }
+            th:nth-child(2), td:nth-child(2) { width: 26%; }
+            th:nth-child(3), td:nth-child(3) { width: 28%; }
+            th:nth-child(4), td:nth-child(4) { width: 20%; }
+            td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .total { margin-top: 8px; font-size: 11px; padding: 6px 8px; }
+            tr, td, th { page-break-inside: avoid; }
         }
     </style>
 </head>
