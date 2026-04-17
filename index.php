@@ -239,7 +239,7 @@ if ($nivelAcceso === 3) {
         .fila-libro-transfer.fila-seleccionada { background-color: #d1ecf1 !important; border-left-color: #117a8b; }
         .fila-mov-seleccionada { background-color: #fff9c4 !important; outline: 1px solid #fbc02d; }
 
-        .btn-caja { flex: 0 0 25%; padding: 12px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; opacity: 0.3; pointer-events: none; text-transform: uppercase; }
+        .btn-caja { flex: 1 1 180px; min-width: 180px; padding: 12px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; opacity: 0.3; pointer-events: none; text-transform: uppercase; text-align: center; box-sizing: border-box; }
         .btn-activo { opacity: 1 !important; pointer-events: auto !important; }
         .btn-caja.btn-extra { opacity: 1 !important; pointer-events: auto !important; text-transform: none; font-size: 8px; padding: 4px 6px; line-height: 1.2; }
         .grid-botones-extra { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; align-self: stretch; min-width: 0; }
@@ -545,6 +545,7 @@ if ($nivelAcceso === 3) {
             <button id="btnIngreso" class="btn-caja" style="background:#28a745;" onclick="preparar('INGRESO')">INGRESO</button>
             <button id="btnRetiro" class="btn-caja" style="background:#dc3545;" onclick="preparar('RETIRO')">RETIRO</button>
             <button type="button" id="btnResumenCtas" class="btn-caja btn-activo" style="background:#17a2b8; color:white; border:1px solid #138496; display:none;" onclick="abrirResumenCtas()">Resumen de Ctas.</button>
+            <button type="button" id="btnVtaMes" class="btn-caja btn-activo" style="background:#6f42c1; color:white; border:1px solid #5a32a3; display:none;" onclick="abrirVtaMes()">Vta del Mes</button>
             <div id="resumenConsorcioLinea" style="display:none; align-self:stretch; flex:0 1 38%; max-width:420px; min-width:280px; font-size:10px; line-height:1.35; padding:8px 10px; background:#fff3cd; border-radius:4px; border:1px solid #ffeeba; color:#856404; box-sizing:border-box; flex-direction:column; justify-content:space-between;">
                 <div style="flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right;">LIQUIDACIÓN DE EXPENSAS anteriores Ordinarias: $<span id="resumenLiqOrdinarias">0,00</span></div>
                 <div style="flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right;">LIQUIDACIÓN DE EXPENSAS anteriores Extraordinarias: $<span id="resumenLiqExtraordinarias">0,00</span></div>
@@ -1326,6 +1327,7 @@ function cargarMovimientos(fila, id) {
     var panelExtra = document.getElementById("panelBotonesExtra");
     var resumenLinea = document.getElementById("resumenConsorcioLinea");
     var btnResumenCtas = document.getElementById("btnResumenCtas");
+    var btnVtaMes = document.getElementById("btnVtaMes");
     var btnCobroExpTransf = document.getElementById("btnCobroExpTransf");
     var btnCobroExpEfvo = document.getElementById("btnCobroExpEfvo");
     var btnSueldoExtras = document.getElementById("btnSueldoExtras");
@@ -1339,6 +1341,7 @@ function cargarMovimientos(fila, id) {
     }
     if (resumenLinea) resumenLinea.style.display = esConsorcioUsuario ? "flex" : "none";
     if (btnResumenCtas) btnResumenCtas.style.display = esCajaUsuario ? "block" : "none";
+    if (btnVtaMes) btnVtaMes.style.display = esCajaUsuario ? "block" : "none";
     // Mostrar botón Word si es consorcio (aunque no haya movimiento seleccionado)
     if (esConsorcioUsuario) {
         document.getElementById("btnWord").style.display = "block";
@@ -1475,10 +1478,12 @@ function cargarLibroTransferencias(fila) {
     var panelExtra = document.getElementById("panelBotonesExtra");
     var resumenLinea = document.getElementById("resumenConsorcioLinea");
     var btnResumenCtas = document.getElementById("btnResumenCtas");
+    var btnVtaMes = document.getElementById("btnVtaMes");
     if (panelCons) panelCons.style.display = "none";
     if (panelExtra) panelExtra.style.display = "none";
     if (resumenLinea) resumenLinea.style.display = "none";
     if (btnResumenCtas) btnResumenCtas.style.display = "none";
+    if (btnVtaMes) btnVtaMes.style.display = "none";
     var panelCobroCaja = document.getElementById("panelCobroCaja");
     if (panelCobroCaja) { panelCobroCaja.style.display = "none"; resetCobroCaja(); }
     var migrarCtrl = document.getElementById("migrar-saldo-control");
@@ -2793,6 +2798,10 @@ function cargarExpensaExtraordinaria() {
 
 function abrirResumenCtas() {
     window.open('resumen_cuentas.php', '_blank', 'width=1200,height=800');
+}
+
+function abrirVtaMes() {
+    window.open('vta_mes.php', '_blank', 'width=1200,height=800');
 }
 
 function cargarSueldoExtras() {
