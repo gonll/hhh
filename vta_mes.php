@@ -90,6 +90,7 @@ $textoEnvio = implode("\n", $lineasTexto);
         td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 13px; }
         tr:nth-child(even) { background: #f9f9f9; }
         .monto { text-align: right; font-weight: bold; color: #2f4f4f; }
+        .propiedad-vacia { color: #dc3545; font-weight: bold; }
         .sin-datos { text-align: center; color: #666; padding: 20px; border: 1px dashed #ccc; border-radius: 4px; }
         .total { margin-top: 14px; text-align: right; font-weight: bold; font-size: 16px; background: #f2ebff; border: 1px solid #d7c5ff; padding: 10px; border-radius: 4px; }
         @media print {
@@ -128,9 +129,10 @@ $textoEnvio = implode("\n", $lineasTexto);
             </thead>
             <tbody>
                 <?php foreach ($filas as $f): ?>
+                <?php $sinInquilino = trim((string)$f['inquilino_actual']) === ''; ?>
                 <tr>
                     <td><?= htmlspecialchars($f['consorcio']) ?></td>
-                    <td><?= htmlspecialchars($f['propiedad']) ?></td>
+                    <td class="<?= $sinInquilino ? 'propiedad-vacia' : '' ?>"><?= htmlspecialchars($f['propiedad']) ?></td>
                     <td><?= htmlspecialchars(trim((string)$f['inquilino_actual']) !== '' ? $f['inquilino_actual'] : '-') ?></td>
                     <td class="monto">$ <?= number_format($f['alquiler_actual'], 2, ',', '.') ?></td>
                 </tr>
