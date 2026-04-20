@@ -34,8 +34,17 @@ if ((int)($_SESSION['acceso_nivel'] ?? -1) === 0) {
             echo json_encode(['ok' => false, 'msg' => 'Sin permiso para esta acción.']);
             exit;
         }
-        header('Location: ' . ($es_usuario_zafra ? 'cosecha.php' : 'partes_desde_cel.php'));
-        exit;
+        $redirigir_restringido = true;
+        if (!$es_usuario_zafra && $script === 'index.php') {
+            require_once __DIR__ . '/helpers_movil.php';
+            if (empty($_SESSION['vista_escritorio_movil']) && hh_es_user_agent_movil()) {
+                $redirigir_restringido = false;
+            }
+        }
+        if ($redirigir_restringido) {
+            header('Location: ' . ($es_usuario_zafra ? 'cosecha.php' : 'partes_desde_cel.php'));
+            exit;
+        }
     }
 }
 
