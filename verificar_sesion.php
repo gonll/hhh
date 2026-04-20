@@ -24,9 +24,9 @@ if ((int)($_SESSION['acceso_nivel'] ?? -1) === 0) {
     $usuario = (string)($_SESSION['acceso_usuario'] ?? '');
     $es_usuario_zafra = (stripos($usuario, 'zafra') !== false);
     if ($es_usuario_zafra) {
-        $permitidos_nivel0 = array('cosecha.php', 'logout.php');
+        $permitidos_nivel0 = array('cosecha.php', 'formulario_movil.php', 'logout.php');
     } else {
-        $permitidos_nivel0 = array('partes_desde_cel.php', 'logout.php');
+        $permitidos_nivel0 = array('partes_desde_cel.php', 'formulario_movil.php', 'logout.php');
     }
     if (!in_array($script, $permitidos_nivel0)) {
         if ($esApiJson) {

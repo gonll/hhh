@@ -1,6 +1,23 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_movil.php';
+
+if (isset($_GET['desktop']) && $_GET['desktop'] === '1') {
+    $_SESSION['vista_escritorio_movil'] = 1;
+}
+$nivelPre = (int) ($_SESSION['acceso_nivel'] ?? 0);
+$usuarioPre = (string) ($_SESSION['acceso_usuario'] ?? '');
+$forzarEscritorioMovil = !empty($_SESSION['vista_escritorio_movil']);
+if (!$forzarEscritorioMovil && hh_es_user_agent_movil()) {
+    if ($nivelPre === 0 && stripos($usuarioPre, 'zafra') !== false) {
+        header('Location: cosecha.php');
+        exit;
+    }
+    header('Location: formulario_movil.php');
+    exit;
+}
+
 require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
 tenant_inmob_asegurar_esquema($conexion);
 require_once __DIR__ . '/includes_usuario_servicios_observ.php';
