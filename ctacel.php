@@ -34,8 +34,8 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             --acento: #0d6efd;
             --texto: #1a1d21;
             --muted: #5c6b7a;
-            --volver-bg: #334155;
-            --volver-hover: #1e293b;
+            --salir-bg: #b91c1c;
+            --salir-hover: #991b1b;
         }
         * { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; }
@@ -284,7 +284,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             text-align: right;
             white-space: nowrap;
         }
-        .bar-volver {
+        .bar-salir {
             position: fixed;
             right: 12px;
             bottom: max(12px, env(safe-area-inset-bottom, 12px));
@@ -293,23 +293,23 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             justify-content: flex-end;
             pointer-events: none;
         }
-        .bar-volver a {
+        .bar-salir a {
             pointer-events: auto;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             padding: 12px 20px;
             min-height: 44px;
-            background: var(--volver-bg);
+            background: var(--salir-bg);
             color: #fff;
             text-decoration: none;
             font-weight: 600;
             font-size: 0.95rem;
             border-radius: 10px;
-            box-shadow: 0 4px 14px rgba(0,0,0,.2);
+            box-shadow: 0 4px 14px rgba(0,0,0,.22);
         }
-        .bar-volver a:hover, .bar-volver a:active {
-            background: var(--volver-hover);
+        .bar-salir a:hover, .bar-salir a:active {
+            background: var(--salir-hover);
         }
         @media (min-width: 768px) {
             body { padding: 24px 24px 96px; }
@@ -367,8 +367,8 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
         </form>
     </div>
 
-    <div class="bar-volver">
-        <a href="index.php?desktop=1">Volver</a>
+    <div class="bar-salir">
+        <a href="logout.php">Salir</a>
     </div>
     <script>
     (function() {
