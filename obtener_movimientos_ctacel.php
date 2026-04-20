@@ -3,6 +3,8 @@ include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
 tenant_inmob_asegurar_esquema($conexion);
+include __DIR__ . '/crear_tabla_cuentas_arriendo.php';
+include __DIR__ . '/cargar_arriendos_cuentas.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -15,13 +17,35 @@ if ($id <= 0 || !tenant_inmob_usuario_id_visible($conexion, $id)) {
 $res_total = mysqli_query($conexion, 'SELECT COALESCE(SUM(monto), 0) AS total FROM cuentas WHERE usuario_id = ' . $id);
 $total_cuenta = ($res_total && $r = mysqli_fetch_assoc($res_total)) ? (float) $r['total'] : 0.0;
 
-$sql = 'SELECT * FROM (
-    SELECT * FROM cuentas WHERE usuario_id = ' . $id . '
-    ORDER BY fecha DESC, movimiento_id DESC LIMIT 5
-) AS sub ORDER BY fecha ASC, movimiento_id ASC';
-$res = mysqli_query($conexion, $sql);
+$ids = [];
+$r_ids = mysqli_query(
+    $conexion,
+    'SELECT movimiento_id FROM cuentas WHERE usuario_id = ' . $id . ' ORDER BY fecha DESC, movimiento_id DESC LIMIT 5'
+);
+if (!$r_ids) {
+    echo json_encode([
+        'ok' => false,
+        'msg' => 'Error consulta: ' . mysqli_error($conexion),
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+while ($row = mysqli_fetch_assoc($r_ids)) {
+    $ids[] = (int) $row['movimiento_id'];
+}
 $filas = [];
-if ($res) {
+if (count($ids) > 0) {
+    $inList = implode(',', array_map('intval', $ids));
+    $res = mysqli_query(
+        $conexion,
+        'SELECT * FROM cuentas WHERE usuario_id = ' . $id . ' AND movimiento_id IN (' . $inList . ') ORDER BY fecha ASC, movimiento_id ASC'
+    );
+    if (!$res) {
+        echo json_encode([
+            'ok' => false,
+            'msg' => 'Error consulta: ' . mysqli_error($conexion),
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     while ($m = mysqli_fetch_assoc($res)) {
         $filas[] = $m;
     }

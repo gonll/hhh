@@ -521,8 +521,21 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             el.classList.remove('parte2-vacia');
             el.style.fontSize = '';
             el.innerHTML = '<p style="margin:0;color:#64748b;">Cargando…</p>';
-            fetch('obtener_movimientos_ctacel.php?id=' + encodeURIComponent(String(usuarioId)))
-                .then(function(r) { return r.json(); })
+            var urlMov = new URL('obtener_movimientos_ctacel.php', window.location.href);
+            urlMov.searchParams.set('id', String(usuarioId));
+            fetch(urlMov.href, { credentials: 'same-origin' })
+                .then(function(r) {
+                    return r.text().then(function(text) {
+                        if (!r.ok) {
+                            throw new Error('HTTP ' + r.status);
+                        }
+                        try {
+                            return JSON.parse(text);
+                        } catch (e2) {
+                            throw new Error('no-json');
+                        }
+                    });
+                })
                 .then(function(data) {
                     if (!data || !data.ok) {
                         el.classList.add('parte2-vacia');
@@ -552,9 +565,10 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                         requestAnimationFrame(ajustarFuenteParte2);
                     });
                 })
-                .catch(function() {
+                .catch(function(err) {
                     el.classList.add('parte2-vacia');
-                    el.innerHTML = '<p style="margin:0;">Error al cargar movimientos.</p>';
+                    var det = (err && err.message) ? String(err.message) : '';
+                    el.innerHTML = '<p style="margin:0;">Error al cargar movimientos.' + (det ? ' (' + escHtml(det) + ')' : '') + '</p>';
                 });
         }
 
