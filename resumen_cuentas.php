@@ -88,16 +88,19 @@ $res_caja = mysqli_query($conexion, 'SELECT COALESCE(SUM(monto), 0) AS total FRO
 $saldo_caja_central = ($res_caja && $r = mysqli_fetch_assoc($res_caja)) ? (float)$r['total'] : 0;
 
 $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
+$embed_ctacel = isset($_GET['embed']) && (string) $_GET['embed'] === '1';
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Resumen de Cuentas</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; font-size: 14px; }
+        body.embed-ctacel { margin: 0; padding: 10px 12px 16px; padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); background: #fff; font-size: 15px; -webkit-text-size-adjust: 100%; }
         .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 1000px; margin: 0 auto; }
+        body.embed-ctacel .container { max-width: 100%; padding: 12px 10px; margin: 0; box-shadow: none; border-radius: 0; }
         h1 { text-align: center; color: #007bff; margin-bottom: 8px; }
         .fecha { text-align: center; color: #666; margin-bottom: 16px; font-size: 12px; }
         .botones { text-align: center; margin-bottom: 20px; }
@@ -116,6 +119,23 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
         .saldo-cell { white-space: nowrap; }
         .total-final { font-weight: bold; background: #e7f3ff; font-size: 15px; padding: 12px; margin-top: 16px; border: 1px solid #007bff; border-radius: 4px; text-align: right; }
         .simbolo-pantalla { display: inline; }
+        body.embed-ctacel .botones-acciones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 14px; }
+        body.embed-ctacel .botones-acciones button,
+        body.embed-ctacel .botones-acciones a {
+            flex: 1 1 auto;
+            min-width: min(100%, 140px);
+            margin: 0;
+            padding: 12px 10px;
+            font-size: 14px;
+        }
+        body.embed-ctacel .tabla-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+        @media (max-width: 720px) {
+            th:nth-child(1), td:nth-child(1) { width: auto !important; min-width: 5.5em; }
+            th:nth-child(2), td:nth-child(2) { width: auto !important; padding-left: 8px !important; }
+            th:nth-child(3), td:nth-child(3) { width: auto !important; min-width: 5.5rem; }
+            table { table-layout: auto !important; }
+            td { white-space: normal !important; word-break: break-word; }
+        }
         @media print {
             .no-print { display: none !important; }
             body { margin: 0; padding: 10px; font-size: 75%; background: white; }
@@ -131,21 +151,24 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
         }
     </style>
 </head>
-<body>
+<body class="<?= $embed_ctacel ? 'embed-ctacel' : '' ?>">
     <div class="container">
         <h1>RESUMEN DE CUENTAS</h1>
         <div class="fecha">Fecha: <?= date('d/m/Y H:i:s') ?> (Argentina)</div>
         
-        <div class="botones no-print">
-            <button onclick="window.location.href='descargar_resumen_cuentas.php'">📥 Descargar Excel (.csv)</button>
-            <button onclick="window.location.href='?imprimir=1'">🖨️ Imprimir</button>
-            <button onclick="window.close()">Cerrar</button>
+        <div class="botones botones-acciones no-print">
+            <button type="button" onclick="window.location.href='descargar_resumen_cuentas.php'">📥 Descargar Excel (.csv)</button>
+            <button type="button" onclick="window.location.href='<?= htmlspecialchars($embed_ctacel ? '?embed=1&imprimir=1' : '?imprimir=1', ENT_QUOTES, 'UTF-8') ?>'">🖨️ Imprimir</button>
+            <?php if (!$embed_ctacel): ?>
+            <button type="button" onclick="window.close()">Cerrar</button>
+            <?php endif; ?>
         </div>
         
         <?php if ($imprimir): ?>
         <script>window.onload = function() { setTimeout(function() { window.print(); }, 100); };</script>
         <?php endif; ?>
         
+        <div class="tabla-wrap">
         <table>
             <thead>
                 <tr>
@@ -167,6 +190,7 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
         
         <div class="total-final">
             <span class="simbolo-pantalla">$ </span><?= number_format($total_general, 2, ',', '.') ?> — TOTAL GENERAL (sin Caja)
@@ -177,7 +201,17 @@ $imprimir = isset($_GET['imprimir']) && $_GET['imprimir'] == '1';
     </div>
     <script>
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') window.close();
+            if (e.key === 'Escape') {
+                <?php if ($embed_ctacel): ?>
+                try {
+                    if (window.parent && window.parent !== window && typeof window.parent.postMessage === 'function') {
+                        window.parent.postMessage({ type: 'ctacel_cerrar_resumen' }, '*');
+                    }
+                } catch (err) {}
+                <?php else: ?>
+                window.close();
+                <?php endif; ?>
+            }
         });
     </script>
 </body>

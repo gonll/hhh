@@ -349,17 +349,45 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             text-align: right;
             white-space: nowrap;
         }
-        .bar-salir {
+        .bar-inferior-cta {
             position: fixed;
+            left: 12px;
             right: 12px;
             bottom: max(12px, env(safe-area-inset-bottom, 12px));
-            left: 12px;
             display: flex;
-            justify-content: flex-end;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
             pointer-events: none;
+            z-index: 50;
         }
-        .bar-salir a {
+        .bar-inferior-cta > * {
             pointer-events: auto;
+        }
+        .bar-inferior-cta .btn-resumen-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 14px;
+            min-height: 44px;
+            max-width: 52%;
+            background: var(--acento);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.82rem;
+            line-height: 1.15;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(13, 110, 253, 0.28);
+            font-family: inherit;
+            text-align: center;
+        }
+        .bar-inferior-cta .btn-resumen-cta:hover, .bar-inferior-cta .btn-resumen-cta:active {
+            background: #0b5ed7;
+        }
+        .bar-inferior-cta a.btn-salir-cta {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -373,8 +401,82 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             border-radius: 10px;
             box-shadow: 0 4px 14px rgba(0,0,0,.22);
         }
-        .bar-salir a:hover, .bar-salir a:active {
+        .bar-inferior-cta a.btn-salir-cta:hover, .bar-inferior-cta a.btn-salir-cta:active {
             background: var(--salir-hover);
+        }
+        .backdrop-resumen-cta {
+            display: flex;
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            background: rgba(15, 23, 42, 0.48);
+            align-items: stretch;
+            justify-content: center;
+            padding: 0;
+        }
+        .backdrop-resumen-cta.hidden {
+            display: none !important;
+        }
+        .backdrop-resumen-cta .modal-resumen-sheet {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 720px;
+            height: 100%;
+            max-height: 100dvh;
+            margin: 0 auto;
+            background: #fff;
+            box-shadow: 0 -8px 32px rgba(0,0,0,0.18);
+        }
+        @media (min-width: 600px) {
+            .backdrop-resumen-cta {
+                align-items: center;
+                padding: 16px;
+            }
+            .backdrop-resumen-cta .modal-resumen-sheet {
+                height: min(92dvh, 900px);
+                border-radius: 14px;
+                overflow: hidden;
+            }
+        }
+        .modal-resumen-toolbar {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px 14px;
+            padding-top: max(12px, env(safe-area-inset-top, 12px));
+            border-bottom: 1px solid var(--borde);
+            background: #f8fafc;
+        }
+        .modal-resumen-toolbar h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--texto);
+        }
+        .modal-resumen-toolbar button {
+            flex-shrink: 0;
+            padding: 10px 16px;
+            min-height: 44px;
+            border: 1px solid var(--borde);
+            border-radius: 10px;
+            background: #fff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .modal-resumen-toolbar button:active {
+            background: #f1f5f9;
+        }
+        .iframe-resumen-cta {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            border: 0;
+            background: #fff;
         }
         @media (min-width: 768px) {
             body { padding: 24px 24px 96px; }
@@ -422,8 +524,19 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
         </form>
     </div>
 
-    <div class="bar-salir">
-        <a href="logout.php">Salir</a>
+    <div class="bar-inferior-cta">
+        <button type="button" class="btn-resumen-cta" id="btnResumenCta" aria-haspopup="dialog" aria-controls="dialogResumenCta">Resumen de Cta.</button>
+        <a href="logout.php" class="btn-salir-cta">Salir</a>
+    </div>
+
+    <div id="backdropResumenCta" class="backdrop-resumen-cta hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="tituloDialogResumen">
+        <div class="modal-resumen-sheet" id="dialogResumenCta" role="document">
+            <div class="modal-resumen-toolbar">
+                <h2 id="tituloDialogResumen">Resumen de cuentas</h2>
+                <button type="button" id="cerrarResumenCta">Cerrar</button>
+            </div>
+            <iframe class="iframe-resumen-cta" id="iframeResumenCta" title="Resumen de cuentas" src="about:blank"></iframe>
+        </div>
     </div>
     <script>
     (function() {
@@ -847,6 +960,59 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                 }
             });
         }
+
+        var btnResumen = document.getElementById('btnResumenCta');
+        var backdropResumen = document.getElementById('backdropResumenCta');
+        var cerrarResumenBtn = document.getElementById('cerrarResumenCta');
+        var iframeResumen = document.getElementById('iframeResumenCta');
+        var urlResumenCta = new URL('resumen_cuentas.php?embed=1', window.location.href).href;
+
+        function abrirResumenCta() {
+            if (!backdropResumen || !iframeResumen) {
+                return;
+            }
+            if (iframeResumen.getAttribute('src') === 'about:blank') {
+                iframeResumen.src = urlResumenCta;
+            }
+            backdropResumen.classList.remove('hidden');
+            backdropResumen.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function cerrarResumenCtaFn() {
+            if (!backdropResumen) {
+                return;
+            }
+            backdropResumen.classList.add('hidden');
+            backdropResumen.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
+        if (btnResumen) {
+            btnResumen.addEventListener('click', abrirResumenCta);
+        }
+        if (cerrarResumenBtn) {
+            cerrarResumenBtn.addEventListener('click', cerrarResumenCtaFn);
+        }
+        if (backdropResumen) {
+            backdropResumen.addEventListener('click', function(e) {
+                if (e.target === backdropResumen) {
+                    cerrarResumenCtaFn();
+                }
+            });
+        }
+        window.addEventListener('message', function(ev) {
+            try {
+                if (ev.data && ev.data.type === 'ctacel_cerrar_resumen') {
+                    cerrarResumenCtaFn();
+                }
+            } catch (eMsg) {}
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && backdropResumen && !backdropResumen.classList.contains('hidden')) {
+                cerrarResumenCtaFn();
+            }
+        });
     })();
     </script>
 </body>
