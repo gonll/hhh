@@ -92,5 +92,11 @@ if ($nivel === 0 && stripos($usuario, 'zafra') !== false) {
     exit;
 }
 
+require_once __DIR__ . '/helpers_movil.php';
+if (empty($_SESSION['vista_escritorio_movil']) && hh_es_user_agent_movil()) {
+    header('Location: formulario_movil.php');
+    exit;
+}
+
 header('Location: index.php');
 exit;

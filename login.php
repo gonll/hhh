@@ -1,6 +1,23 @@
 <?php
+if (!headers_sent()) {
+    header('Accept-CH: Sec-CH-UA-Mobile, Sec-CH-UA-Platform');
+}
 session_start();
+require_once __DIR__ . '/helpers_movil.php';
+if (isset($_GET['movil']) && (string) $_GET['movil'] === '1') {
+    unset($_SESSION['vista_escritorio_movil']);
+}
 if (!empty($_SESSION['acceso_id'])) {
+    if (empty($_SESSION['vista_escritorio_movil']) && hh_es_user_agent_movil()) {
+        $u0 = (string) ($_SESSION['acceso_usuario'] ?? '');
+        $n0 = (int) ($_SESSION['acceso_nivel'] ?? 0);
+        if ($n0 === 0 && stripos($u0, 'zafra') !== false) {
+            header('Location: cosecha.php');
+        } else {
+            header('Location: formulario_movil.php');
+        }
+        exit;
+    }
     header('Location: index.php');
     exit;
 }

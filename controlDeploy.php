@@ -26,6 +26,9 @@
         <button type="submit" style="background:#6c757d; color:white; border:none; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; cursor:pointer;">Subir base de datos</button>
     </form>
     <a href="bajar_bd_servidor.php" id="linkBajarBd" style="background:#495057; color:white; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; text-decoration:none; display:inline-block;">Bajar BD del servidor</a>
+    <?php if (defined('ENVIRONMENT') && ENVIRONMENT === 'dev'): ?>
+    <a href="formulario_movil.php" style="background:#6f42c1; color:white; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; text-decoration:none; display:inline-block;">Formulario móvil (prueba)</a>
+    <?php endif; ?>
     <script>
     (function () {
         function confirmarTriple(pasos) {

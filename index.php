@@ -1,8 +1,14 @@
 <?php
+if (!headers_sent()) {
+    header('Accept-CH: Sec-CH-UA-Mobile, Sec-CH-UA-Platform');
+}
 include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/helpers_movil.php';
 
+if (isset($_GET['movil']) && (string) $_GET['movil'] === '1') {
+    unset($_SESSION['vista_escritorio_movil']);
+}
 if (isset($_GET['desktop']) && $_GET['desktop'] === '1') {
     $_SESSION['vista_escritorio_movil'] = 1;
 }
