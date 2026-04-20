@@ -20,7 +20,7 @@ $total_cuenta = ($res_total && $r = mysqli_fetch_assoc($res_total)) ? (float) $r
 $ids = [];
 $r_ids = mysqli_query(
     $conexion,
-    'SELECT movimiento_id FROM cuentas WHERE usuario_id = ' . $id . ' ORDER BY fecha DESC, movimiento_id DESC LIMIT 5'
+    'SELECT movimiento_id FROM cuentas WHERE usuario_id = ' . $id . ' ORDER BY fecha DESC, movimiento_id DESC LIMIT 10'
 );
 if (!$r_ids) {
     echo json_encode([

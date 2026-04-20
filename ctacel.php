@@ -261,6 +261,17 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
         .movil-mov-fila .m-monto-neg { color: #c82333; }
         .movil-mov-fila .m-saldo-pos { color: #0d6efd; }
         .movil-mov-fila .m-saldo-neg { color: #c82333; }
+        .movil-mov-fila .m-saldo-ultimo {
+            font-size: 1.1em;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        .movil-mov-fila .m-saldo-ultimo.m-saldo-pos {
+            color: #063d8a;
+        }
+        .movil-mov-fila .m-saldo-ultimo.m-saldo-neg {
+            color: #7f1212;
+        }
         .movil-mov-encab {
             display: grid;
             grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content);
@@ -343,7 +354,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                 </div>
             </section>
             <section class="parte" aria-labelledby="p2">
-                <h2 id="p2"><span class="num" aria-hidden="true">2</span> Parte 2 — Últimos movimientos</h2>
+                <h2 id="p2"><span class="num" aria-hidden="true">2</span> Parte 2 — Últimos 10 movimientos</h2>
                 <div id="parte2Movimientos" class="parte2-movimientos-wrap parte2-vacia" aria-live="polite">
                     <p class="parte2-placeholder" style="margin:0;">Elegí una persona en la parte 1.</p>
                 </div>
@@ -550,14 +561,16 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                     }
                     el.classList.remove('parte2-vacia');
                     var h = '<div class="movil-mov-encab"><span>Fecha</span><span>Concepto</span><span>Monto</span><span>Saldo</span></div>';
-                    movs.forEach(function(m) {
+                    movs.forEach(function(m, idx) {
                         var clsM = (m.monto >= 0) ? 'm-monto-pos' : 'm-monto-neg';
                         var clsS = (m.saldo >= 0) ? 'm-saldo-pos' : 'm-saldo-neg';
+                        var ultimo = idx === movs.length - 1;
+                        var clsSaldo = 'm-saldo ' + clsS + (ultimo ? ' m-saldo-ultimo' : '');
                         h += '<div class="movil-mov-fila">' +
                             '<span class="m-fecha">' + escHtml(m.fecha) + '</span>' +
                             '<span class="m-concepto">' + escHtml(m.concepto) + '</span>' +
                             '<span class="m-monto ' + clsM + '">$ ' + escHtml(fmtMontoCtaCel(m.monto)) + '</span>' +
-                            '<span class="m-saldo ' + clsS + '">$ ' + escHtml(fmtMontoCtaCel(m.saldo)) + '</span>' +
+                            '<span class="' + clsSaldo + '">$ ' + escHtml(fmtMontoCtaCel(m.saldo)) + '</span>' +
                             '</div>';
                     });
                     el.innerHTML = h;
