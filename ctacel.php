@@ -212,6 +212,78 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
         .titulo-estado-cuenta[hidden] {
             display: none !important;
         }
+        .parte2-movimientos-wrap {
+            margin-top: 8px;
+            font-size: calc(0.92rem * 0.65 * 0.75);
+            line-height: 1.2;
+        }
+        .parte2-movimientos-wrap.parte2-vacia {
+            color: var(--muted);
+            font-size: calc(0.88rem * 0.65 * 0.75);
+            padding: 8px 0;
+        }
+        .movil-mov-fila {
+            display: grid;
+            grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content);
+            gap: 4px 6px;
+            align-items: center;
+            padding: 6px 4px;
+            border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+            overflow: hidden;
+            min-height: 1.35em;
+        }
+        .movil-mov-fila:last-child {
+            border-bottom: none;
+        }
+        .movil-mov-fila .m-fecha,
+        .movil-mov-fila .m-concepto {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .movil-mov-fila .m-fecha {
+            font-weight: 600;
+            color: #334155;
+        }
+        .movil-mov-fila .m-concepto {
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        .movil-mov-fila .m-monto, .movil-mov-fila .m-saldo {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            overflow: visible;
+            text-overflow: clip;
+            white-space: nowrap;
+        }
+        .movil-mov-fila .m-monto-pos { color: #198754; }
+        .movil-mov-fila .m-monto-neg { color: #c82333; }
+        .movil-mov-fila .m-saldo-pos { color: #0d6efd; }
+        .movil-mov-fila .m-saldo-neg { color: #c82333; }
+        .movil-mov-encab {
+            display: grid;
+            grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content);
+            gap: 4px 6px;
+            padding: 0 4px 4px;
+            font-weight: 700;
+            font-size: 0.92em;
+            color: var(--muted);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--borde);
+        }
+        .movil-mov-encab span:nth-child(1),
+        .movil-mov-encab span:nth-child(2) {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .movil-mov-encab span:nth-child(3),
+        .movil-mov-encab span:nth-child(4) {
+            overflow: visible;
+            text-overflow: clip;
+            text-align: right;
+            white-space: nowrap;
+        }
         .bar-volver {
             position: fixed;
             right: 12px;
@@ -271,8 +343,10 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                 </div>
             </section>
             <section class="parte" aria-labelledby="p2">
-                <h2 id="p2"><span class="num" aria-hidden="true">2</span> Parte 2</h2>
-                <p class="placeholder">Contenido pendiente.</p>
+                <h2 id="p2"><span class="num" aria-hidden="true">2</span> Parte 2 — Últimos movimientos</h2>
+                <div id="parte2Movimientos" class="parte2-movimientos-wrap parte2-vacia" aria-live="polite">
+                    <p class="parte2-placeholder" style="margin:0;">Elegí una persona en la parte 1.</p>
+                </div>
             </section>
             <section class="parte" aria-labelledby="p3">
                 <h2 id="p3"><span class="num" aria-hidden="true">3</span> Parte 3</h2>
@@ -351,6 +425,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                 } else {
                     lineasCont.classList.add('lineas-inactivas');
                 }
+                limpiarParte2();
                 return;
             }
             tit.textContent = 'Estado de cuenta de : ' + nombreVisible;
@@ -360,6 +435,9 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             }
             lineasCont.classList.add('lineas-ocultas');
             lineasCont.classList.add('lineas-inactivas');
+            if (idPersonaSeleccionadaMovil) {
+                cargarMovimientosParte2(idPersonaSeleccionadaMovil);
+            }
         }
 
         function quitarSeleccionLineas() {
@@ -373,6 +451,111 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                     l.setAttribute('tabindex', '-1');
                 }
             });
+        }
+
+        function escHtml(s) {
+            var d = document.createElement('div');
+            d.textContent = s == null ? '' : String(s);
+            return d.innerHTML;
+        }
+
+        function fmtMontoCtaCel(n) {
+            var x = Number(n);
+            if (isNaN(x)) {
+                x = 0;
+            }
+            return x.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function limpiarParte2() {
+            var el = document.getElementById('parte2Movimientos');
+            if (!el) {
+                return;
+            }
+            el.classList.add('parte2-vacia');
+            el.style.fontSize = '';
+            el.innerHTML = '<p class="parte2-placeholder" style="margin:0;">Elegí una persona en la parte 1.</p>';
+        }
+
+        function ajustarFuenteParte2() {
+            var wrap = document.getElementById('parte2Movimientos');
+            if (!wrap || wrap.classList.contains('parte2-vacia')) {
+                return;
+            }
+            var conceptos = wrap.querySelectorAll('.m-concepto');
+            if (!conceptos.length) {
+                return;
+            }
+            var encConcepto = wrap.querySelector('.movil-mov-encab span:nth-child(2)');
+            var rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+            var start = rootPx * 0.92 * 0.65 * 0.75;
+            var minPx = 6;
+            var px;
+            for (px = start; px >= minPx; px -= 0.5) {
+                wrap.style.fontSize = px + 'px';
+                var ok = true;
+                for (var i = 0; i < conceptos.length; i++) {
+                    if (conceptos[i].scrollWidth > conceptos[i].clientWidth + 1) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok && encConcepto && encConcepto.scrollWidth > encConcepto.clientWidth + 1) {
+                    ok = false;
+                }
+                if (ok) {
+                    break;
+                }
+            }
+        }
+
+        function cargarMovimientosParte2(usuarioId) {
+            var el = document.getElementById('parte2Movimientos');
+            if (!el) {
+                return;
+            }
+            if (!usuarioId) {
+                limpiarParte2();
+                return;
+            }
+            el.classList.remove('parte2-vacia');
+            el.style.fontSize = '';
+            el.innerHTML = '<p style="margin:0;color:#64748b;">Cargando…</p>';
+            fetch('obtener_movimientos_ctacel.php?id=' + encodeURIComponent(String(usuarioId)))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data || !data.ok) {
+                        el.classList.add('parte2-vacia');
+                        el.innerHTML = '<p style="margin:0;">' + escHtml((data && data.msg) || 'Sin datos') + '</p>';
+                        return;
+                    }
+                    var movs = data.movimientos || [];
+                    if (movs.length === 0) {
+                        el.classList.add('parte2-vacia');
+                        el.innerHTML = '<p class="parte2-placeholder" style="margin:0;">Sin movimientos en cuenta.</p>';
+                        return;
+                    }
+                    el.classList.remove('parte2-vacia');
+                    var h = '<div class="movil-mov-encab"><span>Fecha</span><span>Concepto</span><span>Monto</span><span>Saldo</span></div>';
+                    movs.forEach(function(m) {
+                        var clsM = (m.monto >= 0) ? 'm-monto-pos' : 'm-monto-neg';
+                        var clsS = (m.saldo >= 0) ? 'm-saldo-pos' : 'm-saldo-neg';
+                        h += '<div class="movil-mov-fila">' +
+                            '<span class="m-fecha">' + escHtml(m.fecha) + '</span>' +
+                            '<span class="m-concepto">' + escHtml(m.concepto) + '</span>' +
+                            '<span class="m-monto ' + clsM + '">$ ' + escHtml(fmtMontoCtaCel(m.monto)) + '</span>' +
+                            '<span class="m-saldo ' + clsS + '">$ ' + escHtml(fmtMontoCtaCel(m.saldo)) + '</span>' +
+                            '</div>';
+                    });
+                    el.innerHTML = h;
+                    requestAnimationFrame(function() {
+                        requestAnimationFrame(ajustarFuenteParte2);
+                    });
+                })
+                .catch(function() {
+                    el.classList.add('parte2-vacia');
+                    el.innerHTML = '<p style="margin:0;">Error al cargar movimientos.</p>';
+                });
         }
 
         function coincidenTerminos(apellidoUpper, terminos) {
@@ -485,6 +668,12 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                 actualizarTituloEstadoCuenta(line.textContent.trim());
             });
         }
+
+        var resizeParte2Timer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeParte2Timer);
+            resizeParte2Timer = setTimeout(ajustarFuenteParte2, 150);
+        });
 
         var titEstado = document.getElementById('tituloEstadoCuentaMovil');
         if (titEstado) {
