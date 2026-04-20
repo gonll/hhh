@@ -1,6 +1,6 @@
 <?php
 /**
- * Detección de navegador móvil para redirección a formulario_movil.php
+ * Detección de navegador móvil para redirección a ctacel.php
  * Usa Client Hints (Sec-CH-UA-Mobile) cuando el navegador los envía y refuerza con User-Agent.
  */
 function hh_es_user_agent_movil(): bool

@@ -27,7 +27,7 @@
     </form>
     <a href="bajar_bd_servidor.php" id="linkBajarBd" style="background:#495057; color:white; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; text-decoration:none; display:inline-block;">Bajar BD del servidor</a>
     <?php if (defined('ENVIRONMENT') && ENVIRONMENT === 'dev'): ?>
-    <a href="formulario_movil.php" style="background:#6f42c1; color:white; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; text-decoration:none; display:inline-block;">Formulario móvil (prueba)</a>
+    <a href="ctacel.php" style="background:#6f42c1; color:white; padding:8px 12px; border-radius:4px; font-weight:bold; font-size:11px; text-decoration:none; display:inline-block;">CtaCel (prueba)</a>
     <?php endif; ?>
     <script>
     (function () {

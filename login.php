@@ -14,7 +14,7 @@ if (!empty($_SESSION['acceso_id'])) {
         if ($n0 === 0 && stripos($u0, 'zafra') !== false) {
             header('Location: cosecha.php');
         } else {
-            header('Location: formulario_movil.php');
+            header('Location: ctacel.php');
         }
         exit;
     }

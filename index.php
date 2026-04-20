@@ -20,7 +20,7 @@ if (!$forzarEscritorioMovil && hh_es_user_agent_movil()) {
         header('Location: cosecha.php');
         exit;
     }
-    header('Location: formulario_movil.php');
+    header('Location: ctacel.php');
     exit;
 }
 

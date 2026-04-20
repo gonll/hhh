@@ -10,6 +10,13 @@ if (!empty($_GET['debug']) && $_GET['debug'] === '1') {
 
 if (!defined('DESDE_CEL')) define('DESDE_CEL', false);
 $desde_cel = DESDE_CEL;
+if ($desde_cel) {
+    require_once __DIR__ . '/helpers_movil.php';
+    if (empty($_SESSION['vista_escritorio_movil']) && hh_es_user_agent_movil()) {
+        header('Location: ctacel.php');
+        exit;
+    }
+}
 if (!$desde_cel && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=sin_permiso');
     exit;
