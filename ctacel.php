@@ -222,6 +222,58 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             font-size: calc(0.88rem * 0.65 * 0.75);
             padding: 8px 0;
         }
+        .parte3-inquilino-wrap {
+            margin-top: 6px;
+            font-size: calc(0.9rem * 0.65);
+            line-height: 1.45;
+            color: var(--texto);
+        }
+        .parte3-inquilino-wrap.parte3-vacia {
+            color: var(--muted);
+            font-size: calc(0.85rem * 0.65);
+        }
+        .parte3-inquilino-wrap .parte3-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        .parte3-inquilino-wrap .parte3-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .parte3-inquilino-wrap .parte3-item:last-child {
+            border-bottom: none;
+            padding-bottom: 2px;
+        }
+        .parte3-inquilino-wrap .parte3-prop {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            color: #1e3a5f;
+            line-height: 1.3;
+            word-break: break-word;
+            white-space: normal;
+        }
+        .parte3-inquilino-wrap .parte3-venc-label {
+            margin-top: 6px;
+            font-size: 0.92em;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .parte3-inquilino-wrap .parte3-fecha {
+            display: inline-block;
+            margin-top: 2px;
+            font-weight: 800;
+            font-size: 1.08em;
+            color: #0c4a6e;
+        }
+        .parte3-inquilino-wrap .parte3-sin-fecha {
+            display: inline-block;
+            margin-top: 2px;
+            font-style: italic;
+            color: #94a3b8;
+            font-weight: 600;
+        }
         .movil-mov-fila {
             display: grid;
             grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content);
@@ -262,15 +314,17 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
         .movil-mov-fila .m-saldo-pos { color: #0d6efd; }
         .movil-mov-fila .m-saldo-neg { color: #c82333; }
         .movil-mov-fila .m-saldo-ultimo {
-            font-size: 1.1em;
-            font-weight: 800;
+            font-size: 1.2em;
+            font-weight: 900;
             letter-spacing: -0.02em;
         }
         .movil-mov-fila .m-saldo-ultimo.m-saldo-pos {
-            color: #063d8a;
+            color: #004aad;
+            text-shadow: 0 0 0.06em rgba(13, 110, 253, 0.55);
         }
         .movil-mov-fila .m-saldo-ultimo.m-saldo-neg {
-            color: #7f1212;
+            color: #8b1010;
+            text-shadow: 0 0 0.06em rgba(200, 35, 51, 0.45);
         }
         .movil-mov-encab {
             display: grid;
@@ -334,12 +388,12 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
     <div class="wrap">
         <header>
             <h1>CtaCel</h1>
-            <p class="sub">Cuenta desde celular · seis bloques (contenido a definir)</p>
+            <p class="sub">Cuenta desde celular</p>
         </header>
 
         <form class="form-movil" action="#" method="post" onsubmit="return false;">
             <section class="parte" aria-labelledby="p1">
-                <h2 id="p1"><span class="num" aria-hidden="true">1</span> Parte 1 — Personas</h2>
+                <h2 id="p1"><span class="num">1</span> Personas</h2>
                 <div class="bloque-busq-o-titulo">
                     <div class="busq-personas-wrap" id="busqPersonasMovilWrap" role="search" aria-label="Buscar personas">
                         <span class="lupa" aria-hidden="true">🔍</span>
@@ -354,26 +408,16 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                 </div>
             </section>
             <section class="parte" aria-labelledby="p2">
-                <h2 id="p2"><span class="num" aria-hidden="true">2</span> Parte 2 — Últimos 10 movimientos</h2>
+                <h2 id="p2"><span class="num">2</span> Últimos 10 movimientos</h2>
                 <div id="parte2Movimientos" class="parte2-movimientos-wrap parte2-vacia" aria-live="polite">
-                    <p class="parte2-placeholder" style="margin:0;">Elegí una persona en la parte 1.</p>
+                    <p class="parte2-placeholder" style="margin:0;">Elegí una persona arriba.</p>
                 </div>
             </section>
             <section class="parte" aria-labelledby="p3">
-                <h2 id="p3"><span class="num" aria-hidden="true">3</span> Parte 3</h2>
-                <p class="placeholder">Contenido pendiente.</p>
-            </section>
-            <section class="parte" aria-labelledby="p4">
-                <h2 id="p4"><span class="num" aria-hidden="true">4</span> Parte 4</h2>
-                <p class="placeholder">Contenido pendiente.</p>
-            </section>
-            <section class="parte" aria-labelledby="p5">
-                <h2 id="p5"><span class="num" aria-hidden="true">5</span> Parte 5</h2>
-                <p class="placeholder">Contenido pendiente.</p>
-            </section>
-            <section class="parte" aria-labelledby="p6">
-                <h2 id="p6"><span class="num" aria-hidden="true">6</span> Parte 6</h2>
-                <p class="placeholder">Contenido pendiente.</p>
+                <h2 id="p3"><span class="num">3</span> Propiedades alquiladas y vencimiento</h2>
+                <div id="parte3Inquilino" class="parte3-inquilino-wrap parte3-vacia" aria-live="polite">
+                    <p class="parte3-placeholder" style="margin:0;">Elegí una persona arriba.</p>
+                </div>
             </section>
         </form>
     </div>
@@ -437,6 +481,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                     lineasCont.classList.add('lineas-inactivas');
                 }
                 limpiarParte2();
+                limpiarParte3();
                 return;
             }
             tit.textContent = 'Estado de cuenta de : ' + nombreVisible;
@@ -448,6 +493,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             lineasCont.classList.add('lineas-inactivas');
             if (idPersonaSeleccionadaMovil) {
                 cargarMovimientosParte2(idPersonaSeleccionadaMovil);
+                cargarParte3Inquilino(idPersonaSeleccionadaMovil);
             }
         }
 
@@ -485,7 +531,79 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             }
             el.classList.add('parte2-vacia');
             el.style.fontSize = '';
-            el.innerHTML = '<p class="parte2-placeholder" style="margin:0;">Elegí una persona en la parte 1.</p>';
+            el.innerHTML = '<p class="parte2-placeholder" style="margin:0;">Elegí una persona arriba.</p>';
+        }
+
+        function limpiarParte3() {
+            var el = document.getElementById('parte3Inquilino');
+            if (!el) {
+                return;
+            }
+            el.classList.add('parte3-vacia');
+            el.innerHTML = '<p class="parte3-placeholder" style="margin:0;">Elegí una persona arriba.</p>';
+        }
+
+        function cargarParte3Inquilino(usuarioId) {
+            var el = document.getElementById('parte3Inquilino');
+            if (!el) {
+                return;
+            }
+            if (!usuarioId) {
+                limpiarParte3();
+                return;
+            }
+            el.classList.remove('parte3-vacia');
+            el.innerHTML = '<p style="margin:0;color:#64748b;">Cargando…</p>';
+            var urlP3 = new URL('obtener_vencimiento_inquilino_ctacel.php', window.location.href);
+            urlP3.searchParams.set('id', String(usuarioId));
+            fetch(urlP3.href, { credentials: 'same-origin' })
+                .then(function(r) {
+                    return r.text().then(function(text) {
+                        if (!r.ok) {
+                            throw new Error('HTTP ' + r.status);
+                        }
+                        try {
+                            return JSON.parse(text);
+                        } catch (e2) {
+                            throw new Error('no-json');
+                        }
+                    });
+                })
+                .then(function(data) {
+                    if (!data || !data.ok) {
+                        el.classList.add('parte3-vacia');
+                        el.innerHTML = '<p style="margin:0;">' + escHtml((data && data.msg) || 'Sin datos') + '</p>';
+                        return;
+                    }
+                    var txt = (data.texto != null) ? String(data.texto) : '';
+                    var filas = data.filas;
+                    el.classList.toggle('parte3-vacia', !data.es_inquilino);
+                    if (data.es_inquilino && filas && filas.length) {
+                        var h = '<div class="parte3-lista">';
+                        filas.forEach(function(f) {
+                            var nom = (f.propiedad != null) ? String(f.propiedad) : '';
+                            var ven = f.vencimiento ? String(f.vencimiento) : '';
+                            h += '<div class="parte3-item">';
+                            h += '<div class="parte3-prop">' + escHtml(nom) + '</div>';
+                            h += '<div class="parte3-venc-label">Vencimiento</div>';
+                            if (ven) {
+                                h += '<span class="parte3-fecha" aria-label="Fecha de vencimiento">' + escHtml(ven) + '</span>';
+                            } else {
+                                h += '<span class="parte3-sin-fecha">Sin fecha cargada</span>';
+                            }
+                            h += '</div>';
+                        });
+                        h += '</div>';
+                        el.innerHTML = h;
+                    } else {
+                        el.innerHTML = '<p style="margin:0;">' + escHtml(txt || 'No consta como inquilino/a con contrato vigente.') + '</p>';
+                    }
+                })
+                .catch(function(err) {
+                    el.classList.add('parte3-vacia');
+                    var det = (err && err.message) ? String(err.message) : '';
+                    el.innerHTML = '<p style="margin:0;">Error al cargar datos.' + (det ? ' (' + escHtml(det) + ')' : '') + '</p>';
+                });
         }
 
         function ajustarFuenteParte2() {
@@ -527,6 +645,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             }
             if (!usuarioId) {
                 limpiarParte2();
+                limpiarParte3();
                 return;
             }
             el.classList.remove('parte2-vacia');
