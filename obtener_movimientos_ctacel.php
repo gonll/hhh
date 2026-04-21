@@ -16,8 +16,49 @@ function responder_json($payload)
     if (ob_get_length()) {
         ob_clean();
     }
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+    $flags = JSON_UNESCAPED_UNICODE;
+    if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+        $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+    }
+    $json = json_encode($payload, $flags);
+    if ($json === false) {
+        $payload = normalizar_utf8_recursivo($payload);
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+    }
+    if ($json === false) {
+        $json = '{"ok":false,"msg":"Error al generar JSON de respuesta."}';
+    }
+    echo $json;
     exit;
+}
+
+function normalizar_utf8_recursivo($valor)
+{
+    if (is_array($valor)) {
+        foreach ($valor as $k => $v) {
+            $valor[$k] = normalizar_utf8_recursivo($v);
+        }
+        return $valor;
+    }
+    if (!is_string($valor)) {
+        return $valor;
+    }
+    if (preg_match('//u', $valor)) {
+        return $valor;
+    }
+    if (function_exists('mb_convert_encoding')) {
+        $c = @mb_convert_encoding($valor, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+        if (is_string($c) && $c !== '') {
+            return $c;
+        }
+    }
+    if (function_exists('iconv')) {
+        $c = @iconv('Windows-1252', 'UTF-8//IGNORE', $valor);
+        if (is_string($c) && $c !== '') {
+            return $c;
+        }
+    }
+    return utf8_encode($valor);
 }
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
