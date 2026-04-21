@@ -25,7 +25,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>CtaCel</title>
+    <title>Estados de cuentas</title>
     <style>
         :root {
             --fondo: #f0f4f8;
@@ -59,15 +59,9 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
         h1 {
             font-size: 1.15rem;
             font-weight: 700;
-            margin: 0 0 4px;
+            margin: 0 0 12px;
             text-align: center;
             color: var(--texto);
-        }
-        .sub {
-            text-align: center;
-            font-size: 0.8rem;
-            color: var(--muted);
-            margin: 0 0 8px;
         }
         .parte {
             background: var(--tarjeta);
@@ -489,8 +483,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
 <body>
     <div class="wrap">
         <header>
-            <h1>CtaCel</h1>
-            <p class="sub">Cuenta desde celular</p>
+            <h1>Estados de cuentas</h1>
         </header>
 
         <form class="form-movil" action="#" method="post" onsubmit="return false;">
