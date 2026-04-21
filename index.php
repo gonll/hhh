@@ -331,7 +331,7 @@ if ($nivelAcceso === 3) {
     </style>
 </head>
 <body>
-    <?php if ((defined('ENVIRONMENT') && ENVIRONMENT === 'dev') || $esUsuarioSofia): ?>
+    <?php if (defined('ENVIRONMENT') && ENVIRONMENT === 'dev'): ?>
     <nav class="deploy-navbar"><?php include 'controlDeploy.php'; ?></nav>
     <?php endif; ?>
 

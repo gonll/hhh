@@ -3,7 +3,7 @@
  * Ámbito inmobiliario (columna acceso_creador_id en usuarios/propiedades; índices IPC por ámbito).
  *
  * Regla de negocio:
- * - Con sesión "sofia": solo registros cargados en su ámbito → acceso_creador_id = id de la fila
+ * - Con sesión "sofia" o "sofiacel" (móvil): mismo ámbito de datos → acceso_creador_id = id de la fila
  *   `accesos` donde usuario = 'sofia'. No se listan ni cuentas/propiedades del sistema principal (NULL).
  * - Con cualquier otro usuario de acceso: solo datos del sistema principal → acceso_creador_id IS NULL.
  *   No se ven los registros del ámbito Sofía (acceso_creador_id = id de sofia).
@@ -12,6 +12,16 @@
  * Caja central: en principal es el usuario id 1; en ámbito Sofía es otra fila `CAJA CENTRAL` con acceso_creador_id = Sofía (ver tenant_inmob_id_usuario_caja_central).
  * Si no existe usuario 'sofia' en `accesos`, no se aplica filtro (compatibilidad con bases antiguas).
  */
+
+if (!function_exists('tenant_inmob_usuario_es_cuenta_ambito_sofia')) {
+    /** Usuario de acceso que ve el mismo universo de datos que Sofía (BGH). */
+    function tenant_inmob_usuario_es_cuenta_ambito_sofia(string $usuario_acceso): bool
+    {
+        $u = trim($usuario_acceso);
+
+        return strcasecmp($u, 'sofia') === 0 || strcasecmp($u, 'sofiacel') === 0;
+    }
+}
 
 if (!function_exists('tenant_inmob_es_sofia')) {
     /**
@@ -38,7 +48,7 @@ if (!function_exists('tenant_inmob_es_sofia')) {
             return;
         }
         $u = trim((string) ($row['usuario'] ?? ''));
-        $_SESSION['tenant_es_sofia'] = (strcasecmp($u, 'sofia') === 0) ? 1 : 0;
+        $_SESSION['tenant_es_sofia'] = tenant_inmob_usuario_es_cuenta_ambito_sofia($u) ? 1 : 0;
     }
 
     function tenant_inmob_es_sofia(): bool
@@ -48,7 +58,7 @@ if (!function_exists('tenant_inmob_es_sofia')) {
         }
         $u = trim((string) ($_SESSION['acceso_usuario'] ?? ''));
 
-        return strcasecmp($u, 'sofia') === 0;
+        return tenant_inmob_usuario_es_cuenta_ambito_sofia($u);
     }
 
     /**
@@ -204,6 +214,12 @@ if (!function_exists('tenant_inmob_es_sofia')) {
     function tenant_inmob_id_acceso_sofia_efectivo($conexion): int
     {
         if (tenant_inmob_es_sofia()) {
+            $usuSes = trim((string) ($_SESSION['acceso_usuario'] ?? ''));
+            if (strcasecmp($usuSes, 'sofiacel') === 0) {
+                $sidBd = tenant_inmob_id_acceso_sofia_bd($conexion);
+
+                return $sidBd > 0 ? $sidBd : 0;
+            }
             $sess = (int) ($_SESSION['acceso_id'] ?? 0);
             if ($sess > 0) {
                 return $sess;
@@ -540,6 +556,11 @@ if (!function_exists('tenant_inmob_es_sofia')) {
             'borrar_todos_liq_expensas.php',
             'buscar_personas.php',
             'usuario_servicios_observ_api.php',
+            'ctacel.php',
+            'obtener_movimientos_ctacel.php',
+            'obtener_vencimiento_inquilino_ctacel.php',
+            'resumen_cuentas.php',
+            'descargar_resumen_cuentas.php',
         ];
     }
 

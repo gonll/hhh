@@ -1,8 +1,11 @@
 <?php
 /**
- * Control de deploy – solo se carga cuando ENVIRONMENT=dev (include desde index.php).
- * Top navbar: botones Subir código y Subir base de datos.
+ * Control de deploy – solo en PC de desarrollo (ENVIRONMENT=dev en .env).
+ * En servidor de producción no debe mostrarse ni incluirse (index.php solo incluye si dev).
  */
+if (!defined('ENVIRONMENT') || ENVIRONMENT !== 'dev') {
+    return;
+}
 ?>
 <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 12px; background: #e9ecef; border-radius: 4px; border: 1px solid #dee2e6;">
     <?php if (isset($_GET['deploy'])) {
