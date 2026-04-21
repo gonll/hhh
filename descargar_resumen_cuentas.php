@@ -1,8 +1,12 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+tenant_inmob_asegurar_esquema($conexion);
 
 date_default_timezone_set('America/Argentina/Buenos_Aires');
+
+$tw_p = tenant_inmob_sql_propiedades($conexion, 'p');
 
 $sql = "SELECT p.propiedad, p.consorcio, p.propietario_id, COALESCE(p.porcentaje, 0) AS porcentaje,
         prop.apellido AS nombre_propietario,
@@ -18,6 +22,7 @@ $sql = "SELECT p.propiedad, p.consorcio, p.propietario_id, COALESCE(p.porcentaje
         LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
         LEFT JOIN usuarios u ON a.inquilino1_id = u.id
         LEFT JOIN usuarios u2 ON a.inquilino2_id = u2.id
+        WHERE ($tw_p)
         ORDER BY p.consorcio ASC, p.propiedad ASC";
 $resultado = mysqli_query($conexion, $sql);
 

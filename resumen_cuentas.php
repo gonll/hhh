@@ -7,7 +7,9 @@ $id_caja_central = tenant_inmob_id_usuario_caja_central($conexion);
 
 date_default_timezone_set('America/Argentina/Buenos_Aires');
 
-// Obtener todas las propiedades con porcentaje, inquilino/propietario y saldos
+$tw_p = tenant_inmob_sql_propiedades($conexion, 'p');
+
+// Obtener propiedades del ámbito actual (Sofía: acceso_creador_id de ese tenant; principal: NULL)
 $sql = "SELECT p.propiedad_id, p.propiedad, p.consorcio, p.propietario_id, COALESCE(p.porcentaje, 0) AS porcentaje,
         prop.apellido AS nombre_propietario,
         u.apellido AS nombre_inquilino,
@@ -22,6 +24,7 @@ $sql = "SELECT p.propiedad_id, p.propiedad, p.consorcio, p.propietario_id, COALE
         LEFT JOIN alquileres a ON a.propiedad_id = p.propiedad_id AND a.estado = 'VIGENTE'
         LEFT JOIN usuarios u ON a.inquilino1_id = u.id
         LEFT JOIN usuarios u2 ON a.inquilino2_id = u2.id
+        WHERE ($tw_p)
         ORDER BY p.consorcio ASC, p.propiedad ASC";
 $resultado = mysqli_query($conexion, $sql);
 
