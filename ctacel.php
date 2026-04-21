@@ -630,6 +630,25 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             return x.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        function parseJsonResiliente(textoPlano) {
+            var t = String(textoPlano == null ? '' : textoPlano).replace(/^\uFEFF/, '').trim();
+            if (!t) {
+                throw new Error('respuesta-vacia');
+            }
+            try {
+                return JSON.parse(t);
+            } catch (e1) {}
+            var iniObj = t.indexOf('{');
+            var finObj = t.lastIndexOf('}');
+            if (iniObj >= 0 && finObj > iniObj) {
+                try {
+                    return JSON.parse(t.slice(iniObj, finObj + 1));
+                } catch (e2) {}
+            }
+            var muestra = t.slice(0, 120).replace(/\s+/g, ' ');
+            throw new Error('no-json: ' + muestra);
+        }
+
         function limpiarParte2() {
             var el = document.getElementById('parte2Movimientos');
             if (!el) {
@@ -668,11 +687,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                         if (!r.ok) {
                             throw new Error('HTTP ' + r.status);
                         }
-                        try {
-                            return JSON.parse(text);
-                        } catch (e2) {
-                            throw new Error('no-json');
-                        }
+                        return parseJsonResiliente(text);
                     });
                 })
                 .then(function(data) {
