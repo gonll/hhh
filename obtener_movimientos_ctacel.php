@@ -11,7 +11,7 @@ if (ob_get_length()) {
     ob_clean();
 }
 
-function responder_json(array $payload): void
+function responder_json($payload)
 {
     if (ob_get_length()) {
         ob_clean();
