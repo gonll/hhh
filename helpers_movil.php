@@ -1,6 +1,6 @@
 <?php
 /**
- * Detección de navegador móvil para redirección a ctacel.php
+ * Detección de navegador móvil para redirección (CtaCel, Partes desde cel o escritorio según usuario).
  * Usa Client Hints (Sec-CH-UA-Mobile) cuando el navegador los envía y refuerza con User-Agent.
  */
 function hh_es_user_agent_movil(): bool
@@ -25,11 +25,26 @@ function hh_es_user_agent_movil(): bool
 
 /**
  * Acceso que desde celular debe abrir el index principal (escritorio), no CtaCel.
- * Usuario acordado: adminhugo. El resto de cuentas móviles (p. ej. "celular") van a CtaCel.
+ * - adminhugo: escritorio completo.
+ * - sofia (exacto, no sofiacel): mismo índice principal con límites de ámbito Sofía (tenant_inmob_*).
+ * - sofiacel: false → va a CtaCel con datos de Sofía.
+ * El resto de cuentas móviles (p. ej. "celular") van a CtaCel.
  */
 function hh_movil_ir_escritorio_desde_acceso(?string $usuario_acceso = null): bool
 {
     $u = trim((string) ($usuario_acceso ?? ($_SESSION['acceso_usuario'] ?? '')));
 
-    return strcasecmp($u, 'adminhugo') === 0;
+    if (strcasecmp($u, 'adminhugo') === 0) {
+        return true;
+    }
+
+    return strcasecmp($u, 'sofia') === 0;
+}
+
+/** Acceso que desde celular debe abrir Partes desde cel (gestión finca móvil), no CtaCel. */
+function hh_movil_ir_partes_desde_cel(?string $usuario_acceso = null): bool
+{
+    $u = trim((string) ($usuario_acceso ?? ($_SESSION['acceso_usuario'] ?? '')));
+
+    return strcasecmp($u, 'enrique') === 0;
 }

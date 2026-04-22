@@ -13,8 +13,10 @@ $desde_cel = DESDE_CEL;
 if ($desde_cel) {
     require_once __DIR__ . '/helpers_movil.php';
     if (empty($_SESSION['vista_escritorio_movil']) && hh_es_user_agent_movil()) {
-        header('Location: ctacel.php');
-        exit;
+        if (!hh_movil_ir_partes_desde_cel()) {
+            header('Location: ctacel.php');
+            exit;
+        }
     }
 }
 if (!$desde_cel && isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] < 2) {

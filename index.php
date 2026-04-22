@@ -20,6 +20,10 @@ if (!$forzarEscritorioMovil && hh_es_user_agent_movil()) {
         header('Location: cosecha.php');
         exit;
     }
+    if (hh_movil_ir_partes_desde_cel($usuarioPre)) {
+        header('Location: partes_desde_cel.php');
+        exit;
+    }
     if (!hh_movil_ir_escritorio_desde_acceso($usuarioPre)) {
         header('Location: ctacel.php');
         exit;
