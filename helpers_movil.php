@@ -22,3 +22,14 @@ function hh_es_user_agent_movil(): bool
         $ua
     );
 }
+
+/**
+ * Acceso que desde celular debe abrir el index principal (escritorio), no CtaCel.
+ * Usuario acordado: adminhugo. El resto de cuentas móviles (p. ej. "celular") van a CtaCel.
+ */
+function hh_movil_ir_escritorio_desde_acceso(?string $usuario_acceso = null): bool
+{
+    $u = trim((string) ($usuario_acceso ?? ($_SESSION['acceso_usuario'] ?? '')));
+
+    return strcasecmp($u, 'adminhugo') === 0;
+}

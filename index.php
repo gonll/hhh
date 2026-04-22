@@ -20,8 +20,10 @@ if (!$forzarEscritorioMovil && hh_es_user_agent_movil()) {
         header('Location: cosecha.php');
         exit;
     }
-    header('Location: ctacel.php');
-    exit;
+    if (!hh_movil_ir_escritorio_desde_acceso($usuarioPre)) {
+        header('Location: ctacel.php');
+        exit;
+    }
 }
 
 require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';

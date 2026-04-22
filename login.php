@@ -13,6 +13,9 @@ if (!empty($_SESSION['acceso_id'])) {
         $n0 = (int) ($_SESSION['acceso_nivel'] ?? 0);
         if ($n0 === 0 && stripos($u0, 'zafra') !== false) {
             header('Location: cosecha.php');
+        } elseif (hh_movil_ir_escritorio_desde_acceso($u0)) {
+            $_SESSION['vista_escritorio_movil'] = 1;
+            header('Location: index.php');
         } else {
             header('Location: ctacel.php');
         }

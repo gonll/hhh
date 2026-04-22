@@ -94,6 +94,11 @@ if ($nivel === 0 && stripos($usuario, 'zafra') !== false) {
 
 require_once __DIR__ . '/helpers_movil.php';
 if (empty($_SESSION['vista_escritorio_movil']) && hh_es_user_agent_movil()) {
+    if (hh_movil_ir_escritorio_desde_acceso($usuario)) {
+        $_SESSION['vista_escritorio_movil'] = 1;
+        header('Location: index.php');
+        exit;
+    }
     header('Location: ctacel.php');
     exit;
 }
