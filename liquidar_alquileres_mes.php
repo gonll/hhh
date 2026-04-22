@@ -42,17 +42,27 @@ while ($c = mysqli_fetch_assoc($contratos)) {
     $concepto_base  = 'ALQUILER - ' . $nombre_prop;
     $concepto_act   = 'ALQUILER ACTUALIZADO - ' . strtoupper($nombre_prop);
     $fi_esc = mysqli_real_escape_string($conexion, $fecha_inicio);
+    $ts_inicio  = strtotime($fecha_inicio);
+    if ($ts_inicio === false) {
+        continue;
+    }
+    $primer_mes_contrato = date('Y-m-01', $ts_inicio);
+    // No generar alquiler de meses anteriores al inicio (ej. contrato con inicio 01/05 no debe imputar 04/2026)
+    if ($primer_dia < $primer_mes_contrato) {
+        continue;
+    }
 
     // Ya liquidado este mes si existe movimiento ALQUILER de ESTE contrato (desde fecha_inicio)
     $concepto_base_esc = mysqli_real_escape_string($conexion, $concepto_base);
     $concepto_act_esc  = mysqli_real_escape_string($conexion, $concepto_act);
+    $primer_dia_esc = mysqli_real_escape_string($conexion, $primer_dia);
     $existe = mysqli_query($conexion,
         "SELECT 1 FROM cuentas 
          WHERE usuario_id = $inquilino_id 
            AND comprobante = 'ALQUILER' 
            AND referencia = '$mes_actual'
            AND (concepto = '$concepto_base_esc' OR concepto = '$concepto_act_esc')
-           AND fecha >= '$fi_esc'
+           AND (fecha >= '$fi_esc' OR fecha = '$primer_dia_esc')
          LIMIT 1"
     );
     if ($existe && mysqli_num_rows($existe) > 0) continue;
@@ -71,7 +81,6 @@ while ($c = mysqli_fetch_assoc($contratos)) {
     );
     if ($existe_liq && mysqli_num_rows($existe_liq) > 0) continue;
 
-    $ts_inicio  = strtotime($fecha_inicio);
     $anio_inicio  = (int)date('Y', $ts_inicio);
     $mes_inicio   = (int)date('m', $ts_inicio);
     $meses_desde_inicio = ($anio_actual - $anio_inicio) * 12 + ($mes_num_actual - $mes_inicio);
