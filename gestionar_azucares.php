@@ -1292,8 +1292,10 @@ function fmtNum($n) {
                 <div class="botones">
                     <button type="button" class="btn-guardar-venta" id="btnNuevoCobroOperacion" style="display:none;">Nuevo cobro</button>
                     <button type="button" class="btn-guardar-venta" id="btnLeerPdfEcheq" style="display:none;">Leer PDF ECheq</button>
+                    <button type="button" class="btn-guardar-venta" id="btnLeerPdfRetGan" style="display:none;" title="Retención Impuesto a las Ganancias">Leer PDF ret. Ganancias</button>
                     <button type="button" class="btn-guardar-venta" id="btnPegarPago" style="display:none;">Pegar Pago</button>
                     <input type="file" id="inputPdfEcheq" accept=".pdf,application/pdf" style="display:none;">
+                    <input type="file" id="inputPdfRetGan" accept=".pdf,application/pdf" style="display:none;">
                     <button type="button" class="btn-cerrar-venta" onclick="cerrarModalMovimientosOperacion()">Cerrar</button>
                 </div>
             </div>
@@ -2323,10 +2325,12 @@ function fmtNum($n) {
                 var usuarioId = match ? parseInt(match[1]) : null;
                 var btnNuevoCobro = document.getElementById('btnNuevoCobroOperacion');
                 var btnLeerPdf = document.getElementById('btnLeerPdfEcheq');
+                var btnLeerPdfRetGan = document.getElementById('btnLeerPdfRetGan');
                 var formCobro = document.getElementById('formNuevoCobroOperacion');
                 if (btnNuevoCobro && usuarioId) {
                     btnNuevoCobro.style.display = 'inline-block';
                     if (btnLeerPdf) btnLeerPdf.style.display = 'inline-block';
+                    if (btnLeerPdfRetGan) btnLeerPdfRetGan.style.display = 'inline-block';
                     var btnPegarPago = document.getElementById('btnPegarPago');
                     if (btnPegarPago) btnPegarPago.style.display = 'inline-block';
                     // Guardar datos de la operación para usar en el formulario
@@ -2362,6 +2366,8 @@ function fmtNum($n) {
                 } else {
                     if (btnNuevoCobro) btnNuevoCobro.style.display = 'none';
                     if (btnLeerPdf) btnLeerPdf.style.display = 'none';
+                    var btnRetG = document.getElementById('btnLeerPdfRetGan');
+                    if (btnRetG) btnRetG.style.display = 'none';
                     var btnPegarP = document.getElementById('btnPegarPago');
                     if (btnPegarP) btnPegarP.style.display = 'none';
                 }
@@ -2684,6 +2690,62 @@ function fmtNum($n) {
                     .catch(function(err) {
                         btnLeerPdfEcheq.disabled = false;
                         btnLeerPdfEcheq.textContent = 'Leer PDF ECheq';
+                        alert('Error: ' + (err.message || 'No se pudo procesar el PDF'));
+                    });
+            });
+        }
+        // Botón Leer PDF retención Ganancias
+        var btnLeerPdfRetGan = document.getElementById('btnLeerPdfRetGan');
+        var inputPdfRetGan = document.getElementById('inputPdfRetGan');
+        if (btnLeerPdfRetGan && inputPdfRetGan) {
+            btnLeerPdfRetGan.addEventListener('click', function() {
+                inputPdfRetGan.value = '';
+                inputPdfRetGan.click();
+            });
+            inputPdfRetGan.addEventListener('change', function() {
+                var file = this.files[0];
+                if (!file || file.type !== 'application/pdf') {
+                    alert('Seleccione un archivo PDF.');
+                    return;
+                }
+                var formData = new FormData();
+                formData.append('pdf', file);
+                btnLeerPdfRetGan.disabled = true;
+                btnLeerPdfRetGan.textContent = 'Leyendo...';
+                fetch('extraer_retencion_ganancias_pdf.php', { method: 'POST', body: formData })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        btnLeerPdfRetGan.disabled = false;
+                        btnLeerPdfRetGan.textContent = 'Leer PDF ret. Ganancias';
+                        if (!data.ok) {
+                            alert(data.error || 'Error al leer el PDF');
+                            return;
+                        }
+                        var formCobroEl = document.getElementById('formNuevoCobroOperacion');
+                        var btnNuevo = document.getElementById('btnNuevoCobroOperacion');
+                        if (formCobroEl && btnNuevo && btnNuevo.dataset.usuarioId && btnNuevo.dataset.operacion) {
+                            formCobroEl.style.display = 'block';
+                            document.getElementById('cobro_usuario_id').value = btnNuevo.dataset.usuarioId;
+                            document.getElementById('cobro_operacion').value = btnNuevo.dataset.operacion;
+                            document.getElementById('cobro_fecha').value = new Date().toISOString().split('T')[0];
+                            document.getElementById('cobro_concepto').value = data.concepto_sugerido || ('COBRO VTA AZUCAR: RET. IMP. GANANCIAS' + (data.nro_certificado ? ' Cert. N° ' + data.nro_certificado : ''));
+                            document.getElementById('cobro_comprobante').value = 'BOLETA';
+                            document.getElementById('cobro_referencia').value = 'OP N° ' + btnNuevo.dataset.operacion;
+                            document.getElementById('cobro_monto').value = (data.monto != null && data.monto !== '') ? data.monto : '';
+                            document.getElementById('msgCobroOperacion').style.display = 'none';
+                            formCobroEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            setTimeout(function() {
+                                var montoEl = document.getElementById('cobro_monto');
+                                if (data.monto) montoEl.focus();
+                                else document.getElementById('cobro_concepto').focus();
+                            }, 50);
+                        } else {
+                            alert('Abra primero una operación con movimientos.');
+                        }
+                    })
+                    .catch(function(err) {
+                        btnLeerPdfRetGan.disabled = false;
+                        btnLeerPdfRetGan.textContent = 'Leer PDF ret. Ganancias';
                         alert('Error: ' + (err.message || 'No se pudo procesar el PDF'));
                     });
             });
