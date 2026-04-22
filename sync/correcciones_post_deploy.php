@@ -54,19 +54,36 @@ function ejecutar_correcciones_deploy($conexion) {
     }
 
     // --- Duplicados TERAN JORGE: alquiler 04/2026 a -490000 (bug liquidación con fecha_inicio 2026-05-01) ---
-    $ap_teran = mysqli_real_escape_string($conexion, 'TERAN JORGE LUIS');
-    $ref_teran = '04/2026';
-    mysqli_query($conexion,
-        "DELETE c FROM cuentas c
+    $ref_teran = mysqli_real_escape_string($conexion, '04/2026');
+    $pre = mysqli_query($conexion,
+        "SELECT COUNT(*) AS n FROM cuentas c
          INNER JOIN usuarios u ON u.id = c.usuario_id
-         WHERE u.apellido = '$ap_teran'
-           AND c.comprobante = 'ALQUILER'
+         WHERE c.comprobante = 'ALQUILER'
            AND c.referencia = '$ref_teran'
-           AND c.monto = -490000.00"
+           AND ABS(c.monto + 490000) < 0.01
+           AND LOWER(u.apellido) LIKE '%teran%'
+           AND LOWER(u.apellido) LIKE '%jorge%'"
     );
-    $n_borrados_teran = (int) mysqli_affected_rows($conexion);
-    if ($n_borrados_teran > 0) {
-        $correcciones_aplicadas[] = "TERAN JORGE LUIS: eliminados $n_borrados_teran movimiento(s) erróneos ALQUILER 04/2026 (-490000, duplicado pre-inicio contrato).";
+    $n_pre = 0;
+    if ($pre && $rowp = mysqli_fetch_assoc($pre)) {
+        $n_pre = (int) $rowp['n'];
+    }
+    if ($n_pre > 0) {
+        mysqli_query($conexion,
+            "DELETE c FROM cuentas c
+             INNER JOIN usuarios u ON u.id = c.usuario_id
+             WHERE c.comprobante = 'ALQUILER'
+               AND c.referencia = '$ref_teran'
+               AND ABS(c.monto + 490000) < 0.01
+               AND LOWER(u.apellido) LIKE '%teran%'
+               AND LOWER(u.apellido) LIKE '%jorge%'"
+        );
+        $n_borrados_teran = (int) mysqli_affected_rows($conexion);
+        if ($n_borrados_teran > 0) {
+            $correcciones_aplicadas[] = "TERAN/JORGE: eliminados $n_borrados_teran movimiento(s) erróneos ALQUILER 04/2026 (-490000, duplicado pre-inicio contrato).";
+        } elseif ($n_pre > 0) {
+            $errores[] = "TERAN: se detectaron $n_pre fila(s) pero el DELETE no eliminó (revisar permisos o motor).";
+        }
     }
 
     return ['aplicadas' => $correcciones_aplicadas, 'errores' => $errores];
