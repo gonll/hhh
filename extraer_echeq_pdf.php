@@ -44,12 +44,16 @@ try {
     exit;
 }
 
+require_once __DIR__ . '/includes/extraer_echeq_fecha_pago.php';
+
 // Extraer datos con regex (ajustar patrones según formato real del PDF)
 $resultado = [
     'ok' => true,
     'monto' => null,
     'emisor' => null,
     'cuit' => null,
+    'fecha_emision' => null,
+    'fecha_cobro' => null,
     'fecha_pago' => null,
     'nro_echeq' => null,
     'concepto_sugerido' => null
@@ -72,10 +76,10 @@ if (preg_match('/\$\s*([\d.,]+)/', $texto, $m)) {
     $resultado['monto'] = (float)preg_replace('/[^\d.]/', '', $s) ?: null;
 }
 
-// Fecha: dd/mm/yyyy o dd-mm-yyyy
-if (preg_match('/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/', $texto, $m)) {
-    $resultado['fecha_pago'] = sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
-}
+$fechas = extraer_fechas_echeq_desde_texto($texto);
+$resultado['fecha_emision'] = $fechas['emision'];
+$resultado['fecha_cobro'] = $fechas['cobro'];
+$resultado['fecha_pago'] = $fechas['cobro'];
 
 // Número echeq: buscar patrones como "N° 12345", "Número: 12345", "ECHEQ 12345"
 if (preg_match('/(?:echeq|n[°º]|nro\.?|número|numero)\s*:?\s*(\d{4,})/i', $texto, $m)) {
@@ -120,17 +124,13 @@ if (!empty($resultado['emisor'])) {
     $resultado['emisor'] = trim($resultado['emisor']);
 }
 
-// Concepto sugerido: COBRO VTA AZUCAR: emisor CUIT, N° echeq [número], Fecha Cobro [fecha]
-$partes = [];
-if ($resultado['emisor'] || $resultado['cuit']) {
-    $emisorCuit = trim(($resultado['emisor'] ?? '') . ($resultado['cuit'] ? ' ' . $resultado['cuit'] : ''));
-    if ($emisorCuit) $partes[] = $emisorCuit;
-}
-if ($resultado['nro_echeq']) $partes[] = 'N° echeq ' . $resultado['nro_echeq'];
-if ($resultado['fecha_pago']) {
-    $f = explode('-', $resultado['fecha_pago']);
-    $partes[] = 'Fecha Cobro ' . $f[2] . '/' . $f[1] . '/' . $f[0];
-}
-$resultado['concepto_sugerido'] = 'COBRO VTA AZUCAR: ' . implode(', ', $partes);
+$resultado['concepto_sugerido'] = echeq_armar_concepto_azucar(
+    'COBRO VTA AZUCAR: ',
+    $resultado['emisor'] ?? null,
+    $resultado['cuit'] ?? null,
+    $resultado['nro_echeq'] ?? null,
+    $fechas['emision'],
+    $fechas['cobro']
+);
 
 echo json_encode($resultado);

@@ -1258,13 +1258,13 @@ function fmtNum($n) {
                         <input type="hidden" id="cobro_usuario_id" value="">
                         <input type="hidden" id="cobro_operacion" value="">
                         <div class="form-g">
-                            <label for="cobro_fecha" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Fecha</label>
+                            <label for="cobro_fecha" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Fecha de cobro</label>
                             <input type="date" id="cobro_fecha" required style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
                         </div>
                         <div class="form-g">
                             <label for="cobro_concepto" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Concepto</label>
                             <input type="text" id="cobro_concepto" value="COBRO VTA AZUCAR: " required style="width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; box-sizing: border-box;" tabindex="1">
-                            <span class="hint-concepto-cobro" style="display: block; margin-top: 4px; font-size: 10px; color: #999;">pegar emisor cheq, N° echeq, y fecha cobro</span>
+                            <span class="hint-concepto-cobro" style="display: block; margin-top: 4px; font-size: 10px; color: #999;">incluir emisor, n° echeq, fecha de emisión y de cobro (o leer PDF: cobro=fecha al grabar; emisión=concepto)</span>
                         </div>
                         <div class="form-g">
                             <label for="cobro_comprobante" style="display: block; margin-bottom: 4px; font-weight: bold; font-size: 11px;">Comprobante</label>
@@ -2341,7 +2341,7 @@ function fmtNum($n) {
                             document.getElementById('cobro_comprobante').value = 'CHEQUE/ECHEQ';
                             var datosFoto = window.datosFotoPagoPendientes;
                             if (datosFoto) {
-                                document.getElementById('cobro_fecha').value = datosFoto.fecha_pago || new Date().toISOString().split('T')[0];
+                                document.getElementById('cobro_fecha').value = (datosFoto.fecha_cobro || datosFoto.fecha_pago) || new Date().toISOString().split('T')[0];
                                 document.getElementById('cobro_concepto').value = datosFoto.concepto_sugerido || 'COBRO VTA AZUCAR: ';
                                 document.getElementById('cobro_monto').value = datosFoto.monto || '';
                                 window.datosFotoPagoPendientes = null;
@@ -2665,7 +2665,7 @@ function fmtNum($n) {
                             formCobroEl.style.display = 'block';
                             document.getElementById('cobro_usuario_id').value = btnNuevo.dataset.usuarioId;
                             document.getElementById('cobro_operacion').value = btnNuevo.dataset.operacion;
-                            document.getElementById('cobro_fecha').value = data.fecha_pago || new Date().toISOString().split('T')[0];
+                            document.getElementById('cobro_fecha').value = (data.fecha_cobro || data.fecha_pago) || new Date().toISOString().split('T')[0];
                             document.getElementById('cobro_concepto').value = data.concepto_sugerido || 'COBRO VTA AZUCAR: ';
                             document.getElementById('cobro_comprobante').value = 'CHEQUE/ECHEQ';
                             document.getElementById('cobro_referencia').value = 'OP N° ' + btnNuevo.dataset.operacion;
@@ -2710,7 +2710,7 @@ function fmtNum($n) {
             formCobroEl.style.display = 'block';
             document.getElementById('cobro_usuario_id').value = btnNuevo.dataset.usuarioId;
             document.getElementById('cobro_operacion').value = btnNuevo.dataset.operacion;
-            document.getElementById('cobro_fecha').value = data.fecha_pago || new Date().toISOString().split('T')[0];
+            document.getElementById('cobro_fecha').value = (data.fecha_cobro || data.fecha_pago) || new Date().toISOString().split('T')[0];
             document.getElementById('cobro_concepto').value = data.concepto_sugerido || 'COBRO VTA AZUCAR: ';
             document.getElementById('cobro_comprobante').value = 'CHEQUE/ECHEQ';
             document.getElementById('cobro_referencia').value = 'OP N° ' + btnNuevo.dataset.operacion;
@@ -2885,7 +2885,8 @@ function fmtNum($n) {
                                     if (data.emisor) html += '<strong>Emisor:</strong> ' + data.emisor + '<br>';
                                     if (data.cuit) html += '<strong>CUIT:</strong> ' + data.cuit + '<br>';
                                     if (data.concepto_sugerido) html += '<strong>Concepto:</strong> ' + data.concepto_sugerido + '<br>';
-                                    if (data.fecha_pago) html += '<strong>Fecha pago:</strong> ' + data.fecha_pago + '<br>';
+                                    if (data.fecha_emision) html += '<strong>Fecha de emisión (en concepto):</strong> ' + data.fecha_emision + '<br>';
+                                    if (data.fecha_cobro || data.fecha_pago) html += '<strong>Fecha de cobro (a grabar):</strong> ' + (data.fecha_cobro || data.fecha_pago) + '<br>';
                                     if (data.nro_echeq) html += '<strong>N° Echeq:</strong> ' + data.nro_echeq + '<br>';
                                     if (resumenFotoPago) resumenFotoPago.innerHTML = html || 'Datos extraídos.';
                                     if (modalFotoPago) modalFotoPago.classList.add('activo');
