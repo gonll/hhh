@@ -69,11 +69,18 @@ $nivelAcceso = (int)($_SESSION['acceso_nivel'] ?? 0);
 $soloLectura = ($nivelAcceso < 2);
 $esUsuarioSofia = tenant_inmob_es_sofia();
 $mostrar_btn_serv_observ = usuario_servicios_observ_sesion_operador_autorizado();
-// Nivel 0: usuario zafra → Cosecha; resto → Partes desde cel
+// Nivel 0: usuario zafra → Cosecha; silvana → sistema principal (index); resto → Partes desde cel
 if ($nivelAcceso === 0) {
-    $usuario = (string)($_SESSION['acceso_usuario'] ?? '');
-    header('Location: ' . (stripos($usuario, 'zafra') !== false ? 'cosecha.php' : 'partes_desde_cel.php'));
-    exit;
+    $usuario = (string) ($_SESSION['acceso_usuario'] ?? '');
+    if (function_exists('tenant_inmob_usuario_es_silvana_principal') && tenant_inmob_usuario_es_silvana_principal($usuario)) {
+        // continuar en index.php (Hugo)
+    } elseif (stripos($usuario, 'zafra') !== false) {
+        header('Location: cosecha.php');
+        exit;
+    } else {
+        header('Location: partes_desde_cel.php');
+        exit;
+    }
 }
 // Usuarios para modal Ant/cel (nivel 3): todos excepto CAJA CENTRAL
 $usuarios_anticipo = [];

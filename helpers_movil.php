@@ -26,6 +26,7 @@ function hh_es_user_agent_movil(): bool
 /**
  * Acceso que desde celular debe abrir el index principal (escritorio), no CtaCel.
  * - adminhugo: escritorio completo.
+ * - silvana: índice principal (sistema Hugo), celular o PC.
  * - sofia (exacto, no sofiacel): mismo índice principal con límites de ámbito Sofía (tenant_inmob_*).
  * - sofiacel: false → va a CtaCel con datos de Sofía.
  * El resto de cuentas móviles (p. ej. "celular") van a CtaCel.
@@ -35,6 +36,9 @@ function hh_movil_ir_escritorio_desde_acceso(?string $usuario_acceso = null): bo
     $u = trim((string) ($usuario_acceso ?? ($_SESSION['acceso_usuario'] ?? '')));
 
     if (strcasecmp($u, 'adminhugo') === 0) {
+        return true;
+    }
+    if (strcasecmp($u, 'silvana') === 0) {
         return true;
     }
 

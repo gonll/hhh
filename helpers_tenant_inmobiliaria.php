@@ -23,6 +23,14 @@ if (!function_exists('tenant_inmob_usuario_es_cuenta_ambito_sofia')) {
     }
 }
 
+if (!function_exists('tenant_inmob_usuario_es_silvana_principal')) {
+    /** Acceso Silvana: siempre sistema principal (Hugo), nunca ámbito Sofía. */
+    function tenant_inmob_usuario_es_silvana_principal(string $usuario_acceso): bool
+    {
+        return strcasecmp(trim($usuario_acceso), 'silvana') === 0;
+    }
+}
+
 if (!function_exists('tenant_inmob_es_sofia')) {
     /**
      * Marca si el acceso actual es ámbito Sofía (fila accesos por id de sesión; más fiable que solo el nombre en sesión).
@@ -48,6 +56,11 @@ if (!function_exists('tenant_inmob_es_sofia')) {
             return;
         }
         $u = trim((string) ($row['usuario'] ?? ''));
+        if (tenant_inmob_usuario_es_silvana_principal($u)) {
+            $_SESSION['tenant_es_sofia'] = 0;
+
+            return;
+        }
         $_SESSION['tenant_es_sofia'] = tenant_inmob_usuario_es_cuenta_ambito_sofia($u) ? 1 : 0;
     }
 
@@ -57,6 +70,9 @@ if (!function_exists('tenant_inmob_es_sofia')) {
             return (int) $_SESSION['tenant_es_sofia'] === 1;
         }
         $u = trim((string) ($_SESSION['acceso_usuario'] ?? ''));
+        if (tenant_inmob_usuario_es_silvana_principal($u)) {
+            return false;
+        }
 
         return tenant_inmob_usuario_es_cuenta_ambito_sofia($u);
     }
