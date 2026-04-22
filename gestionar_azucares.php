@@ -1294,9 +1294,38 @@ function fmtNum($n) {
                     <button type="button" class="btn-guardar-venta" id="btnLeerPdfEcheq" style="display:none;">Leer PDF ECheq</button>
                     <button type="button" class="btn-guardar-venta" id="btnLeerPdfRetGan" style="display:none;" title="Retención Impuesto a las Ganancias">Leer PDF ret. Ganancias</button>
                     <button type="button" class="btn-guardar-venta" id="btnPegarPago" style="display:none;">Pegar Pago</button>
+                    <button type="button" class="btn-guardar-venta" id="btnTraspasoEntreOperaciones" style="display:none;" title="Pasar cobro de esta operación a otra (mismo comprador)">Traspaso a otra OP</button>
                     <input type="file" id="inputPdfEcheq" accept=".pdf,application/pdf" style="display:none;">
                     <input type="file" id="inputPdfRetGan" accept=".pdf,application/pdf" style="display:none;">
                     <button type="button" class="btn-cerrar-venta" onclick="cerrarModalMovimientosOperacion()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+        <!-- Traspaso de saldo entre operaciones (mismo usuario en cuentas) -->
+        <div id="modalTraspasoOperacion" class="modal-venta-overlay" onclick="if(event.target===this) cerrarModalTraspasoOperacion()">
+            <div class="modal-venta" onclick="event.stopPropagation()" style="max-width: 420px;">
+                <h4 style="margin: 0 0 10px 0; color: #0d47a1;">Traspaso entre operaciones</h4>
+                <p style="font-size: 11px; color: #555; margin: 0 0 12px 0;">Se registra un movimiento en la <strong>operación actual (origen)</strong> y otro en la <strong>operación destino</strong>, mismo comprador. No afecta caja.</p>
+                <div style="margin-bottom: 10px;">
+                    <span style="font-size: 11px; color: #666;">Saco de operación: </span>
+                    <strong id="traspOperOrigen">—</strong>
+                </div>
+                <div class="form-g" style="margin-bottom: 10px;">
+                    <label for="traspOperDestino" style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px;">Operación destino (n°)</label>
+                    <input type="number" id="traspOperDestino" min="1" step="1" required style="width: 100%; padding: 8px; box-sizing: border-box; font-size: 13px; border: 1px solid #ced4da; border-radius: 4px;" placeholder="Ej: 25">
+                </div>
+                <div class="form-g" style="margin-bottom: 10px;">
+                    <label for="traspMonto" style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px;">Monto a trasladar</label>
+                    <input type="number" id="traspMonto" min="0.01" step="0.01" required style="width: 100%; padding: 8px; box-sizing: border-box; font-size: 13px; border: 1px solid #ced4da; border-radius: 4px;" placeholder="0,00">
+                </div>
+                <div class="form-g" style="margin-bottom: 12px;">
+                    <label for="traspFecha" style="display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px;">Fecha</label>
+                    <input type="date" id="traspFecha" required style="width: 100%; padding: 8px; box-sizing: border-box; font-size: 13px; border: 1px solid #ced4da; border-radius: 4px;">
+                </div>
+                <div id="msgTraspasoOperacion" style="display:none; margin-bottom: 10px; padding: 8px; border-radius: 4px; font-size: 12px;"></div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button type="button" class="btn-cerrar-venta" onclick="cerrarModalTraspasoOperacion()">Cancelar</button>
+                    <button type="button" class="btn-guardar-venta" id="btnConfirmarTraspasoOperacion">Confirmar traspaso</button>
                 </div>
             </div>
         </div>
@@ -2326,11 +2355,17 @@ function fmtNum($n) {
                 var btnNuevoCobro = document.getElementById('btnNuevoCobroOperacion');
                 var btnLeerPdf = document.getElementById('btnLeerPdfEcheq');
                 var btnLeerPdfRetGan = document.getElementById('btnLeerPdfRetGan');
+                var btnTraspasoOp = document.getElementById('btnTraspasoEntreOperaciones');
                 var formCobro = document.getElementById('formNuevoCobroOperacion');
                 if (btnNuevoCobro && usuarioId) {
                     btnNuevoCobro.style.display = 'inline-block';
                     if (btnLeerPdf) btnLeerPdf.style.display = 'inline-block';
                     if (btnLeerPdfRetGan) btnLeerPdfRetGan.style.display = 'inline-block';
+                    if (btnTraspasoOp) {
+                        btnTraspasoOp.style.display = 'inline-block';
+                        btnTraspasoOp.dataset.usuarioId = String(usuarioId);
+                        btnTraspasoOp.dataset.operacionOrigen = String(operacion);
+                    }
                     var btnPegarPago = document.getElementById('btnPegarPago');
                     if (btnPegarPago) btnPegarPago.style.display = 'inline-block';
                     // Guardar datos de la operación para usar en el formulario
@@ -2368,6 +2403,8 @@ function fmtNum($n) {
                     if (btnLeerPdf) btnLeerPdf.style.display = 'none';
                     var btnRetG = document.getElementById('btnLeerPdfRetGan');
                     if (btnRetG) btnRetG.style.display = 'none';
+                    var btnTrO = document.getElementById('btnTraspasoEntreOperaciones');
+                    if (btnTrO) btnTrO.style.display = 'none';
                     var btnPegarP = document.getElementById('btnPegarPago');
                     if (btnPegarP) btnPegarP.style.display = 'none';
                 }
@@ -2379,6 +2416,9 @@ function fmtNum($n) {
 
     function cerrarModalMovimientosOperacion() {
         document.getElementById('modalMovimientosOperacion').classList.remove('activo');
+        if (typeof window.cerrarModalTraspasoOperacion === 'function') {
+            window.cerrarModalTraspasoOperacion();
+        }
         // Ocultar formulario de cobro si está visible
         var formCobro = document.getElementById('formNuevoCobroOperacion');
         if (formCobro) {
@@ -2747,6 +2787,93 @@ function fmtNum($n) {
                         btnLeerPdfRetGan.disabled = false;
                         btnLeerPdfRetGan.textContent = 'Leer PDF ret. Ganancias';
                         alert('Error: ' + (err.message || 'No se pudo procesar el PDF'));
+                    });
+            });
+        }
+        function cerrarModalTraspasoOperacion() {
+            var m = document.getElementById('modalTraspasoOperacion');
+            if (m) m.classList.remove('activo');
+            var msg = document.getElementById('msgTraspasoOperacion');
+            if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+        }
+        window.cerrarModalTraspasoOperacion = cerrarModalTraspasoOperacion;
+        var btnTraspasoEntreOperaciones = document.getElementById('btnTraspasoEntreOperaciones');
+        var btnConfirmarTraspaso = document.getElementById('btnConfirmarTraspasoOperacion');
+        if (btnTraspasoEntreOperaciones) {
+            btnTraspasoEntreOperaciones.addEventListener('click', function() {
+                var u = this.dataset.usuarioId;
+                var o = this.dataset.operacionOrigen;
+                if (!u || !o) {
+                    alert('Abra movimientos de pago de una operación con comprador asignado.');
+                    return;
+                }
+                document.getElementById('traspOperOrigen').textContent = 'OP N° ' + o;
+                document.getElementById('traspOperDestino').value = '';
+                document.getElementById('traspMonto').value = '';
+                document.getElementById('traspFecha').value = new Date().toISOString().split('T')[0];
+                var msgE = document.getElementById('msgTraspasoOperacion');
+                if (msgE) { msgE.style.display = 'none'; msgE.textContent = ''; }
+                document.getElementById('modalTraspasoOperacion').classList.add('activo');
+            });
+        }
+        if (btnConfirmarTraspaso) {
+            btnConfirmarTraspaso.addEventListener('click', function() {
+                var btn = document.getElementById('btnTraspasoEntreOperaciones');
+                if (!btn || !btn.dataset.usuarioId || !btn.dataset.operacionOrigen) {
+                    alert('Datos de operación no disponibles.');
+                    return;
+                }
+                var dest = parseInt(document.getElementById('traspOperDestino').value, 10) || 0;
+                var monto = parseFloat(String(document.getElementById('traspMonto').value).replace(',', '.')) || 0;
+                var fecha = document.getElementById('traspFecha').value;
+                var msgE = document.getElementById('msgTraspasoOperacion');
+                if (dest < 1) {
+                    if (msgE) { msgE.textContent = 'Indique n° de operación destino.'; msgE.style.display = 'block'; msgE.style.background = '#f8d7da'; msgE.style.color = '#721c24'; }
+                    return;
+                }
+                if (parseInt(btn.dataset.operacionOrigen, 10) === dest) {
+                    if (msgE) { msgE.textContent = 'La operación destino debe ser distinta a la origen.'; msgE.style.display = 'block'; msgE.style.background = '#f8d7da'; msgE.style.color = '#721c24'; }
+                    return;
+                }
+                if (monto <= 0) {
+                    if (msgE) { msgE.textContent = 'Indique un monto mayor a cero.'; msgE.style.display = 'block'; msgE.style.background = '#f8d7da'; msgE.style.color = '#721c24'; }
+                    return;
+                }
+                if (!fecha) {
+                    if (msgE) { msgE.textContent = 'Indique la fecha.'; msgE.style.display = 'block'; msgE.style.background = '#f8d7da'; msgE.style.color = '#721c24'; }
+                    return;
+                }
+                var fd = new FormData();
+                fd.append('usuario_id', btn.dataset.usuarioId);
+                fd.append('operacion_origen', btn.dataset.operacionOrigen);
+                fd.append('operacion_destino', String(dest));
+                fd.append('monto', String(monto));
+                fd.append('fecha', fecha);
+                btnConfirmarTraspaso.disabled = true;
+                fetch('traspaso_operacion_azucar.php', { method: 'POST', body: fd })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        btnConfirmarTraspaso.disabled = false;
+                        if (data && data.ok) {
+                            cerrarModalTraspasoOperacion();
+                            abrirModalMovimientosOperacion(btn.dataset.operacionOrigen);
+                        } else {
+                            if (msgE) {
+                                msgE.textContent = (data && data.error) ? data.error : 'Error al grabar.';
+                                msgE.style.display = 'block';
+                                msgE.style.background = '#f8d7da';
+                                msgE.style.color = '#721c24';
+                            }
+                        }
+                    })
+                    .catch(function() {
+                        btnConfirmarTraspaso.disabled = false;
+                        if (msgE) {
+                            msgE.textContent = 'Error de conexión.';
+                            msgE.style.display = 'block';
+                            msgE.style.background = '#f8d7da';
+                            msgE.style.color = '#721c24';
+                        }
                     });
             });
         }
