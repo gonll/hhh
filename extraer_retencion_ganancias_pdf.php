@@ -2,6 +2,7 @@
 /**
  * Extrae monto y número de certificado desde PDF de retención Impuesto a las Ganancias (SICORE/AFIP o similar).
  * Requiere: composer require smalot/pdfparser
+ * El n° de certificado no se agrega al concepto sugerido (solo monto + texto fijo).
  */
 header('Content-Type: application/json; charset=utf-8');
 
@@ -54,9 +55,26 @@ $resultado = [
 $t = $texto;
 $tNorm = preg_replace('/\s+/u', ' ', $t);
 
-// --- Número de certificado / comprobante (SICORE, recibos AFIP, etc.) ---
+function parseMontoAr(string $s): ?float
+{
+    $s = trim($s);
+    if ($s === '') {
+        return null;
+    }
+    if (strpos($s, ',') !== false && strpos($s, '.') !== false) {
+        $s = str_replace('.', '', $s);
+        $s = str_replace(',', '.', $s);
+    } elseif (strpos($s, ',') !== false) {
+        $s = str_replace(',', '.', $s);
+    }
+
+    $v = (float) preg_replace('/[^\d.]/', '', $s);
+
+    return $v > 0 ? $v : null;
+}
+
+// --- Número de certificado (para referencia/JSON, no se pone en concepto) ---
 $reCert = [
-    // "Certificado N° 12.345" / "N° de certificado: 12345" / "Comprobante de Retención Nº"
     '/(?:n[°º]?\s*(?:de\s*)?certificado|certificado\s*n[°º]|comprobante\s*(?:de\s*retenc[ií]on|n[°º])|c[oó]digo\s*de?\s*comprobante|n[°º]\s*comprobante|sicore)\s*[:#]?\s*([\d\.\-]{4,32})/iu',
     '/certificado[^0-9\n]{0,30}(\d{8,20})/iu',
     '/retenci[oó]n[^0-9\n]{0,50}(?:n[°º]?\s*)?([0-9][\d\.\-]{5,20}\d)/iu',
@@ -70,7 +88,6 @@ foreach ($reCert as $re) {
         }
     }
 }
-// Sin etiqueta: número largo entre 10 y 20 dígitos cerca de "GANANCIAS" o "RETEN"
 if (empty($resultado['nro_certificado']) && preg_match_all('/\b(\d{10,20})\b/u', $t, $all)) {
     $posG = stripos($t, 'retenc') !== false ? stripos($t, 'retenc') : 0;
     $best = null;
@@ -93,25 +110,7 @@ if (empty($resultado['nro_certificado']) && preg_match_all('/\b(\d{10,20})\b/u',
     }
 }
 
-// --- Monto: importe retenido / retención / $ ---
-function parseMontoAr(string $s): ?float
-{
-    $s = trim($s);
-    if ($s === '') {
-        return null;
-    }
-    if (strpos($s, ',') !== false && strpos($s, '.') !== false) {
-        $s = str_replace('.', '', $s);
-        $s = str_replace(',', '.', $s);
-    } elseif (strpos($s, ',') !== false) {
-        $s = str_replace(',', '.', $s);
-    }
-
-    $v = (float) preg_replace('/[^\d.]/', '', $s);
-
-    return $v > 0 ? $v : null;
-}
-
+// --- Monto: mismo criterio que la primera versión (sí capturaba el importe) ---
 $reMonto = [
     '/(?:importe\s*(?:de\s*la\s*)?retenc|monto\s*reten|total\s*retenc|retenc[ií]on\s*(?:\(|de)?\s*gananc|impuesto\s*reten|importe)\s*[^$0-9\n]{0,15}\$?\s*([\d\.,]+)/iu',
     '/\$?\s*([\d]{1,3}(?:\.\d{3})+,\d{2})\b/u',
@@ -139,11 +138,8 @@ if ($resultado['monto'] === null && preg_match_all('/\$\s*([\d\.,]+)/', $t, $mm)
     }
 }
 
-// Concepto
+// Concepto: sin n° de certificado (solo retención + importe si hay monto)
 $partes = ['COBRO VTA AZUCAR: RET. IMP. GANANCIAS'];
-if ($resultado['nro_certificado']) {
-    $partes[] = 'Cert. N° ' . $resultado['nro_certificado'];
-}
 if ($resultado['monto'] !== null) {
     $partes[] = 'Importe retenido $' . number_format($resultado['monto'], 2, ',', '.');
 }
