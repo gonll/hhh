@@ -335,7 +335,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $tractor_default = 'Horas Comunes';
 if (!empty($_SESSION['pdt_ultimo_tractor'])) {
     $tr = $_SESSION['pdt_ultimo_tractor'];
-    if ($tr === 'Horas Comunes' || in_array($tr, ['John Deere 200 hp', 'John Deere 110 hp', 'New Holland TM150', 'New Holland 7630', 'Massey Ferguson 1165'])) {
+    if ($tr === 'New Holland TM150') {
+        $tr = 'T7.195/4CPAT';
+    }
+    if ($tr === 'Horas Comunes' || in_array($tr, ['John Deere 200 hp', 'John Deere 110 hp', 'T7.195/4CPAT', 'New Holland 7630', 'Massey Ferguson 1165'], true)) {
         $tractor_default = $tr;
     }
 }
@@ -441,23 +444,30 @@ if ($r_cargas) {
 }
 
 // Por tractor: horas y gasoil desde último cambio de aceite
-$tractores_lista = array('John Deere 200 hp', 'John Deere 110 hp', 'New Holland TM150', 'New Holland 7630', 'Massey Ferguson 1165');
+$tractores_lista = array('John Deere 200 hp', 'John Deere 110 hp', 'T7.195/4CPAT', 'New Holland 7630', 'Massey Ferguson 1165');
 $tractor_desde_cambio = array();
+$nh150_esc = mysqli_real_escape_string($conexion, 'New Holland TM150');
 foreach ($tractores_lista as $tr) {
-    $tr_esc = mysqli_real_escape_string($conexion, $tr);
-    $ultimo = mysqli_query($conexion, "SELECT id, fecha FROM pdt WHERE tractor = '$tr_esc' AND cambio_aceite = 1 ORDER BY fecha DESC, id DESC LIMIT 1");
+    if ($tr === 'T7.195/4CPAT') {
+        $t7_esc = mysqli_real_escape_string($conexion, 'T7.195/4CPAT');
+        $where_tr = "(tractor = '$t7_esc' OR tractor = '$nh150_esc')";
+    } else {
+        $tr_esc = mysqli_real_escape_string($conexion, $tr);
+        $where_tr = "tractor = '$tr_esc'";
+    }
+    $ultimo = mysqli_query($conexion, "SELECT id, fecha FROM pdt WHERE $where_tr AND cambio_aceite = 1 ORDER BY fecha DESC, id DESC LIMIT 1");
     $horas = 0;
     $gasoil = 0;
     if ($ultimo && $row_ult = mysqli_fetch_assoc($ultimo)) {
         $id_ult = (int)$row_ult['id'];
         $fecha_ult = mysqli_real_escape_string($conexion, $row_ult['fecha']);
-        $suma = mysqli_query($conexion, "SELECT COALESCE(SUM(horas),0) AS h, COALESCE(SUM(cant_gasoil),0) AS g FROM pdt WHERE tractor = '$tr_esc' AND (fecha > '$fecha_ult' OR (fecha = '$fecha_ult' AND id > $id_ult))");
+        $suma = mysqli_query($conexion, "SELECT COALESCE(SUM(horas),0) AS h, COALESCE(SUM(cant_gasoil),0) AS g FROM pdt WHERE $where_tr AND (fecha > '$fecha_ult' OR (fecha = '$fecha_ult' AND id > $id_ult))");
         if ($suma && $s = mysqli_fetch_assoc($suma)) {
             $horas = (float)$s['h'];
             $gasoil = (float)$s['g'];
         }
     } else {
-        $suma = mysqli_query($conexion, "SELECT COALESCE(SUM(horas),0) AS h, COALESCE(SUM(cant_gasoil),0) AS g FROM pdt WHERE tractor = '$tr_esc'");
+        $suma = mysqli_query($conexion, "SELECT COALESCE(SUM(horas),0) AS h, COALESCE(SUM(cant_gasoil),0) AS g FROM pdt WHERE $where_tr");
         if ($suma && $s = mysqli_fetch_assoc($suma)) {
             $horas = (float)$s['h'];
             $gasoil = (float)$s['g'];
@@ -902,8 +912,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                             </option>
                         </optgroup>
                         <optgroup label="New Holland">
-                            <option class="tractor-nh" value="New Holland TM150" <?= (($pdt_edit && ($pdt_edit['tractor'] ?? '') === 'New Holland TM150') || (!$pdt_edit && $tractor_default === 'New Holland TM150')) ? 'selected' : '' ?>>
-                                🚜 New Holland TM150
+                            <option class="tractor-nh" value="T7.195/4CPAT" <?= (($pdt_edit && in_array(($pdt_edit['tractor'] ?? ''), ['T7.195/4CPAT', 'New Holland TM150'], true)) || (!$pdt_edit && $tractor_default === 'T7.195/4CPAT')) ? 'selected' : '' ?>>
+                                🚜 T7.195/4CPAT
                             </option>
                             <option class="tractor-nh" value="New Holland 7630" <?= (($pdt_edit && ($pdt_edit['tractor'] ?? '') === 'New Holland 7630') || (!$pdt_edit && $tractor_default === 'New Holland 7630')) ? 'selected' : '' ?>>
                                 🚜 New Holland 7630
@@ -1392,7 +1402,9 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         const serverTractor = <?= json_encode($tractor_default) ?>;
                         const v = JSON.parse(localStorage.getItem('pdt_ultimos_valores') || '{}');
                         // Priorizar valor del servidor (sesión) sobre localStorage para que tras guardar se mantenga
-                        tractorSelect.value = serverTractor || (v.tractor || 'Horas Comunes');
+                        let trSel = serverTractor || (v.tractor || 'Horas Comunes');
+                        if (trSel === 'New Holland TM150') trSel = 'T7.195/4CPAT';
+                        tractorSelect.value = trSel;
                         if (fechaInput && v.fecha) fechaInput.value = v.fecha;
                     } catch (e) {}
                 }
@@ -1428,8 +1440,10 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                         // Cargar valores guardados si existen (solo al cambiar, no al cargar inicial)
                         <?php if (!$pdt_edit): ?>
                         const valoresGuardados = JSON.parse(localStorage.getItem('pdt_ultimos_valores') || '{}');
-                        if (valoresGuardados.tractor && !tractorSelect.value) {
-                            tractorSelect.value = valoresGuardados.tractor;
+                        let tgv = valoresGuardados.tractor;
+                        if (tgv === 'New Holland TM150') tgv = 'T7.195/4CPAT';
+                        if (tgv && !tractorSelect.value) {
+                            tractorSelect.value = tgv;
                         }
                         <?php endif; ?>
                         if (typeof actualizarTractorDesdeCambioAceite === 'function') actualizarTractorDesdeCambioAceite();
