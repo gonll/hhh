@@ -21,6 +21,7 @@ if ($padron_max <= 0) {
 }
 
 $id        = (int)$_POST['propiedad_id'];
+$propietario_id = (int)($_POST['propietario_id'] ?? 0);
 $propiedad = trim($_POST['propiedad'] ?? '');
 $ciudad    = trim($_POST['ciudad'] ?? '');
 $consorcio = trim($_POST['consorcio'] ?? '');
@@ -49,7 +50,7 @@ if (isset($_POST['mapa_lng']) && trim((string)$_POST['mapa_lng']) !== '') {
 $mapa_enlace_raw = trim($_POST['mapa_enlace'] ?? '');
 $mapa_enlace = $mapa_enlace_raw === '' ? null : $mapa_enlace_raw;
 
-if ($id <= 0 || $propiedad === '') {
+if ($id <= 0 || $propiedad === '' || $propietario_id <= 0) {
     header('Location: propiedades.php');
     exit;
 }
@@ -58,6 +59,10 @@ require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
 tenant_inmob_asegurar_esquema($conexion);
 if (!tenant_inmob_propiedad_id_visible($conexion, $id)) {
     header('Location: propiedades.php?msg=sin_permiso');
+    exit;
+}
+if (!tenant_inmob_usuario_id_visible($conexion, $propietario_id)) {
+    header('Location: editar_propiedad.php?id=' . $id . '&error=1');
     exit;
 }
 
@@ -86,6 +91,7 @@ $mapa_enlace_param = $mapa_enlace;
 $stmt = null;
 if ($tiene_media) {
     $sql = "UPDATE propiedades SET 
+            propietario_id = ?,
             propiedad = ?, 
             ciudad = ?, 
             consorcio = ?, 
@@ -101,7 +107,8 @@ if ($tiene_media) {
     if ($stmt) {
         mysqli_stmt_bind_param(
             $stmt,
-            'sssdsssddsi',
+            'isssdsssddsi',
+            $propietario_id,
             $propiedad,
             $ciudad_param,
             $consorcio,
@@ -117,6 +124,7 @@ if ($tiene_media) {
     }
 } else {
     $sql = "UPDATE propiedades SET 
+            propietario_id = ?,
             propiedad = ?, 
             ciudad = ?, 
             consorcio = ?, 
@@ -129,7 +137,8 @@ if ($tiene_media) {
     if ($stmt) {
         mysqli_stmt_bind_param(
             $stmt,
-            'sssdsssi',
+            'isssdsssi',
+            $propietario_id,
             $propiedad,
             $ciudad_param,
             $consorcio,

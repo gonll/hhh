@@ -27,6 +27,14 @@ if (!tenant_inmob_propiedad_id_visible($conexion, $id)) {
     header('Location: propiedades.php?msg=sin_permiso');
     exit;
 }
+$propietario_nombre = '';
+if (!empty($prop['propietario_id'])) {
+    $pid = (int)$prop['propietario_id'];
+    $rprop = mysqli_query($conexion, "SELECT apellido FROM usuarios WHERE id = $pid LIMIT 1");
+    if ($rprop && $rowp = mysqli_fetch_assoc($rprop)) {
+        $propietario_nombre = (string)($rowp['apellido'] ?? '');
+    }
+}
 $fotos_existentes = propiedades_fotos_unificadas($id, $prop['fotos_json'] ?? null);
 $diskMap = propiedades_leer_mapa_disco($id);
 $val_lat = isset($prop['mapa_lat']) && $prop['mapa_lat'] !== null && $prop['mapa_lat'] !== '' ? (string)$prop['mapa_lat'] : '';
@@ -66,6 +74,12 @@ if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
         .fila-doble > div { flex: 0 0 100px; }
         .fila-doble label { margin: 6px 0 3px; }
         .fila-doble input { width: 100%; }
+        .buscador-contenedor { position: relative; }
+        .buscador-contenedor input[type="text"] { padding-right: 36px; }
+        .buscador-contenedor .ico-lupa { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #6c757d; font-size: 1rem; }
+        .sugerencias { position: absolute; width: 100%; background: white; border: 1px solid #ddd; z-index: 100; max-height: 120px; overflow-y: auto; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .sugerencia-item { padding: 6px; cursor: pointer; font-size: 11px; border-bottom: 1px solid #eee; text-transform: uppercase; }
+        .sugerencia-item:hover { background: #e7f3ff; }
         .btn-detalle { background: #17a2b8; color: white; padding: 4px 7px; font-size: 9px; margin: 0; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; line-height: 1.2; }
         .btn-detalle:hover { background: #138496; }
         .carga-rapida { margin-bottom: 6px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 5px 6px; max-width: 100%; }
@@ -115,6 +129,16 @@ if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
         
         <label>Propiedad</label>
         <input type="text" name="propiedad" value="<?= htmlspecialchars($prop['propiedad']) ?>" required autofocus>
+
+        <div class="buscador-contenedor">
+            <label>Propietario *</label>
+            <div style="position: relative; display: block;">
+                <input type="text" id="bus_propietario" placeholder="Buscar y elegir propietario..." onkeyup="buscarPropietario(this.value)" onfocus="buscarPropietario(this.value)" autocomplete="off" value="<?= htmlspecialchars($propietario_nombre, ENT_QUOTES, 'UTF-8') ?>">
+                <span class="ico-lupa" aria-hidden="true" title="Buscar">🔍</span>
+            </div>
+            <input type="hidden" name="propietario_id" id="propietario_id" value="<?= (int)($prop['propietario_id'] ?? 0) ?>">
+            <div id="sug_propietario" class="sugerencias"></div>
+        </div>
 
         <label>Ciudad</label>
         <input type="text" name="ciudad" value="<?= htmlspecialchars($prop['ciudad'] ?? '') ?>" placeholder="Ej: S. M. DE TUCUMAN">
@@ -200,6 +224,30 @@ if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
 </div>
 
 <script>
+function buscarPropietario(q) {
+    var lista = document.getElementById('sug_propietario');
+    if (q.length < 2) { lista.style.display = 'none'; return; }
+    fetch('buscar_personas.php?q=' + encodeURIComponent(q)).then(function(r) { return r.json(); }).then(function(data) {
+        lista.innerHTML = '';
+        if (data.length > 0) {
+            lista.style.display = 'block';
+            data.forEach(function(p) {
+                var div = document.createElement('div');
+                div.className = 'sugerencia-item';
+                div.innerText = p.apellido;
+                div.onclick = function() {
+                    document.getElementById('propietario_id').value = p.id;
+                    document.getElementById('bus_propietario').value = p.apellido;
+                    lista.style.display = 'none';
+                };
+                lista.appendChild(div);
+            });
+        } else {
+            lista.style.display = 'none';
+        }
+    });
+}
+
 function extraerCoordsDeEnlaceMaps() {
     var raw = (document.getElementById('mapa_enlace').value || '').trim();
     var lat = null, lng = null;
@@ -249,6 +297,14 @@ window.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         history.back();
+    }
+});
+
+document.querySelector('form.form-nav-enter').addEventListener('submit', function(e) {
+    if (!document.getElementById('propietario_id').value) {
+        e.preventDefault();
+        alert('Seleccione un propietario (busque y elija de la lista).');
+        document.getElementById('bus_propietario').focus();
     }
 });
 </script>
