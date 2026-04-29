@@ -372,6 +372,34 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
     
     <script>
     var BASE_HREF_IMPRESION = <?= json_encode($base_href_impresion, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+    /* Alto útil ~ A4 (297mm) − márgenes @page (20mm); coincide con .expensa-page-a4 en CSS impresión */
+    var EXPENSA_MAX_ALTO_MM = 272;
+
+    function pxToMm(px) {
+        return px * (25.4 / 96);
+    }
+
+    function aplicarEscalaUnaHojaA4(cont) {
+        if (!cont) return;
+        cont.style.zoom = '';
+        cont.style.transform = '';
+        cont.style.transformOrigin = '';
+        cont.style.marginBottom = '';
+        var altoPx = cont.scrollHeight;
+        if (altoPx < 1) return;
+        var altoMm = pxToMm(altoPx);
+        if (altoMm <= EXPENSA_MAX_ALTO_MM) return;
+        var escala = EXPENSA_MAX_ALTO_MM / altoMm;
+        if (escala >= 1) return;
+        cont.style.transformOrigin = 'top left';
+        if ('zoom' in cont.style && window.CSS && !/firefox/i.test(navigator.userAgent)) {
+            cont.style.zoom = String(escala);
+        } else {
+            cont.style.transform = 'scale(' + escala + ')';
+            var nuevoAltoPx = altoPx * escala;
+            cont.style.marginBottom = '-' + (altoPx - nuevoAltoPx) + 'px';
+        }
+    }
 
     function imprimirExpensa(idx) {
         var expensa = document.getElementById('expensa-' + idx);
@@ -404,7 +432,7 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
         html += '<base href="' + String(BASE_HREF_IMPRESION).replace(/"/g, '&quot;') + '">';
         html += '<title>Expensa - ' + safeTitle + '</title>';
         html += '<style>';
-        html += '@media print { body { margin: 0; padding: 10px; } @page { size: A4; margin: 18mm 10mm 10mm 10mm; } .expensa-container { transform-origin: top center; } }';
+        html += '@media print { html, body { margin: 0 !important; padding: 0 !important; height: auto; overflow: hidden !important; } @page { size: A4 portrait; margin: 10mm; } .expensa-container { transform-origin: top left; page-break-inside: avoid; } }';
         html += 'body { font-family: Arial, sans-serif; margin: 15px; }';
         html += '.expensa-container { padding: 12px; border: 2px solid #007bff; border-radius: 6px; }';
         html += '.expensa-header { text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #007bff; }';
@@ -445,19 +473,7 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
 
         function aplicarEscalaYImprimir() {
             var cont = doc.querySelector('.expensa-container');
-            if (cont) {
-                var altoPx = cont.scrollHeight;
-                var altoMm = altoPx * 0.264583;
-                if (altoMm > 270) {
-                    var escala = 270 / altoMm;
-                    cont.style.transformOrigin = 'top center';
-                    if ('zoom' in cont.style) {
-                        cont.style.zoom = escala;
-                    } else {
-                        cont.style.transform = 'scale(' + escala + ')';
-                    }
-                }
-            }
+            aplicarEscalaUnaHojaA4(cont);
             try {
                 win.focus();
                 win.print();
@@ -470,7 +486,6 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
             }
         }
 
-        // Un microtask + rAF basta para layout; evita setTimeout largo que rompe la impresión en algunos navegadores
         queueMicrotask(function() {
             requestAnimationFrame(function() {
                 requestAnimationFrame(aplicarEscalaYImprimir);
@@ -501,7 +516,12 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
     window.addEventListener('beforeprint', ajustarExpensasParaImpresion);
     window.addEventListener('afterprint', function() {
         var conts = document.querySelectorAll('.expensa-container');
-        for (var i = 0; i < conts.length; i++) { conts[i].style.zoom = ''; conts[i].style.transform = ''; }
+        for (var i = 0; i < conts.length; i++) {
+            conts[i].style.zoom = '';
+            conts[i].style.transform = '';
+            conts[i].style.transformOrigin = '';
+            conts[i].style.marginBottom = '';
+        }
     });
     
     window.addEventListener('load', function() {
@@ -516,23 +536,10 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
     });
     
     function ajustarExpensasParaImpresion() {
-        var altoMaximoMm = 270;
         var paginas = document.querySelectorAll('.expensa-page');
         for (var i = 0; i < paginas.length; i++) {
             var cont = paginas[i].querySelector('.expensa-container');
-            if (!cont) continue;
-            cont.style.zoom = '';
-            cont.style.transform = '';
-            var altoPx = cont.scrollHeight;
-            var altoMm = altoPx * 0.264583;
-            if (altoMm > altoMaximoMm) {
-                var escala = altoMaximoMm / altoMm;
-                if ('zoom' in cont.style) {
-                    cont.style.zoom = escala;
-                } else {
-                    cont.style.transform = 'scale(' + escala + ')';
-                }
-            }
+            aplicarEscalaUnaHojaA4(cont);
         }
     }
     
@@ -543,24 +550,26 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
         
         var controles = document.querySelector('.controles');
         if (controles) controles.style.display = 'none';
-        
-        window.print();
-        
+
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                ajustarExpensasParaImpresion();
+                window.print();
+            });
+        });
+
         setTimeout(function() {
             if (controles) controles.style.display = '';
             var conts = document.querySelectorAll('.expensa-container');
-            for (var i = 0; i < conts.length; i++) conts[i].style.transform = '';
+            for (var i = 0; i < conts.length; i++) {
+                conts[i].style.zoom = '';
+                conts[i].style.transform = '';
+                conts[i].style.transformOrigin = '';
+                conts[i].style.marginBottom = '';
+            }
         }, 1000);
         
         return false;
-    }
-
-    function enviarExpensasPorMail() {
-        if (!confirm('¿Enviar las expensas por mail a propietarios e inquilinos?')) {
-            return;
-        }
-        var consorcioId = <?= $consorcio_id ?>;
-        window.location.href = 'enviar_expensas_mail.php?id=' + consorcioId;
     }
     </script>
 </body>

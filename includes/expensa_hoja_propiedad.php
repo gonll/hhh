@@ -284,23 +284,34 @@ CSS;
  */
 function expensa_hoja_propiedad_css_a4_print() {
     return <<<'CSS'
-        @page { size: A4 portrait; margin: 12mm; }
+        @page { size: A4 portrait; margin: 10mm; }
         @media print {
             html, body { margin: 0; padding: 0; background: #fff !important; }
+            /* Una expensa por hoja A4: recorte + evitar segunda página por overflow */
             .expensa-page-a4 {
                 width: 100%;
-                max-width: 186mm;
+                max-width: 190mm;
                 margin: 0 auto;
+                padding: 0;
+                box-sizing: border-box;
+                height: 277mm;
+                max-height: 277mm;
+                overflow: hidden;
+                position: relative;
                 page-break-after: always;
                 page-break-inside: avoid;
-                box-sizing: border-box;
+                break-inside: avoid;
             }
             .expensa-page-a4:last-child { page-break-after: auto; }
             .expensa-container {
                 margin: 0 !important;
-                padding: 8mm !important;
+                padding: 6mm !important;
                 border: 1px solid #999 !important;
-                min-height: 0;
+                min-height: 0 !important;
+                max-height: none !important;
+                box-sizing: border-box !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
             .expensa-tabla-wrap {
                 max-height: none !important;
