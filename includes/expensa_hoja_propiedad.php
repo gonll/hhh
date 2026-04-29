@@ -285,24 +285,34 @@ CSS;
 function expensa_hoja_propiedad_css_a4_print() {
     return <<<'CSS'
         @page { size: A4 portrait; margin: 10mm; }
+        /* Marco de altura = zona imprimible A4 (297mm − 20mm); el JS escala .expensa-container dentro */
         @media print {
             html, body { margin: 0; padding: 0; background: #fff !important; }
-            /* Una expensa por hoja A4: recorte + evitar segunda página por overflow */
             .expensa-page-a4 {
                 width: 100%;
                 max-width: 190mm;
                 margin: 0 auto;
                 padding: 0;
                 box-sizing: border-box;
-                height: 277mm;
-                max-height: 277mm;
-                overflow: hidden;
+                overflow: visible;
                 position: relative;
                 page-break-after: always;
                 page-break-inside: avoid;
                 break-inside: avoid;
+                break-after: page;
             }
-            .expensa-page-a4:last-child { page-break-after: auto; }
+            .expensa-page-a4:last-child { page-break-after: auto; break-after: auto; }
+            /* Una sola “caja” por hoja: altura fija + clip (funciona mejor que zoom en impresión remota / Linux / Safari) */
+            .expensa-print-fill {
+                position: relative;
+                box-sizing: border-box;
+                width: 100%;
+                max-width: 190mm;
+                margin: 0 auto;
+                height: 277mm;
+                max-height: 277mm;
+                overflow: hidden;
+            }
             .expensa-container {
                 margin: 0 !important;
                 padding: 6mm !important;
@@ -312,6 +322,9 @@ function expensa_hoja_propiedad_css_a4_print() {
                 box-sizing: border-box !important;
                 page-break-inside: avoid;
                 break-inside: avoid;
+                position: relative;
+                left: auto;
+                top: auto;
             }
             .expensa-tabla-wrap {
                 max-height: none !important;

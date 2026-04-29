@@ -278,6 +278,7 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
         <?= expensa_hoja_propiedad_css_a4_print() ?>
         @media screen {
             .expensa-page-a4 { margin-bottom: 18px; }
+            .expensa-print-fill { display: block; max-width: 210mm; margin-left: auto; margin-right: auto; }
             .expensa-page-a4 .expensa-container {
                 min-height: 280mm;
                 max-width: 210mm;
@@ -348,6 +349,7 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
         
         <?php foreach ($expensas as $idx => $expensa): ?>
         <div class="expensa-page expensa-page-a4" data-expensa-idx="<?= $idx ?>">
+        <div class="expensa-print-fill">
         <div class="expensa-container" id="expensa-<?= $idx ?>">
             <?= expensa_hoja_propiedad_fragmento_html([
                 'expensa' => $expensa,
@@ -367,38 +369,77 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
             </div>
         </div>
         </div>
+        </div>
         <?php endforeach; ?>
     </div>
     
     <script>
     var BASE_HREF_IMPRESION = <?= json_encode($base_href_impresion, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
-    /* Alto útil ~ A4 (297mm) − márgenes @page (20mm); coincide con .expensa-page-a4 en CSS impresión */
-    var EXPENSA_MAX_ALTO_MM = 272;
+    /**
+     * Altura utilizable para escalar contenido (≈ A4 menos @page 10mm arriba/abajo).
+     * Conservador para impresión remota / Linux / Safari donde zoom no reduce páginas extra.
+     */
+    var EXPENSA_PRINT_AREA_MM = 273;
+
+    function mmToPx(mm) {
+        return mm * (96 / 25.4);
+    }
 
     function pxToMm(px) {
         return px * (25.4 / 96);
     }
 
-    function aplicarEscalaUnaHojaA4(cont) {
+    function resetExpensaScale(cont) {
         if (!cont) return;
         cont.style.zoom = '';
         cont.style.transform = '';
         cont.style.transformOrigin = '';
         cont.style.marginBottom = '';
-        var altoPx = cont.scrollHeight;
-        if (altoPx < 1) return;
-        var altoMm = pxToMm(altoPx);
-        if (altoMm <= EXPENSA_MAX_ALTO_MM) return;
-        var escala = EXPENSA_MAX_ALTO_MM / altoMm;
-        if (escala >= 1) return;
-        cont.style.transformOrigin = 'top left';
-        if ('zoom' in cont.style && window.CSS && !/firefox/i.test(navigator.userAgent)) {
-            cont.style.zoom = String(escala);
-        } else {
-            cont.style.transform = 'scale(' + escala + ')';
-            var nuevoAltoPx = altoPx * escala;
-            cont.style.marginBottom = '-' + (altoPx - nuevoAltoPx) + 'px';
+        cont.style.width = '';
+        cont.style.maxWidth = '';
+        cont.style.position = '';
+        cont.style.left = '';
+        cont.style.top = '';
+    }
+
+    /**
+     * Encaja el bloque en una sola hoja: marco .expensa-print-fill (277mm) + transform scale + absolute.
+     * Sin depender de zoom (falla en muchos servidores).
+     */
+    function aplicarEscalaUnaHojaA4(cont) {
+        resetExpensaScale(cont);
+        if (!cont) return;
+        var fill = cont.parentElement;
+        var tieneMarco = !!(fill && fill.classList && fill.classList.contains('expensa-print-fill'));
+        void cont.offsetHeight;
+        var h = Math.max(cont.scrollHeight || 0, cont.offsetHeight || 0);
+        if (h < 4) return;
+
+        var maxPx = mmToPx(EXPENSA_PRINT_AREA_MM);
+        var s = Math.min(1, maxPx / h);
+
+        if (!tieneMarco) {
+            if (s >= 1) return;
+            cont.style.transformOrigin = 'top left';
+            cont.style.transform = 'scale(' + s + ')';
+            cont.style.position = 'absolute';
+            cont.style.left = '0';
+            cont.style.top = '0';
+            var rw = cont.offsetWidth || cont.getBoundingClientRect().width || 1;
+            cont.style.width = (rw / s) + 'px';
+            return;
         }
+
+        if (s >= 0.9995) return;
+
+        var rect = cont.getBoundingClientRect();
+        var w = rect.width > 2 ? rect.width : (cont.offsetWidth || 1);
+        cont.style.transformOrigin = 'top left';
+        cont.style.position = 'absolute';
+        cont.style.left = '0';
+        cont.style.top = '0';
+        cont.style.width = (w / s) + 'px';
+        cont.style.transform = 'scale(' + s + ')';
     }
 
     function imprimirExpensa(idx) {
@@ -432,8 +473,8 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
         html += '<base href="' + String(BASE_HREF_IMPRESION).replace(/"/g, '&quot;') + '">';
         html += '<title>Expensa - ' + safeTitle + '</title>';
         html += '<style>';
-        html += '@media print { html, body { margin: 0 !important; padding: 0 !important; height: auto; overflow: hidden !important; } @page { size: A4 portrait; margin: 10mm; } .expensa-container { transform-origin: top left; page-break-inside: avoid; } }';
-        html += 'body { font-family: Arial, sans-serif; margin: 15px; }';
+        html += '@media print { html, body { margin: 0 !important; padding: 0 !important; height: auto; overflow: hidden !important; } @page { size: A4 portrait; margin: 10mm; } .expensa-print-fill { position: relative; height: 277mm; max-height: 277mm; overflow: hidden; box-sizing: border-box; width: 100%; max-width: 190mm; margin: 0 auto; } .expensa-container { transform-origin: top left; page-break-inside: avoid; position: relative; } }';
+        html += 'body { font-family: Arial, sans-serif; margin: 0; padding: 0; }';
         html += '.expensa-container { padding: 12px; border: 2px solid #007bff; border-radius: 6px; }';
         html += '.expensa-header { text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #007bff; }';
         html += '.expensa-title { font-size: 14px; font-weight: bold; color: #007bff; margin-bottom: 4px; }';
@@ -456,7 +497,9 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
         html += '@media print { .expensa-header { margin-bottom: 4px; padding-bottom: 4px; } .expensa-title { font-size: 11px !important; } .expensa-title-izq, .expensa-dato-izq { font-size: 10px !important; } .expensa-monto-alineado { font-size: 8px !important; white-space: normal !important; } .expensa-monto-alineado.expensa-monto-total-header { font-size: 8.8px !important; font-weight: 700 !important; color: #000 !important; } .expensa-monto-alineado.expensa-monto-parcela { font-size: 8.8px !important; font-weight: 700 !important; color: #000 !important; left: -1cm !important; } .expensa-info { font-size: 8px !important; } .expensa-section { margin: 4px 0 !important; } .expensa-section h3 { font-size: 9px !important; } .expensa-section h3.expensa-row-montos { font-size: 9px !important; } table { font-size: 7px !important; } th, td { padding: 2px 4px !important; } .expensa-tabla-movimientos td.expensa-col-monto,.expensa-tabla-movimientos tfoot td.expensa-col-monto{color:#000!important;font-weight:bold!important;} }';
         html += '</style>';
         html += '</head><body>';
-        html += contenido.innerHTML;
+        html += '<div class="expensa-print-fill">';
+        html += contenido.outerHTML;
+        html += '</div>';
         html += '</body></html>';
 
         // iframe en la misma página: evita pop-ups y mantiene el diálogo de impresión (user activation)
@@ -471,6 +514,12 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
         doc.write(html);
         doc.close();
 
+        function quitarIframeImpresion() {
+            if (iframe.parentNode) {
+                iframe.parentNode.removeChild(iframe);
+            }
+        }
+
         function aplicarEscalaYImprimir() {
             var cont = doc.querySelector('.expensa-container');
             aplicarEscalaUnaHojaA4(cont);
@@ -478,17 +527,27 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
                 win.focus();
                 win.print();
             } finally {
-                setTimeout(function() {
-                    if (iframe.parentNode) {
-                        iframe.parentNode.removeChild(iframe);
-                    }
-                }, 1000);
+                setTimeout(quitarIframeImpresion, 1000);
+            }
+        }
+
+        function planificarImpresionIframe() {
+            if (doc.fonts && doc.fonts.ready) {
+                doc.fonts.ready.then(function() {
+                    aplicarEscalaYImprimir();
+                }).catch(function() {
+                    aplicarEscalaYImprimir();
+                });
+            } else {
+                setTimeout(aplicarEscalaYImprimir, 160);
             }
         }
 
         queueMicrotask(function() {
             requestAnimationFrame(function() {
-                requestAnimationFrame(aplicarEscalaYImprimir);
+                requestAnimationFrame(function() {
+                    setTimeout(planificarImpresionIframe, 50);
+                });
             });
         });
     }
@@ -514,13 +573,25 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
     window.seguirExpensa = seguirExpensa;
     
     window.addEventListener('beforeprint', ajustarExpensasParaImpresion);
+    if (window.matchMedia) {
+        var mqImp = window.matchMedia('print');
+        function onPrintMedia(ev) {
+            var ok = (ev && typeof ev.matches !== 'undefined') ? ev.matches : mqImp.matches;
+            if (ok) {
+                setTimeout(ajustarExpensasParaImpresion, 0);
+                setTimeout(ajustarExpensasParaImpresion, 60);
+            }
+        }
+        if (mqImp.addEventListener) {
+            mqImp.addEventListener('change', onPrintMedia);
+        } else if (mqImp.addListener) {
+            mqImp.addListener(onPrintMedia);
+        }
+    }
     window.addEventListener('afterprint', function() {
         var conts = document.querySelectorAll('.expensa-container');
         for (var i = 0; i < conts.length; i++) {
-            conts[i].style.zoom = '';
-            conts[i].style.transform = '';
-            conts[i].style.transformOrigin = '';
-            conts[i].style.marginBottom = '';
+            resetExpensaScale(conts[i]);
         }
     });
     
@@ -554,7 +625,10 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
         requestAnimationFrame(function() {
             requestAnimationFrame(function() {
                 ajustarExpensasParaImpresion();
-                window.print();
+                setTimeout(function() {
+                    ajustarExpensasParaImpresion();
+                    window.print();
+                }, 80);
             });
         });
 
@@ -562,10 +636,7 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
             if (controles) controles.style.display = '';
             var conts = document.querySelectorAll('.expensa-container');
             for (var i = 0; i < conts.length; i++) {
-                conts[i].style.zoom = '';
-                conts[i].style.transform = '';
-                conts[i].style.transformOrigin = '';
-                conts[i].style.marginBottom = '';
+                resetExpensaScale(conts[i]);
             }
         }, 1000);
         

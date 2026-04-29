@@ -60,8 +60,10 @@ function generarExpensaHTML($expensa, $movimientos, $total_ingresos, $total_egre
 <body>
     <div class="expensa-mail-wrap">
         <div class="expensa-page-a4">
+            <div class="expensa-print-fill">
             <div class="expensa-container">
                 <?= $fragmento ?>
+            </div>
             </div>
         </div>
     </div>
