@@ -109,6 +109,7 @@ if ($tieneMapa) {
     <div class="meta">
         <?php if (!empty($prop['ciudad'])): ?><div><strong>Ciudad:</strong> <?= htmlspecialchars($prop['ciudad']) ?></div><?php endif; ?>
         <?php if (!empty($prop['consorcio'])): ?><div><strong>Consorcio:</strong> <?= htmlspecialchars($prop['consorcio']) ?></div><?php endif; ?>
+        <?php if (!empty($prop['superficie'])): ?><div><strong>Superficie:</strong> <?= htmlspecialchars($prop['superficie']) ?></div><?php endif; ?>
         <?php if (!empty($prop['padron'])): ?><div><strong>Padrón:</strong> <?= htmlspecialchars($prop['padron']) ?></div><?php endif; ?>
     </div>
 

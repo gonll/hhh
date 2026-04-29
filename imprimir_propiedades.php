@@ -5,7 +5,7 @@ require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
 tenant_inmob_asegurar_esquema($conexion);
 
 $wp = tenant_inmob_sql_propiedades($conexion, 'p');
-$sql = "SELECT p.propiedad, p.consorcio,
+$sql = "SELECT p.propiedad, p.consorcio, p.superficie,
         prop.apellido AS nombre_propietario,
         u.apellido AS nombre_inquilino,
         u2.apellido AS nombre_inquilino2,
@@ -78,6 +78,7 @@ $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_sal
             <tr>
                 <th>Consorcio</th>
                 <th>Propiedad</th>
+                <th>Superficie</th>
                 <th>Propietario</th>
                 <th>Inquilino</th>
                 <th>Inicio alquiler</th>
@@ -108,6 +109,7 @@ $saldo_total_propietarios = ($res_saldo_prop && $r = mysqli_fetch_assoc($res_sal
             <tr>
                 <td><?= htmlspecialchars($f['consorcio']) ?></td>
                 <td><?= htmlspecialchars($f['propiedad']) ?></td>
+                <td><?= !empty($f['superficie']) ? htmlspecialchars($f['superficie']) : '-' ?></td>
                 <td><?= $propietario ?></td>
                 <td><?= $inquilino ?></td>
                 <td><?= $inicio ?></td>

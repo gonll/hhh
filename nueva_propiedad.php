@@ -99,8 +99,16 @@ if ($r && $row = mysqli_fetch_assoc($r)) {
             <div id="sug_propietario" class="sugerencias"></div>
         </div>
         
-        <label>%</label>
-        <input type="text" name="porcentaje" inputmode="decimal" placeholder="3,505 o 3.505" style="text-transform:none; max-width:120px;" pattern="[0-9]+[.,]?[0-9]*" title="Ej: 3,505 o 3.505">
+        <div class="fila-doble">
+            <div>
+                <label>%</label>
+                <input type="text" name="porcentaje" inputmode="decimal" placeholder="3,505 o 3.505" style="text-transform:none;" pattern="[0-9]+[.,]?[0-9]*" title="Ej: 3,505 o 3.505">
+            </div>
+            <div>
+                <label>Superficie</label>
+                <input type="text" name="superficie" placeholder="Ej: 45 m2" style="text-transform:none;">
+            </div>
+        </div>
         
         <label>Padrón</label>
         <input type="text" name="padron" placeholder="Ej: 12345">

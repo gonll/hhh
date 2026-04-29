@@ -130,6 +130,9 @@ if ($val_lat === '' && $val_lng === '' && is_array($diskMap)) {
             </div>
         </div>
         
+        <label>Superficie</label>
+        <input type="text" name="superficie" value="<?= htmlspecialchars($prop['superficie'] ?? '') ?>" placeholder="Ej: 45 m2" style="text-transform:none;">
+        
         <label>Padrón</label>
         <input type="text" name="padron" value="<?= htmlspecialchars($prop['padron'] ?? '') ?>">
         

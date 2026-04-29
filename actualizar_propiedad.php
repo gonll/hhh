@@ -27,6 +27,7 @@ $consorcio = trim($_POST['consorcio'] ?? '');
 $porcentaje_raw = trim($_POST['porcentaje'] ?? '');
 $porcentaje_raw = str_replace(',', '.', $porcentaje_raw);
 $porcentaje = $porcentaje_raw !== '' ? (float)$porcentaje_raw : null;
+$superficie = trim($_POST['superficie'] ?? '');
 $padron    = trim($_POST['padron'] ?? '');
 $detalle   = trim($_POST['detalle'] ?? '');
 if ($padron_max > 0) {
@@ -79,6 +80,7 @@ if ($padron !== '') {
 
 $ciudad_param = ($ciudad === '') ? null : $ciudad;
 $porcentaje_param = ($porcentaje !== null) ? $porcentaje : null;
+$superficie_param = ($superficie === '') ? null : $superficie;
 $mapa_enlace_param = $mapa_enlace;
 
 $stmt = null;
@@ -88,6 +90,7 @@ if ($tiene_media) {
             ciudad = ?, 
             consorcio = ?, 
             porcentaje = ?, 
+            superficie = ?,
             padron = ?, 
             detalle = ?,
             mapa_lat = ?,
@@ -98,11 +101,12 @@ if ($tiene_media) {
     if ($stmt) {
         mysqli_stmt_bind_param(
             $stmt,
-            'sssdssddsi',
+            'sssdsssddsi',
             $propiedad,
             $ciudad_param,
             $consorcio,
             $porcentaje_param,
+            $superficie_param,
             $padron,
             $detalle,
             $mapa_lat,
@@ -117,6 +121,7 @@ if ($tiene_media) {
             ciudad = ?, 
             consorcio = ?, 
             porcentaje = ?, 
+            superficie = ?,
             padron = ?, 
             detalle = ?
             WHERE propiedad_id = ?";
@@ -124,11 +129,12 @@ if ($tiene_media) {
     if ($stmt) {
         mysqli_stmt_bind_param(
             $stmt,
-            'sssdssi',
+            'sssdsssi',
             $propiedad,
             $ciudad_param,
             $consorcio,
             $porcentaje_param,
+            $superficie_param,
             $padron,
             $detalle,
             $id

@@ -52,8 +52,9 @@ if ($r_consorcios) {
         .col-propiedad { width: 18%; }
         .col-consorcio { width: 15%; }
         .col-porcentaje { width: 8%; }
+        .col-superficie { width: 8%; }
         .col-padron { width: 8%; }
-        .col-detalle { width: 11%; }
+        .col-detalle { width: 10%; }
         .col-verfm { width: 10%; }
         .col-estado { width: 11%; }
         .col-inicio { width: 8%; }
@@ -139,6 +140,7 @@ if ($r_consorcios) {
                 <th class="col-propiedad">Propiedad</th>
                 <th class="col-consorcio">Consorcio</th>
                 <th class="col-porcentaje">%</th>
+                <th class="col-superficie">Superficie</th>
                 <th class="col-padron">Padrón</th>
                 <th class="col-detalle">Detalle Técnico</th>
                 <th class="col-verfm">Fotos / Mapa</th>
@@ -160,6 +162,7 @@ if ($r_consorcios) {
                 <td class="al-izq"><?= $f['propiedad'] ?></td>
                 <td class="al-cen"><?= $f['consorcio'] ?></td>
                 <td class="al-cen" style="font-weight:bold; color:#007bff;"><?= $f['porcentaje'] !== null ? number_format($f['porcentaje'], 3, ',', '.') . '%' : '-' ?></td>
+                <td class="al-cen"><?= !empty($f['superficie']) ? htmlspecialchars($f['superficie'], ENT_QUOTES, 'UTF-8') : '-' ?></td>
                 <td class="al-cen"><?= $f['padron'] ?></td>
                 <td class="al-cen" style="font-size: 8px; color: #777; white-space: nowrap;"><?= substr($f['detalle'],0,30) ?>...</td>
                 <td class="al-cen">

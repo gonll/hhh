@@ -27,6 +27,7 @@ $consorcio      = trim($_POST['consorcio'] ?? '');
 $porcentaje_raw = trim($_POST['porcentaje'] ?? '');
 $porcentaje_raw = str_replace(',', '.', $porcentaje_raw);
 $porcentaje     = $porcentaje_raw !== '' ? (float)$porcentaje_raw : null;
+$superficie     = trim($_POST['superficie'] ?? '');
 $padron         = trim($_POST['padron'] ?? '');
 $detalle        = trim($_POST['detalle'] ?? '');
 if ($padron_max > 0) {
@@ -79,6 +80,7 @@ if ($padron !== '') {
 $ciudad_param = ($ciudad === '') ? null : $ciudad;
 $consorcio_param = $consorcio;
 $porcentaje_param = ($porcentaje !== null) ? $porcentaje : null;
+$superficie_param = ($superficie === '') ? null : $superficie;
 $padron_param = $padron;
 $detalle_param = $detalle;
 $mapa_enlace_param = $mapa_enlace;
@@ -86,18 +88,19 @@ $fotos_null = null;
 
 $stmt_ins = null;
 if ($tiene_media) {
-    $sql = "INSERT INTO propiedades (propietario_id, propiedad, ciudad, consorcio, porcentaje, padron, detalle, mapa_lat, mapa_lng, mapa_enlace, fotos_json) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO propiedades (propietario_id, propiedad, ciudad, consorcio, porcentaje, superficie, padron, detalle, mapa_lat, mapa_lng, mapa_enlace, fotos_json) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt_ins = mysqli_prepare($conexion, $sql);
     if ($stmt_ins) {
         mysqli_stmt_bind_param(
             $stmt_ins,
-            'isssdssddss',
+            'isssdsssddss',
             $propietario_id,
             $propiedad,
             $ciudad_param,
             $consorcio_param,
             $porcentaje_param,
+            $superficie_param,
             $padron_param,
             $detalle_param,
             $mapa_lat,
@@ -107,18 +110,19 @@ if ($tiene_media) {
         );
     }
 } else {
-    $sql = "INSERT INTO propiedades (propietario_id, propiedad, ciudad, consorcio, porcentaje, padron, detalle) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO propiedades (propietario_id, propiedad, ciudad, consorcio, porcentaje, superficie, padron, detalle) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt_ins = mysqli_prepare($conexion, $sql);
     if ($stmt_ins) {
         mysqli_stmt_bind_param(
             $stmt_ins,
-            'isssdss',
+            'isssdsss',
             $propietario_id,
             $propiedad,
             $ciudad_param,
             $consorcio_param,
             $porcentaje_param,
+            $superficie_param,
             $padron_param,
             $detalle_param
         );

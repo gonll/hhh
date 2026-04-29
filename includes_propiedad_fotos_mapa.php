@@ -1,6 +1,6 @@
 <?php
 /**
- * Columnas opcionales: mapa_lat, mapa_lng, mapa_enlace, fotos_json (JSON array de rutas relativas).
+ * Columnas opcionales: superficie, mapa_lat, mapa_lng, mapa_enlace, fotos_json (JSON array de rutas relativas).
  * Raíz del proyecto (carpeta donde está este archivo).
  */
 if (!defined('HHH_ROOT')) {
@@ -294,6 +294,7 @@ function propiedades_asegurar_columnas($conexion) {
         return propiedades_columna_existe($conexion, 'mapa_lat');
     }
     $cols = [
+        'superficie' => 'ADD COLUMN superficie VARCHAR(64) DEFAULT NULL',
         'mapa_lat' => 'ADD COLUMN mapa_lat DECIMAL(10,7) DEFAULT NULL',
         'mapa_lng' => 'ADD COLUMN mapa_lng DECIMAL(10,7) DEFAULT NULL',
         'mapa_enlace' => 'ADD COLUMN mapa_enlace VARCHAR(768) DEFAULT NULL',
