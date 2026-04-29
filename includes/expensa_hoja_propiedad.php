@@ -15,6 +15,90 @@ if (!function_exists('expensa_concepto_publico_impresion')) {
 }
 
 /**
+ * Todas las filas COBRO EXPENSA del período → una sola fila con la suma (impresión/resumen en una hoja).
+ * Si no hay ningún COBRO EXPENSA, devuelve el array igual.
+ *
+ * @param array<int, array{fecha:string,concepto:string,comprobante:string,referencia:string,monto:float}> $movimientos
+ * @return array<int, array<string, mixed>>
+ */
+if (!function_exists('expensa_consolidar_cobros_movimientos_consorcio')) {
+    function expensa_consolidar_cobros_movimientos_consorcio(array $movimientos, ?string $periodo_liq): array {
+        $idx_cobros = [];
+        foreach ($movimientos as $i => $mov) {
+            $concepto = (string) ($mov['concepto'] ?? '');
+            if ($concepto !== '' && stripos($concepto, 'COBRO EXPENSA') !== false) {
+                $idx_cobros[] = (int) $i;
+            }
+        }
+        if (empty($idx_cobros)) {
+            return $movimientos;
+        }
+        $sum = 0.0;
+        $fechas = [];
+        $comps = [];
+        $refs = [];
+        foreach ($idx_cobros as $i) {
+            $m = $movimientos[$i];
+            $sum += (float) ($m['monto'] ?? 0);
+            if (!empty($m['fecha'])) {
+                $fechas[] = $m['fecha'];
+            }
+            $c = trim((string) ($m['comprobante'] ?? ''));
+            if ($c !== '') {
+                $comps[] = $c;
+            }
+            $r = trim((string) ($m['referencia'] ?? ''));
+            if ($r !== '') {
+                $refs[] = $r;
+            }
+        }
+        $sum = round($sum, 2);
+        sort($fechas);
+        $fecha_linea = count($fechas) ? (string) $fechas[count($fechas) - 1] : date('Y-m-d');
+
+        $periodo_txt = $periodo_liq !== null ? trim((string) $periodo_liq) : '';
+        $concepto_linea = 'COBRO EXPENSA — TOTAL COBRADO (CONSORCIO)';
+        if ($periodo_txt !== '') {
+            $concepto_linea .= ' — PERÍODO ' . strtoupper($periodo_txt);
+        }
+
+        $uniq_comp = array_unique(array_map('strtoupper', $comps));
+        $comp_linea = count($uniq_comp) === 1 ? reset($uniq_comp) : 'VARIOS';
+
+        $ref_linea = '';
+        if ($periodo_txt !== '') {
+            $ref_linea = strtoupper($periodo_txt);
+        }
+        if ($ref_linea === '' && count($refs) > 0) {
+            $ref_linea = strtoupper((string) $refs[0]);
+        }
+
+        $consolidado = [
+            'fecha' => $fecha_linea,
+            'concepto' => strtoupper($concepto_linea),
+            'comprobante' => $comp_linea,
+            'referencia' => $ref_linea,
+            'monto' => $sum,
+        ];
+
+        $insert_at = $idx_cobros[0];
+        $out = [];
+        foreach ($movimientos as $i => $mov) {
+            $concepto = (string) ($mov['concepto'] ?? '');
+            if ($concepto !== '' && stripos($concepto, 'COBRO EXPENSA') !== false) {
+                if ((int) $i === $insert_at) {
+                    $out[] = $consolidado;
+                }
+                continue;
+            }
+            $out[] = $mov;
+        }
+
+        return $out;
+    }
+}
+
+/**
  * Hoja única de expensa por propiedad (misma vista en pantalla, impresión y mail).
  *
  * @param array $p expensa, movimientos, total_ingresos, total_egresos_ordinarias,

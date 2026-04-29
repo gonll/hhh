@@ -126,6 +126,8 @@ while ($mov = mysqli_fetch_assoc($res_mov)) {
     ];
 }
 
+$movimientos = expensa_consolidar_cobros_movimientos_consorcio($movimientos, $ultimo_mes_liq);
+
 // Calcular totales: usar valores de la última LIQ EXPENSAS si están disponibles
 if ($liq_ordinarias !== null && $liq_extraordinarias !== null) {
     $total_egresos_ordinarias = $liq_ordinarias;

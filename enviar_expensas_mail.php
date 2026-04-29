@@ -6,6 +6,7 @@ include __DIR__ . '/includes/expensa_extraordinaria.php';
 include 'smtp_enviar.php';
 include_once __DIR__ . '/generar_expensa_html.php';
 include_once __DIR__ . '/generar_expensa_pdf.php';
+include_once __DIR__ . '/includes/expensa_hoja_propiedad.php';
 
 // Configurar zona horaria de Argentina
 date_default_timezone_set('America/Argentina/Buenos_Aires');
@@ -60,6 +61,8 @@ while ($mov = mysqli_fetch_assoc($res_mov)) {
         'monto' => (float)$mov['monto']
     ];
 }
+
+$movimientos = expensa_consolidar_cobros_movimientos_consorcio($movimientos, $ultimo_mes_liq);
 
 // Calcular totales
 $total_ingresos = 0;
