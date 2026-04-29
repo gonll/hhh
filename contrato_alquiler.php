@@ -153,9 +153,10 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
             </div>
             <div>
                 <label>Tipo de contrato</label>
-                <select id="modelo_contrato" class="nav-enter" title="HyLL: modelo estándar H&amp;L (16 cláusulas, ICL). BGH: locación comercial oficinas (texto extendido).">
+                <select id="modelo_contrato" class="nav-enter" onchange="aplicarModeloContratoConfiguracion()" title="HyLL: modelo estándar H&amp;L (16 cláusulas, ICL). BGH: oficinas (extendido). BGH1050: oficinas y locales comerciales (MIL50 Salas y Valdez 1050).">
                     <option value="HYLL" selected>HyLL — modelo estándar (actual)</option>
                     <option value="BGH">BGH — oficinas (plantilla extendida)</option>
+                    <option value="BGH1050">BGH1050 — oficinas y locales comerciales</option>
                 </select>
             </div>
         </div>
@@ -167,6 +168,23 @@ $fecha_fin_defecto = $fecha_fin_objeto->format('Y-m-t');
 
 <script>
 let infoProp = { padron: '', detalle: '' };
+
+function aplicarModeloContratoConfiguracion() {
+    const modelo = document.getElementById('modelo_contrato').value;
+    const incremento = document.getElementById('incremento_alquiler_meses');
+    const destino = document.getElementById('destino');
+    const plazo = document.getElementById('plazo');
+    if (!incremento) return;
+    // Defaults por modelo: BGH1050 trimestral; resto bimestral.
+    incremento.value = (modelo === 'BGH1050') ? '3' : '2';
+    if (destino && modelo === 'BGH1050') {
+        destino.value = 'COMERCIAL';
+        if (plazo) {
+            plazo.value = '24';
+        }
+        recalcularFechaFin();
+    }
+}
 
 function aplicarDestinoPlazo() {
     const sel = document.getElementById('destino');
@@ -360,6 +378,7 @@ document.addEventListener('keydown', function(e) {
 
 document.addEventListener('DOMContentLoaded', function () {
     aplicarDestinoPlazo();
+    aplicarModeloContratoConfiguracion();
 });
 </script>
 <?php include 'timeout_sesion_inc.php'; ?>

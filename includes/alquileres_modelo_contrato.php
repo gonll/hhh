@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Asegura columna alquileres.modelo_contrato (HYLL/BGH) y default HYLL.
+ * Asegura columna alquileres.modelo_contrato (HYLL/BGH/BGH1050) y default HYLL.
  */
 function alquileres_asegurar_columna_modelo_contrato(mysqli $conexion): void
 {
@@ -15,7 +15,7 @@ function alquileres_asegurar_columna_modelo_contrato(mysqli $conexion): void
     if ($r && mysqli_num_rows($r) === 0) {
         @mysqli_query(
             $conexion,
-            "ALTER TABLE alquileres ADD COLUMN modelo_contrato VARCHAR(16) NOT NULL DEFAULT 'HYLL' COMMENT 'HYLL plantilla estandar H&L; BGH oficinas' AFTER destino"
+            "ALTER TABLE alquileres ADD COLUMN modelo_contrato VARCHAR(16) NOT NULL DEFAULT 'HYLL' COMMENT 'HYLL plantilla estandar H&L; BGH oficinas; BGH1050 oficinas y locales comerciales' AFTER destino"
         );
     }
     $done = true;

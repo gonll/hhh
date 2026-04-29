@@ -113,11 +113,11 @@ $es_vivienda = ($destino === 'VIVIENDA');
 $texto_tipo_locacion = $es_vivienda ? 'para vivienda' : 'para uso ' . strtolower($destino);
 
 $modelo = strtoupper(trim($c['modelo_contrato'] ?? 'HYLL'));
-if ($modelo !== 'BGH') {
+if (!in_array($modelo, ['HYLL', 'BGH', 'BGH1050'], true)) {
     $modelo = 'HYLL';
 }
 
-if ($modelo === 'BGH') {
+if ($modelo === 'BGH' || $modelo === 'BGH1050') {
     $plazo_letras = function_exists('mb_strtolower')
         ? mb_strtolower(numerosALetras($plazo), 'UTF-8')
         : strtolower(numerosALetras($plazo));
@@ -146,7 +146,11 @@ if ($modelo === 'BGH') {
     $inq1_email = $inquilino_mail;
 
     ob_start();
-    include __DIR__ . '/plantilla_word_contrato_bgh_oficinas.php';
+    if ($modelo === 'BGH1050') {
+        include __DIR__ . '/plantilla_word_contrato_bgh1050.php';
+    } else {
+        include __DIR__ . '/plantilla_word_contrato_bgh_oficinas.php';
+    }
     $html = ob_get_clean();
 } else {
 
@@ -230,7 +234,12 @@ if (!is_dir($docs)) {
     @mkdir($docs, 0755, true);
 }
 
-$sufijo_modelo = ($modelo === 'BGH') ? '_BGH' : '';
+$sufijo_modelo = '';
+if ($modelo === 'BGH') {
+    $sufijo_modelo = '_BGH';
+} elseif ($modelo === 'BGH1050') {
+    $sufijo_modelo = '_BGH1050';
+}
 $nombre_archivo = 'Contrato_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $c['inq1_nom']) . $sufijo_modelo . '_' . date('Y-m-d_His') . '.doc';
 $ruta_completa = $docs . DIRECTORY_SEPARATOR . $nombre_archivo;
 

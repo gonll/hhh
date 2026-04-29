@@ -21,7 +21,7 @@ alquileres_asegurar_columna_modelo_contrato($conexion);
 
 // Datos que envía el formulario de contrato_alquiler.php
 $modelo_contrato_raw = strtoupper(trim((string)($_POST['modelo_contrato'] ?? 'HYLL')));
-$modelo_contrato = in_array($modelo_contrato_raw, ['HYLL', 'BGH'], true) ? $modelo_contrato_raw : 'HYLL';
+$modelo_contrato = in_array($modelo_contrato_raw, ['HYLL', 'BGH', 'BGH1050'], true) ? $modelo_contrato_raw : 'HYLL';
 $modelo_contrato_esc = mysqli_real_escape_string($conexion, $modelo_contrato);
 
 $propiedad_id  = (int)$_POST['propiedad_id'];
