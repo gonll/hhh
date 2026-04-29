@@ -174,9 +174,17 @@ function aplicarModeloContratoConfiguracion() {
     const incremento = document.getElementById('incremento_alquiler_meses');
     const destino = document.getElementById('destino');
     const plazo = document.getElementById('plazo');
+    const optComercial = destino ? destino.querySelector('option[value="COMERCIAL"]') : null;
     if (!incremento) return;
     // Defaults por modelo: BGH1050 trimestral; resto bimestral.
     incremento.value = (modelo === 'BGH1050') ? '3' : '2';
+    if (optComercial) {
+        if (modelo === 'BGH1050') {
+            optComercial.textContent = 'COMERCIAL — 2 AÑOS';
+        } else {
+            optComercial.textContent = 'COMERCIAL — 3 AÑOS';
+        }
+    }
     if (destino && modelo === 'BGH1050') {
         destino.value = 'COMERCIAL';
         if (plazo) {
