@@ -248,6 +248,22 @@ function buscarPropietario(q) {
     });
 }
 
+function completarDetalleConDatos() {
+    var detalleEl = document.getElementById('detalle');
+    var supEl = document.querySelector('input[name="superficie"]');
+    var porEl = document.querySelector('input[name="porcentaje"]');
+    if (!detalleEl) return;
+    var detalle = (detalleEl.value || '').trim();
+    var sup = supEl ? (supEl.value || '').trim() : '';
+    var por = porEl ? (porEl.value || '').trim() : '';
+    var partes = [];
+    if (sup && !/superficie\s*:/i.test(detalle)) partes.push('Superficie: ' + sup);
+    if (por && !/porcentaje\s*:/i.test(detalle)) partes.push('Porcentaje: ' + por + '%');
+    if (partes.length === 0) return;
+    var prefijo = partes.join(' - ');
+    detalleEl.value = prefijo + (detalle ? '. ' + detalle : '');
+}
+
 function extraerCoordsDeEnlaceMaps() {
     var raw = (document.getElementById('mapa_enlace').value || '').trim();
     var lat = null, lng = null;
@@ -301,12 +317,14 @@ document.addEventListener('keydown', function(e) {
 });
 
 document.querySelector('form.form-nav-enter').addEventListener('submit', function(e) {
+    completarDetalleConDatos();
     if (!document.getElementById('propietario_id').value) {
         e.preventDefault();
         alert('Seleccione un propietario (busque y elija de la lista).');
         document.getElementById('bus_propietario').focus();
     }
 });
+document.getElementById('detalle').addEventListener('blur', completarDetalleConDatos);
 </script>
 <?php include 'timeout_sesion_inc.php'; ?>
 </body>
