@@ -7,6 +7,8 @@ require_once __DIR__ . '/includes/alquileres_modelo_contrato.php';
 alquileres_asegurar_columna_modelo_contrato($conexion);
 require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
 tenant_inmob_asegurar_esquema($conexion);
+require_once __DIR__ . '/includes_propiedad_fotos_mapa.php';
+propiedades_asegurar_columnas($conexion);
 
 if (!isset($_GET['id'])) {
     die("Error: No se especificó la propiedad.");
@@ -19,7 +21,7 @@ if (!tenant_inmob_propiedad_id_visible($conexion, $id_prop)) {
     exit;
 }
 
-$sql = "SELECT a.*, p.propiedad, p.ciudad, p.padron, p.consorcio, p.detalle as prop_detalle, p.propietario_id,
+$sql = "SELECT a.*, p.propiedad, p.ciudad, p.padron, p.consorcio, p.superficie as prop_superficie, p.porcentaje as prop_porcentaje, p.detalle as prop_detalle, p.propietario_id,
                prop.apellido as prop_nom, prop.cuit as prop_cuit, prop.dni as prop_dni, prop.domicilio as prop_dom,
                u1.apellido as inq1_nom, u1.dni as inq1_dni, u1.domicilio as inq1_dom, u1.email as inq1_email, u1.cuit as inq1_cuit,
                u2.apellido as inq2_nom, u2.dni as inq2_dni, u2.email as inq2_email,
@@ -144,6 +146,74 @@ if ($modelo === 'BGH' || $modelo === 'BGH1050') {
         . ', argentina, mayor de edad, con domicilio en '
         . strtoupper(trim((string) ($c['cod1_dom'] ?? '……………………………………………'))) . ', Tucumán.';
     $inq1_email = $inquilino_mail;
+
+    // BGH1050: locador = propietario del inmueble; colocatario = codeudor 1 (datos desde BD).
+    $bgh_loc_nom = strtoupper(trim((string) ($c['prop_nom'] ?? '')));
+    if ($bgh_loc_nom === '') {
+        $bgh_loc_nom = '……………………….';
+    }
+    $bgh_loc_dni = (!empty($c['prop_dni']) && trim((string) $c['prop_dni']) !== '')
+        ? preg_replace('/\D/', '', (string) $c['prop_dni'])
+        : '……………………….';
+    $bgh_loc_cuil = (!empty($c['prop_cuit']) && trim((string) $c['prop_cuit']) !== '')
+        ? preg_replace('/\D/', '', (string) $c['prop_cuit'])
+        : '…………………………………..';
+    $bgh_loc_dom = strtoupper(trim((string) ($c['prop_dom'] ?? '')));
+    if ($bgh_loc_dom === '') {
+        $bgh_loc_dom = '…………………………………..';
+    }
+
+    $bgh_inq_dni = preg_replace('/\D/', '', (string) ($c['inq1_dni'] ?? ''));
+    if (!empty($c['inq2_nom']) && !empty($c['inq2_dni'])) {
+        $bgh_inq_dni .= ' / ' . preg_replace('/\D/', '', (string) $c['inq2_dni']);
+    }
+    if ($bgh_inq_dni === '') {
+        $bgh_inq_dni = '…………………….';
+    }
+
+    $bgh_inq_dom = strtoupper(trim((string) ($c['inq1_dom'] ?? '')));
+    if ($bgh_inq_dom === '') {
+        $bgh_inq_dom = $dom_propiedad;
+    }
+
+    $bgh_coloc_nom = strtoupper(trim((string) ($c['cod1_nom'] ?? '')));
+    if ($bgh_coloc_nom === '') {
+        $bgh_coloc_nom = '……………………………………';
+    }
+    $bgh_coloc_dni = preg_replace('/\D/', '', (string) ($c['cod1_dni'] ?? ''));
+    if ($bgh_coloc_dni === '') {
+        $bgh_coloc_dni = '…………..';
+    }
+    $bgh_coloc_cuil = (!empty($c['cod1_cuit']) && trim((string) $c['cod1_cuit']) !== '')
+        ? preg_replace('/\D/', '', (string) $c['cod1_cuit'])
+        : '……………………………';
+    $bgh_coloc_dom = strtoupper(trim((string) ($c['cod1_dom'] ?? '')));
+    if ($bgh_coloc_dom === '') {
+        $bgh_coloc_dom = '……………………………………………….';
+    }
+
+    $bgh_superficie = trim((string) ($c['prop_superficie'] ?? ''));
+    if ($bgh_superficie === '' && !empty($c['prop_detalle'])) {
+        if (preg_match('/Superficie:\s*([^.]+?)(?:\.|\s+Porcentaje|\s*$)/iu', (string) $c['prop_detalle'], $m)) {
+            $bgh_superficie = trim($m[1]);
+        }
+    }
+    if ($bgh_superficie === '') {
+        $bgh_superficie = '……………';
+    }
+
+    $bgh_pct = '';
+    if (isset($c['prop_porcentaje']) && $c['prop_porcentaje'] !== null && $c['prop_porcentaje'] !== '') {
+        $bgh_pct = number_format((float) $c['prop_porcentaje'], 3, ',', '.');
+    }
+    if ($bgh_pct === '' && !empty($c['prop_detalle'])) {
+        if (preg_match('/Porcentaje:\s*([0-9]+[.,]?[0-9]*)\s*%?/iu', (string) $c['prop_detalle'], $m)) {
+            $bgh_pct = trim($m[1]);
+        }
+    }
+    if ($bgh_pct === '') {
+        $bgh_pct = '……….';
+    }
 
     ob_start();
     if ($modelo === 'BGH1050') {
