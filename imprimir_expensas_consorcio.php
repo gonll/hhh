@@ -211,6 +211,12 @@ if ($dir_web === '') {
 }
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $dir_web . '/';
+
+/** Mismo CSS que la página de impresión (evita que el iframe muestre otro diseño que lo impreso) */
+$css_expensa_iframe = expensa_hoja_propiedad_css_base()
+    . "\n"
+    . expensa_hoja_propiedad_css_a4_print()
+    . "\n.expensa-print-fill{display:block;}\nbody{margin:0;padding:0;background:#fff;}\n";
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -375,11 +381,9 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
     
     <script>
     var BASE_HREF_IMPRESION = <?= json_encode($base_href_impresion, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
-    /**
-     * Altura utilizable para escalar contenido (≈ A4 menos @page 10mm arriba/abajo).
-     * Conservador para impresión remota / Linux / Safari donde zoom no reduce páginas extra.
-     */
-    var EXPENSA_PRINT_AREA_MM = 273;
+    var CSS_EXPENSA_IFRAME = <?= json_encode($css_expensa_iframe, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+    /** Alto útil = zona imprimible con @page margin 10mm (297 − 20 ≈ 277mm); encajar todo el recuadro celeste */
+    var EXPENSA_HOJA_UTIL_MM = 277;
 
     function mmToPx(mm) {
         return mm * (96 / 25.4);
@@ -415,7 +419,7 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
         var h = Math.max(cont.scrollHeight || 0, cont.offsetHeight || 0);
         if (h < 4) return;
 
-        var maxPx = mmToPx(EXPENSA_PRINT_AREA_MM);
+        var maxPx = mmToPx(EXPENSA_HOJA_UTIL_MM) - 6;
         var s = Math.min(1, maxPx / h);
 
         if (!tieneMarco) {
@@ -473,28 +477,7 @@ $base_href_impresion = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') 
         html += '<base href="' + String(BASE_HREF_IMPRESION).replace(/"/g, '&quot;') + '">';
         html += '<title>Expensa - ' + safeTitle + '</title>';
         html += '<style>';
-        html += '@media print { html, body { margin: 0 !important; padding: 0 !important; height: auto; overflow: hidden !important; } @page { size: A4 portrait; margin: 10mm; } .expensa-print-fill { position: relative; height: 277mm; max-height: 277mm; overflow: hidden; box-sizing: border-box; width: 100%; max-width: 190mm; margin: 0 auto; } .expensa-container { transform-origin: top left; page-break-inside: avoid; position: relative; } }';
-        html += 'body { font-family: Arial, sans-serif; margin: 0; padding: 0; }';
-        html += '.expensa-container { padding: 12px; border: 2px solid #007bff; border-radius: 6px; }';
-        html += '.expensa-header { text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #007bff; }';
-        html += '.expensa-title { font-size: 14px; font-weight: bold; color: #007bff; margin-bottom: 4px; }';
-        html += '.expensa-row-montos { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 10px; width: 100%; box-sizing: border-box; }';
-        html += '.expensa-header .expensa-title.expensa-row-montos { text-align: left; }';
-        html += '.expensa-title-izq, .expensa-dato-izq { flex: 1 1 180px; min-width: 0; text-align: left; }';
-        html += '.expensa-monto-alineado { font-size: 11px; font-weight: bold; color: #007bff; white-space: nowrap; text-align: right; }';
-        html += '.expensa-monto-alineado.expensa-monto-total-header { font-size: 12.1px; font-weight: 700; color: #000; }';
-        html += '.expensa-monto-alineado.expensa-monto-parcela { font-size: 12.1px; font-weight: 700; color: #000; position: relative; left: -1cm; display: inline-block; vertical-align: baseline; }';
-        html += '.expensa-montos-der { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 14px; flex: 1 1 200px; }';
-        html += '.expensa-section h3.expensa-row-montos { font-weight: normal; font-size: 11px; }';
-        html += '.expensa-info { font-size: 10px; color: #666; margin: 2px 0; }';
-        html += '.expensa-section { margin: 6px 0; }';
-        html += '.expensa-section h3 { font-size: 11px; color: #333; margin-bottom: 4px; border-bottom: 1px solid #ddd; padding-bottom: 2px; }';
-        html += 'table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 9px; }';
-        html += 'th { background: #007bff; color: white; padding: 4px 6px; text-align: left; font-weight: bold; }';
-        html += 'td { padding: 3px 6px; border-bottom: 1px solid #eee; }';
-        html += 'th.expensa-col-monto-th{text-align:right;}';
-        html += '.expensa-tabla-movimientos td.expensa-col-monto,.expensa-tabla-movimientos tfoot td.expensa-col-monto{text-align:right;color:#000;font-weight:bold;}';
-        html += '@media print { .expensa-header { margin-bottom: 4px; padding-bottom: 4px; } .expensa-title { font-size: 11px !important; } .expensa-title-izq, .expensa-dato-izq { font-size: 10px !important; } .expensa-monto-alineado { font-size: 8px !important; white-space: normal !important; } .expensa-monto-alineado.expensa-monto-total-header { font-size: 8.8px !important; font-weight: 700 !important; color: #000 !important; } .expensa-monto-alineado.expensa-monto-parcela { font-size: 8.8px !important; font-weight: 700 !important; color: #000 !important; left: -1cm !important; } .expensa-info { font-size: 8px !important; } .expensa-section { margin: 4px 0 !important; } .expensa-section h3 { font-size: 9px !important; } .expensa-section h3.expensa-row-montos { font-size: 9px !important; } table { font-size: 7px !important; } th, td { padding: 2px 4px !important; } .expensa-tabla-movimientos td.expensa-col-monto,.expensa-tabla-movimientos tfoot td.expensa-col-monto{color:#000!important;font-weight:bold!important;} }';
+        html += CSS_EXPENSA_IFRAME;
         html += '</style>';
         html += '</head><body>';
         html += '<div class="expensa-print-fill">';

@@ -285,29 +285,28 @@ CSS;
 function expensa_hoja_propiedad_css_a4_print() {
     return <<<'CSS'
         @page { size: A4 portrait; margin: 10mm; }
-        /* Marco de altura = zona imprimible A4 (297mm − 20mm); el JS escala .expensa-container dentro */
+        /* Impresión WYSIWYG: mismo aspecto que pantalla (recuadro celeste #007bff); el JS escala el bloque entero a una hoja A4 */
         @media print {
-            html, body { margin: 0; padding: 0; background: #fff !important; }
+            html, body { margin: 0; padding: 0; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .expensa-page-a4 {
                 width: 100%;
-                max-width: 190mm;
+                max-width: 210mm;
                 margin: 0 auto;
                 padding: 0;
                 box-sizing: border-box;
                 overflow: visible;
-                position: relative;
                 page-break-after: always;
                 page-break-inside: avoid;
                 break-inside: avoid;
                 break-after: page;
             }
             .expensa-page-a4:last-child { page-break-after: auto; break-after: auto; }
-            /* Una sola “caja” por hoja: altura fija + clip (funciona mejor que zoom en impresión remota / Linux / Safari) */
+            /* Zona = alto útil A4 (297mm − márgenes @page); overflow hidden solo después del scale en JS */
             .expensa-print-fill {
                 position: relative;
                 box-sizing: border-box;
                 width: 100%;
-                max-width: 190mm;
+                max-width: 210mm;
                 margin: 0 auto;
                 height: 277mm;
                 max-height: 277mm;
@@ -315,52 +314,23 @@ function expensa_hoja_propiedad_css_a4_print() {
             }
             .expensa-container {
                 margin: 0 !important;
-                padding: 6mm !important;
-                border: 1px solid #999 !important;
-                min-height: 0 !important;
-                max-height: none !important;
+                padding: 12px !important;
+                border: 2px solid #007bff !important;
+                border-radius: 6px !important;
+                background: #fff !important;
                 box-sizing: border-box !important;
                 page-break-inside: avoid;
                 break-inside: avoid;
                 position: relative;
                 left: auto;
                 top: auto;
+                max-height: none !important;
+                min-height: 0 !important;
             }
             .expensa-tabla-wrap {
                 max-height: none !important;
                 overflow: visible !important;
-                border: 1px solid #dee2e6;
             }
-            table { font-size: 7px !important; }
-            th, td { padding: 2px 4px !important; font-size: 7px !important; }
-            .expensa-tabla-movimientos td.expensa-col-monto,
-            .expensa-tabla-movimientos tfoot td.expensa-col-monto {
-                color: #000 !important;
-                font-weight: bold !important;
-            }
-            .expensa-tabla-movimientos tfoot td.expensa-col-monto-total {
-                font-size: 8px !important;
-            }
-            .expensa-title { font-size: 11px !important; }
-            .expensa-title-izq, .expensa-dato-izq { font-size: 10px !important; }
-            .expensa-monto-alineado { font-size: 8px !important; white-space: normal !important; }
-            .expensa-monto-alineado.expensa-monto-total-header {
-                font-size: 8.8px !important;
-                font-weight: 700 !important;
-                color: #000 !important;
-            }
-            .expensa-monto-alineado.expensa-monto-parcela {
-                font-size: 8.8px !important;
-                font-weight: 700 !important;
-                color: #000 !important;
-                left: -1cm !important;
-            }
-            .expensa-info { font-size: 8px !important; }
-            .expensa-section h3 { font-size: 9px !important; }
-            .expensa-section h3.expensa-row-montos { font-size: 9px !important; }
-            .total-box { padding: 6px !important; }
-            .total-box strong { font-size: 10px !important; }
-            .expensa-logo { width: 32px !important; height: 32px !important; }
         }
 CSS;
 }
