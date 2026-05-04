@@ -79,13 +79,19 @@ function alquileres_asegurar_columna_incremento($conexion) {
 }
 
 /**
- * Coeficiente IPC para liquidación de alquiler (N meses de índice × 1,015).
+ * Detalle y coeficiente IPC para liquidación de alquiler (N meses de índice × 1,015).
+ * Devuelve:
+ * - coef: número final (ej. 1.0842)
+ * - formula: multiplicación aplicada (ej. (1+2.10/100) x (1+1.30/100) x 1.015)
+ * - detalle: meses/porcentajes usados (ej. 02/2026=2.10%, 01/2026=1.30%)
  */
-function liquidar_alquiler_coef_ipc($conexion, $n_meses) {
+function liquidar_alquiler_detalle_coef_ipc($conexion, $n_meses) {
     $n = max(1, min(6, (int) $n_meses));
     $anio_actual = (int) date('Y');
     $mes_num_actual = (int) date('m');
     $coef = 1.0;
+    $partes_formula = [];
+    $partes_detalle = [];
     for ($j = 2; $j <= $n + 1; $j++) {
         $m = $mes_num_actual - $j;
         $a = $anio_actual;
@@ -97,6 +103,22 @@ function liquidar_alquiler_coef_ipc($conexion, $n_meses) {
         $r = mysqli_query($conexion, "SELECT valor FROM indices WHERE fecha = '$fecha_ipc' AND tipo = 'IPC' LIMIT 1");
         $v = ($r && $row = mysqli_fetch_assoc($r)) ? (float) $row['valor'] : 0;
         $coef *= (1 + $v / 100);
+        $partes_formula[] = '(1+' . number_format($v, 2, '.', '') . '/100)';
+        $partes_detalle[] = sprintf('%02d/%04d=%s%%', $m, $a, number_format($v, 2, '.', ''));
     }
-    return $coef * 1.015;
+    $coef_final = $coef * 1.015;
+    $partes_formula[] = '1.015';
+    return [
+        'coef' => $coef_final,
+        'formula' => implode(' x ', $partes_formula),
+        'detalle' => implode(', ', $partes_detalle),
+    ];
+}
+
+/**
+ * Coeficiente IPC para liquidación de alquiler (N meses de índice × 1,015).
+ */
+function liquidar_alquiler_coef_ipc($conexion, $n_meses) {
+    $d = liquidar_alquiler_detalle_coef_ipc($conexion, $n_meses);
+    return isset($d['coef']) ? (float) $d['coef'] : 0.0;
 }

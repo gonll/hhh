@@ -54,14 +54,17 @@ while ($c = mysqli_fetch_assoc($contratos)) {
 
     // Ya liquidado este mes si existe movimiento ALQUILER de ESTE contrato (desde fecha_inicio)
     $concepto_base_esc = mysqli_real_escape_string($conexion, $concepto_base);
-    $concepto_act_esc  = mysqli_real_escape_string($conexion, $concepto_act);
+    $concepto_act_like_esc = mysqli_real_escape_string(
+        $conexion,
+        str_replace(['%', '_'], ['\\%', '\\_'], $concepto_act) . '%'
+    );
     $primer_dia_esc = mysqli_real_escape_string($conexion, $primer_dia);
     $existe = mysqli_query($conexion,
         "SELECT 1 FROM cuentas 
          WHERE usuario_id = $inquilino_id 
            AND comprobante = 'ALQUILER' 
            AND referencia = '$mes_actual'
-           AND (concepto = '$concepto_base_esc' OR concepto = '$concepto_act_esc')
+           AND (concepto = '$concepto_base_esc' OR concepto LIKE '$concepto_act_like_esc')
            AND (fecha >= '$fi_esc' OR fecha = '$primer_dia_esc')
          LIMIT 1"
     );
@@ -87,7 +90,8 @@ while ($c = mysqli_fetch_assoc($contratos)) {
 
     $aplica_actualizacion = ($meses_desde_inicio >= $incr_meses && ($meses_desde_inicio % $incr_meses == 0));
 
-    $coef_actualizacion = liquidar_alquiler_coef_ipc($conexion, $incr_meses);
+    $detalle_coef = liquidar_alquiler_detalle_coef_ipc($conexion, $incr_meses);
+    $coef_actualizacion = isset($detalle_coef['coef']) ? (float) $detalle_coef['coef'] : 0;
 
     if ($aplica_actualizacion && $coef_actualizacion > 0) {
         $nombre_prop_like = mysqli_real_escape_string($conexion, str_replace(['%', '_'], ['\\%', '\\_'], $nombre_prop_raw));
@@ -103,17 +107,28 @@ while ($c = mysqli_fetch_assoc($contratos)) {
             $base = (float)$row_u['ultimo_monto'];
         }
         $monto_liquidar = round($base * $coef_actualizacion, 2);
-        $concepto_final = $concepto_act;
+        $monto_origen_txt = number_format($base, 2, '.', '');
+        $coef_txt = number_format($coef_actualizacion, 4, '.', '');
+        $monto_final_txt = number_format($monto_liquidar, 2, '.', '');
+        $formula_coef_txt = isset($detalle_coef['formula']) ? $detalle_coef['formula'] : '';
+        $detalle_meses_txt = isset($detalle_coef['detalle']) ? $detalle_coef['detalle'] : '';
+        $concepto_final = $concepto_act
+            . ' | ORIGEN: $' . $monto_origen_txt
+            . ' | COEF: ' . $coef_txt
+            . ' (de ' . $formula_coef_txt . '; IPC usados: ' . $detalle_meses_txt . ')'
+            . ' | CALCULO: ' . $monto_origen_txt . ' x ' . $coef_txt
+            . ' | FINAL: $' . $monto_final_txt;
     } else {
         $monto_liquidar = $precio;
         $concepto_final = $concepto_base;
     }
 
     $monto_retiro = -$monto_liquidar;
+    $concepto_final_esc = mysqli_real_escape_string($conexion, $concepto_final);
 
     mysqli_query($conexion,
         "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto) 
-         VALUES ($inquilino_id, '$primer_dia', '$concepto_final', 'ALQUILER', '$mes_actual', $monto_retiro)"
+         VALUES ($inquilino_id, '$primer_dia', '$concepto_final_esc', 'ALQUILER', '$mes_actual', $monto_retiro)"
     );
 }
 ?>
