@@ -93,19 +93,20 @@ while ($c = mysqli_fetch_assoc($contratos)) {
     $detalle_coef = liquidar_alquiler_detalle_coef_ipc($conexion, $incr_meses);
     $coef_actualizacion = isset($detalle_coef['coef']) ? (float) $detalle_coef['coef'] : 0;
 
+    $nombre_prop_like = mysqli_real_escape_string($conexion, str_replace(['%', '_'], ['\\%', '\\_'], $nombre_prop_raw));
+    $ultimo = mysqli_query($conexion,
+        "SELECT ABS(monto) AS ultimo_monto FROM cuentas 
+         WHERE usuario_id = $inquilino_id AND comprobante = 'ALQUILER'
+         AND concepto LIKE '%$nombre_prop_like%'
+         AND fecha >= '$fi_esc'
+         ORDER BY fecha DESC, movimiento_id DESC LIMIT 1"
+    );
+    $base = $precio;
+    if ($ultimo && ($row_u = mysqli_fetch_assoc($ultimo)) && (float)$row_u['ultimo_monto'] > 0) {
+        $base = (float)$row_u['ultimo_monto'];
+    }
+
     if ($aplica_actualizacion && $coef_actualizacion > 0) {
-        $nombre_prop_like = mysqli_real_escape_string($conexion, str_replace(['%', '_'], ['\\%', '\\_'], $nombre_prop_raw));
-        $ultimo = mysqli_query($conexion,
-            "SELECT ABS(monto) AS ultimo_monto FROM cuentas 
-             WHERE usuario_id = $inquilino_id AND comprobante = 'ALQUILER'
-             AND concepto LIKE '%$nombre_prop_like%'
-             AND fecha >= '$fi_esc'
-             ORDER BY fecha DESC, movimiento_id DESC LIMIT 1"
-        );
-        $base = $precio;
-        if ($ultimo && ($row_u = mysqli_fetch_assoc($ultimo)) && (float)$row_u['ultimo_monto'] > 0) {
-            $base = (float)$row_u['ultimo_monto'];
-        }
         $monto_liquidar = round($base * $coef_actualizacion, 2);
         $monto_origen_txt = number_format($base, 2, '.', '');
         $coef_txt = number_format($coef_actualizacion, 4, '.', '');
@@ -119,7 +120,8 @@ while ($c = mysqli_fetch_assoc($contratos)) {
             . ' | CALCULO: ' . $monto_origen_txt . ' x ' . $coef_txt
             . ' | FINAL: $' . $monto_final_txt;
     } else {
-        $monto_liquidar = $precio;
+        // Mantiene el último valor vigente cuando este mes no corresponde actualizar.
+        $monto_liquidar = $base;
         $concepto_final = $concepto_base;
     }
 
