@@ -411,9 +411,6 @@ if ($nivelAcceso === 3) {
                 <a href="propiedades.php" class="btn-abm-prop btn-admin-prop" style="flex: 1; min-width: 140px;">⚙️ Admin. Propiedades</a>
                 <a href="contrato_alquiler.php" class="btn-abm-prop btn-contrato" style="flex: 1; min-width: 140px;">📜 Contrato de Alquiler</a>
                 <a href="abm_indices.php" class="btn-abm-prop btn-indice" style="flex: 1; min-width: 140px;">📈 ABM INDICE IPC</a>
-                <?php if ($nivelAcceso >= 3): ?>
-                <a href="reparar_arrastre_alquiler.php?ref=<?= urlencode(date('m/Y')) ?>" class="btn-abm-prop btn-indice" style="flex: 1; min-width: 140px;">🛠️ Reparar Arrastre Alquiler</a>
-                <?php endif; ?>
             </div>
             <?php else: ?>
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
@@ -429,9 +426,6 @@ if ($nivelAcceso === 3) {
             <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
                 <a href="recibos_porteros.php" class="btn-abm-prop btn-recibos-porteros" style="flex: 0 1 auto; min-width: 90px;">🪪 Recibos Porteros</a>
                 <a href="abm_indices.php" class="btn-abm-prop btn-indice" style="flex: 0 1 auto; min-width: 90px;">📈 ABM INDICE IPC</a>
-                <?php if ($nivelAcceso >= 3): ?>
-                <a href="reparar_arrastre_alquiler.php?ref=<?= urlencode(date('m/Y')) ?>" class="btn-abm-prop btn-indice" style="flex: 0 1 auto; min-width: 90px;">🛠️ Reparar Arrastre Alquiler</a>
-                <?php endif; ?>
                 <button type="button" class="btn-abm-prop btn-tutoriales" style="flex: 0 1 auto; min-width: 90px; border: none; cursor: pointer;" onclick="abrirModalTutoriales()">🎬 Tutoriales</button>
             </div>
             <?php endif; ?>
