@@ -90,7 +90,12 @@ while ($c = mysqli_fetch_assoc($contratos)) {
 
     $aplica_actualizacion = ($meses_desde_inicio >= $incr_meses && ($meses_desde_inicio % $incr_meses == 0));
 
-    $detalle_coef = liquidar_alquiler_detalle_coef_ipc($conexion, $incr_meses);
+    $detalle_coef = ['coef' => 0, 'formula' => '', 'detalle' => ''];
+    if (function_exists('liquidar_alquiler_detalle_coef_ipc')) {
+        $detalle_coef = liquidar_alquiler_detalle_coef_ipc($conexion, $incr_meses);
+    } elseif (function_exists('liquidar_alquiler_coef_ipc')) {
+        $detalle_coef['coef'] = (float) liquidar_alquiler_coef_ipc($conexion, $incr_meses);
+    }
     $coef_actualizacion = isset($detalle_coef['coef']) ? (float) $detalle_coef['coef'] : 0;
 
     $nombre_prop_like = mysqli_real_escape_string($conexion, str_replace(['%', '_'], ['\\%', '\\_'], $nombre_prop_raw));
