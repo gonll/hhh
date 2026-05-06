@@ -91,6 +91,7 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
     $contratos = mysqli_query($conexion, $sql_contratos);
     if (!$contratos) return;
 
+    $insertados_total = 0;
     while ($c = mysqli_fetch_assoc($contratos)) {
         $inquilino1_id = (int)$c['inquilino1_id'];
         $inquilino2_id = (int)($c['inquilino2_id'] ?? 0);
@@ -203,18 +204,37 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
                 "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto)
                  VALUES ($inquilino_id, '$primer_dia_esc', '$concepto_final_esc', 'ALQUILER', '$mes_ref_esc', $monto_retiro)"
             );
+            if (mysqli_affected_rows($conexion) > 0) {
+                $insertados_total++;
+            }
 
             $cursor_ts = strtotime('+1 month', $cursor_ts);
         }
     }
+    return $insertados_total;
 }
 
+ $accion = isset($_GET['accion']) ? trim((string)$_GET['accion']) : '';
 // Solo en carga principal del detalle (no al paginar) para evitar costo extra.
 if ($before_fecha === '' && $after_fecha === '') {
     try {
-        asegurar_alquiler_mes_usuario($conexion, $id);
+        $insertados = asegurar_alquiler_mes_usuario($conexion, $id);
+        if ($accion === 'liquidar_faltantes') {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'ok' => true,
+                'insertados' => (int)$insertados,
+                'msg' => ((int)$insertados > 0)
+                    ? ('Se liquidaron ' . (int)$insertados . ' alquiler(es) faltante(s).')
+                    : 'No había alquileres faltantes para liquidar.'
+            ]);
+            exit;
+        }
     } catch (Throwable $e) {
         error_log('asegurar_alquiler_mes_usuario: ' . $e->getMessage());
+        if ($accion === 'liquidar_faltantes') {
+            mov_json_error('No se pudo liquidar faltantes en este momento');
+        }
     }
 }
 

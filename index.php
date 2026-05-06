@@ -456,6 +456,7 @@ if ($nivelAcceso === 3) {
                 <?php if ($nivelAcceso === 3 && !$esUsuarioSofia): ?>
                 <button type="button" class="btn-ant-cel" onclick="abrirModalAntCel()">Ant/cel</button>
                 <button type="button" class="btn-imprimir-estado" onclick="imprimirEstadoCuenta()">Imprimir estado de cuenta</button>
+                <button type="button" id="btnLiquidarFaltantes" class="btn-imprimir-estado" onclick="liquidarAlquileresFaltantes()">Liquidar alquileres faltantes</button>
                 <?php endif; ?>
             </div>
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -1501,6 +1502,22 @@ function cargarMovimientos(fila, id) {
             saldoActualCuenta = 0;
             actualizarSaldoCobroPanel();
             actualizarBtnCargarAnteriores();
+        });
+}
+
+function liquidarAlquileresFaltantes() {
+    if (!uSel || uSel <= 0 || uSel === ID_CAJA_USUARIO || uSel === USUARIO_LIBRO_TRANSF) return;
+    if (!confirm('Se verificarán y liquidarán alquileres faltantes (mes actual y anteriores) para esta cuenta. ¿Continuar?')) return;
+    var url = 'obtener_movimientos.php?id=' + encodeURIComponent(uSel) + '&accion=liquidar_faltantes';
+    fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            alert((res && res.msg) ? res.msg : 'Proceso ejecutado.');
+            var fila = document.querySelector('#cuerpo tr.fila-seleccionada');
+            if (fila && uSel && uSel > 0) cargarMovimientos(fila, uSel);
+        })
+        .catch(function() {
+            alert('No se pudo ejecutar la liquidación de faltantes.');
         });
 }
 
