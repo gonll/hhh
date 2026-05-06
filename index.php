@@ -50,6 +50,7 @@ if (!function_exists('hh_include_seguro')) {
 }
 
 if (!tenant_inmob_es_sofia()) {
+    hh_include_seguro('convenios_liquidacion_mensual_auto.php'); // Convenios: ejecutar una vez por mes (día 1 o primer ingreso posterior)
     if ((int)date('j') > 10) {
         hh_include_seguro('actualizar_ipc_desde_api.php');
     }
