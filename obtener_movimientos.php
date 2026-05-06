@@ -43,10 +43,12 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
     }
     alquileres_asegurar_columna_incremento($conexion);
 
-    $mes_actual = date('m/Y');
-    $primer_dia = date('Y-m-01');
-    $anio_actual = (int)date('Y');
-    $mes_num_actual = (int)date('m');
+    $tz = new DateTimeZone('America/Argentina/Buenos_Aires');
+    $ahora_ar = new DateTime('now', $tz);
+    $mes_actual = $ahora_ar->format('m/Y');
+    $primer_dia = $ahora_ar->format('Y-m-01');
+    $anio_actual = (int)$ahora_ar->format('Y');
+    $mes_num_actual = (int)$ahora_ar->format('m');
 
     $coef_ipc_para_periodo = function($conn, $n_meses, $anio_ref, $mes_ref) {
         $n = max(1, min(6, (int)$n_meses));
