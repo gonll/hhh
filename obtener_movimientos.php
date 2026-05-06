@@ -89,12 +89,13 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
     $uid = (int)$usuario_id;
     if ($uid <= 0) return;
 
-    $sql_contratos = "SELECT a.inquilino1_id, a.inquilino2_id, a.precio_convenido, a.fecha_inicio,
+    $primer_dia_sql = mysqli_real_escape_string($conexion, $primer_dia);
+    $sql_contratos = "SELECT a.inquilino1_id, a.inquilino2_id, a.precio_convenido, a.fecha_inicio, a.fecha_fin,
                              COALESCE(a.incremento_alquiler_meses, 2) AS incremento_alquiler_meses,
                              p.propiedad AS nombre_propiedad
                       FROM alquileres a
                       INNER JOIN propiedades p ON a.propiedad_id = p.propiedad_id
-                      WHERE a.estado = 'VIGENTE'
+                      WHERE (a.estado = 'VIGENTE' OR (a.fecha_fin IS NOT NULL AND a.fecha_fin >= '$primer_dia_sql'))
                         AND (a.inquilino1_id = $uid OR a.inquilino2_id = $uid)";
     $contratos = mysqli_query($conexion, $sql_contratos);
     if (!$contratos) return;
@@ -109,6 +110,7 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
         }
         $precio = (float)$c['precio_convenido'];
         $fecha_inicio = trim((string)$c['fecha_inicio']);
+        $fecha_fin = trim((string)($c['fecha_fin'] ?? ''));
         $incr_meses = max(1, min(6, (int)$c['incremento_alquiler_meses']));
         $nombre_prop_raw = strtoupper(omitir_ciudad_provincia(trim((string)$c['nombre_propiedad'])));
         $nombre_prop = mysqli_real_escape_string($conexion, $nombre_prop_raw);
@@ -125,9 +127,18 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
         $anio_inicio = (int)date('Y', $ts_inicio);
         $mes_inicio = (int)date('m', $ts_inicio);
 
-        // Completa meses faltantes desde inicio de contrato hasta mes actual.
+        // Completa meses faltantes desde inicio de contrato hasta mes actual (o hasta fecha_fin si corresponde).
         $cursor_ts = strtotime($primer_mes_contrato);
         $tope_ts = strtotime($primer_dia);
+        if ($fecha_fin !== '') {
+            $ts_fin = strtotime($fecha_fin);
+            if ($ts_fin !== false) {
+                $tope_contrato_ts = strtotime(date('Y-m-01', $ts_fin));
+                if ($tope_contrato_ts !== false && $tope_contrato_ts < $tope_ts) {
+                    $tope_ts = $tope_contrato_ts;
+                }
+            }
+        }
         while ($cursor_ts !== false && $cursor_ts <= $tope_ts) {
             $mes_ref = date('m/Y', $cursor_ts);
             $primer_dia_mes = date('Y-m-01', $cursor_ts);
