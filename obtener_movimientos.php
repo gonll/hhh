@@ -7,13 +7,30 @@ tenant_inmob_asegurar_esquema($conexion);
 include 'crear_tabla_cuentas_arriendo.php';
 include 'cargar_arriendos_cuentas.php';
 
+function mov_json_error($msg, $http_code = 200) {
+    http_response_code((int)$http_code);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'html' => "<tr><td colspan='7' style='text-align:center; padding:30px; color:red;'>" . htmlspecialchars((string)$msg, ENT_QUOTES, 'UTF-8') . "</td></tr>",
+        'es_arrendador' => false,
+        'has_more_older' => false,
+        'has_more_newer' => false,
+        'first_fecha' => '',
+        'first_id' => 0,
+        'last_fecha' => '',
+        'last_id' => 0,
+        'saldo_actual' => 0
+    ]);
+    exit;
+}
+
 if (!isset($_GET['id'])) {
-    die("ID no recibido");
+    mov_json_error('ID no recibido');
 }
 
 $id = (int)$_GET['id'];
 if (!tenant_inmob_usuario_id_visible($conexion, $id)) {
-    die('Sin permiso');
+    mov_json_error('Sin permiso para ver esta cuenta');
 }
 $before_fecha = isset($_GET['before_fecha']) ? trim($_GET['before_fecha']) : '';
 $before_id = isset($_GET['before_id']) ? (int)$_GET['before_id'] : 0;
@@ -148,7 +165,11 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
 
 // Solo en carga principal del detalle (no al paginar) para evitar costo extra.
 if ($before_fecha === '' && $after_fecha === '') {
-    asegurar_alquiler_mes_usuario($conexion, $id);
+    try {
+        asegurar_alquiler_mes_usuario($conexion, $id);
+    } catch (Throwable $e) {
+        error_log('asegurar_alquiler_mes_usuario: ' . $e->getMessage());
+    }
 }
 
 // Si es consorcio: obtener fecha de la última LIQ EXPENSAS (para no mostrar X en movimientos anteriores)
@@ -192,7 +213,7 @@ if ($load_older) {
 }
 
 if (!$res) {
-    die("Error en la consulta: " . mysqli_error($conexion));
+    mov_json_error('Error en la consulta de movimientos');
 }
 
 while ($m = mysqli_fetch_array($res)) {
