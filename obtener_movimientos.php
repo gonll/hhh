@@ -45,10 +45,18 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
 
     $tz = new DateTimeZone('America/Argentina/Buenos_Aires');
     $ahora_ar = new DateTime('now', $tz);
-    $mes_actual = $ahora_ar->format('m/Y');
-    $primer_dia = $ahora_ar->format('Y-m-01');
-    $anio_actual = (int)$ahora_ar->format('Y');
-    $mes_num_actual = (int)$ahora_ar->format('m');
+    $periodo_req = isset($_GET['periodo_actual']) ? trim((string)$_GET['periodo_actual']) : '';
+    if (preg_match('/^(0[1-9]|1[0-2])\/(\d{4})$/', $periodo_req, $mreq)) {
+        $mes_num_actual = (int)$mreq[1];
+        $anio_actual = (int)$mreq[2];
+        $mes_actual = sprintf('%02d/%04d', $mes_num_actual, $anio_actual);
+        $primer_dia = sprintf('%04d-%02d-01', $anio_actual, $mes_num_actual);
+    } else {
+        $mes_actual = $ahora_ar->format('m/Y');
+        $primer_dia = $ahora_ar->format('Y-m-01');
+        $anio_actual = (int)$ahora_ar->format('Y');
+        $mes_num_actual = (int)$ahora_ar->format('m');
+    }
 
     $coef_ipc_para_periodo = function($conn, $n_meses, $anio_ref, $mes_ref) {
         $n = max(1, min(6, (int)$n_meses));

@@ -1438,7 +1438,11 @@ function cargarMovimientos(fila, id) {
     }
 
     movScrollData = { first_fecha: '', first_id: 0, last_fecha: '', last_id: 0, has_more_older: false, has_more_newer: false, loading: false };
-    var urlMov = 'obtener_movimientos.php?id=' + id;
+    var hoy = new Date();
+    var mm = String(hoy.getMonth() + 1).padStart(2, '0');
+    var yyyy = String(hoy.getFullYear());
+    var periodoActual = mm + '/' + yyyy;
+    var urlMov = 'obtener_movimientos.php?id=' + id + '&periodo_actual=' + encodeURIComponent(periodoActual);
     fetch(urlMov)
         .then(r => r.json())
         .then(function(data) {
