@@ -107,7 +107,8 @@ while ($c = mysqli_fetch_assoc($contratos)) {
     $nombre_prop_like = mysqli_real_escape_string($conexion, str_replace(['%', '_'], ['\\%', '\\_'], $nombre_prop_raw));
     $ultimo = mysqli_query($conexion,
         "SELECT ABS(monto) AS ultimo_monto FROM cuentas 
-         WHERE usuario_id = $inquilino_id AND comprobante = 'ALQUILER'
+         WHERE usuario_id = $inquilino_id
+         AND comprobante IN ('ALQUILER', 'LIQ ALQUILER')
          AND concepto LIKE '%$nombre_prop_like%'
          AND fecha >= '$fi_esc'
          ORDER BY fecha DESC, movimiento_id DESC LIMIT 1"
