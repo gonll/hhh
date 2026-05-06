@@ -38,11 +38,22 @@ $id_caja_central = tenant_inmob_id_usuario_caja_central($conexion);
 require_once __DIR__ . '/config_clave_borrado.php';
 include 'respaldar_automatico.php'; // Respaldo automático diario
 $archivo_respaldo = hacerRespaldoAutomatico(); // Ejecutar respaldo si no se hizo hoy (retorna nombre de archivo si se hizo nuevo)
+
+if (!function_exists('hh_include_seguro')) {
+    function hh_include_seguro($archivo) {
+        try {
+            include $archivo;
+        } catch (Throwable $e) {
+            error_log('hh_include_seguro fallo en ' . $archivo . ': ' . $e->getMessage());
+        }
+    }
+}
+
 if (!tenant_inmob_es_sofia()) {
     if ((int)date('j') > 10) {
-        include 'actualizar_ipc_desde_api.php';
+        hh_include_seguro('actualizar_ipc_desde_api.php');
     }
-    include 'liquidar_alquileres_mes.php'; // Liquidar alquileres del mes si aún no se cargaron (desde día 1)
+    hh_include_seguro('liquidar_alquileres_mes.php'); // Liquidar alquileres del mes si aún no se cargaron (desde día 1)
 }
 // Consulta para listar usuarios, poniendo a CAJA CENTRAL primero (id 1 en principal; id propio en ámbito Sofía)
 // Excluye usuario técnico del libro Transferencias (movimientos de nivelación)
