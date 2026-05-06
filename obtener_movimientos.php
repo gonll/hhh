@@ -79,18 +79,23 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
     $uid = (int)$usuario_id;
     if ($uid <= 0) return;
 
-    $sql_contratos = "SELECT a.inquilino1_id, a.precio_convenido, a.fecha_inicio,
+    $sql_contratos = "SELECT a.inquilino1_id, a.inquilino2_id, a.precio_convenido, a.fecha_inicio,
                              COALESCE(a.incremento_alquiler_meses, 2) AS incremento_alquiler_meses,
                              p.propiedad AS nombre_propiedad
                       FROM alquileres a
                       INNER JOIN propiedades p ON a.propiedad_id = p.propiedad_id
                       WHERE a.estado = 'VIGENTE'
-                        AND a.inquilino1_id = $uid";
+                        AND (a.inquilino1_id = $uid OR a.inquilino2_id = $uid)";
     $contratos = mysqli_query($conexion, $sql_contratos);
     if (!$contratos) return;
 
     while ($c = mysqli_fetch_assoc($contratos)) {
-        $inquilino_id = (int)$c['inquilino1_id'];
+        $inquilino1_id = (int)$c['inquilino1_id'];
+        $inquilino2_id = (int)($c['inquilino2_id'] ?? 0);
+        $inquilino_id = ($inquilino1_id === $uid) ? $inquilino1_id : $inquilino2_id;
+        if ($inquilino_id <= 0) {
+            $inquilino_id = $uid;
+        }
         $precio = (float)$c['precio_convenido'];
         $fecha_inicio = trim((string)$c['fecha_inicio']);
         $incr_meses = max(1, min(6, (int)$c['incremento_alquiler_meses']));
