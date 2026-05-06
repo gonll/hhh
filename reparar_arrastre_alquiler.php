@@ -17,6 +17,21 @@ if (!isset($_SESSION['acceso_nivel']) || (int) $_SESSION['acceso_nivel'] < 3) {
 require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
 tenant_inmob_asegurar_esquema($conexion);
 
+function ra_token_csrf($len = 16) {
+    $len = max(8, (int)$len);
+    if (function_exists('random_bytes')) {
+        return bin2hex(random_bytes($len));
+    }
+    if (function_exists('openssl_random_pseudo_bytes')) {
+        $strong = false;
+        $b = openssl_random_pseudo_bytes($len, $strong);
+        if ($b !== false && $b !== null) {
+            return bin2hex($b);
+        }
+    }
+    return md5(uniqid((string)mt_rand(), true) . microtime(true));
+}
+
 function ra_parse_propiedad_desde_concepto($concepto) {
     $c = trim((string) $concepto);
     if (stripos($c, 'ALQUILER ACTUALIZADO - ') === 0) {
@@ -120,7 +135,10 @@ if (!$res) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmar']) && $_POST['confirmar'] === '1') {
     if (!empty($_POST['csrf']) && !empty($_SESSION['reparar_arrastre_alquiler_csrf'])
         && hash_equals($_SESSION['reparar_arrastre_alquiler_csrf'], (string) $_POST['csrf'])) {
-        mysqli_begin_transaction($conexion);
+        $usa_tx = function_exists('mysqli_begin_transaction');
+        if ($usa_tx) {
+            mysqli_begin_transaction($conexion);
+        }
         $ok = true;
         $actualizados = 0;
         foreach ($candidatos as $c) {
@@ -135,17 +153,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmar']) && $_POS
             $actualizados += (int) mysqli_affected_rows($conexion);
         }
         if ($ok) {
-            mysqli_commit($conexion);
+            if ($usa_tx) {
+                mysqli_commit($conexion);
+            }
             $hecho = "Se corrigieron $actualizados movimiento(s) de ALQUILER para referencia $ref.";
         } else {
-            mysqli_rollback($conexion);
+            if ($usa_tx) {
+                mysqli_rollback($conexion);
+            }
         }
     } else {
         $errores[] = 'Token de confirmación inválido. Vuelva a cargar la página.';
     }
 }
 
-$csrf = bin2hex(random_bytes(16));
+$csrf = ra_token_csrf(16);
 $_SESSION['reparar_arrastre_alquiler_csrf'] = $csrf;
 $n = count($candidatos);
 $title = 'Reparar arrastre de alquiler';
