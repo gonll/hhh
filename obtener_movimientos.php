@@ -2,6 +2,7 @@
 include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
+require_once __DIR__ . '/helpers_propiedad.php';
 tenant_inmob_asegurar_esquema($conexion);
 include 'crear_tabla_cuentas_arriendo.php';
 include 'cargar_arriendos_cuentas.php';
@@ -18,6 +19,137 @@ $before_fecha = isset($_GET['before_fecha']) ? trim($_GET['before_fecha']) : '';
 $before_id = isset($_GET['before_id']) ? (int)$_GET['before_id'] : 0;
 $after_fecha = isset($_GET['after_fecha']) ? trim($_GET['after_fecha']) : '';
 $after_id = isset($_GET['after_id']) ? (int)$_GET['after_id'] : 0;
+
+function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
+    if (!function_exists('alquileres_asegurar_columna_incremento') || !function_exists('omitir_ciudad_provincia')) {
+        return;
+    }
+    alquileres_asegurar_columna_incremento($conexion);
+
+    $mes_actual = date('m/Y');
+    $primer_dia = date('Y-m-01');
+    $anio_actual = (int)date('Y');
+    $mes_num_actual = (int)date('m');
+
+    $uid = (int)$usuario_id;
+    if ($uid <= 0) return;
+
+    $sql_contratos = "SELECT a.inquilino1_id, a.precio_convenido, a.fecha_inicio,
+                             COALESCE(a.incremento_alquiler_meses, 2) AS incremento_alquiler_meses,
+                             p.propiedad AS nombre_propiedad
+                      FROM alquileres a
+                      INNER JOIN propiedades p ON a.propiedad_id = p.propiedad_id
+                      WHERE a.estado = 'VIGENTE'
+                        AND a.inquilino1_id = $uid";
+    $contratos = mysqli_query($conexion, $sql_contratos);
+    if (!$contratos) return;
+
+    while ($c = mysqli_fetch_assoc($contratos)) {
+        $inquilino_id = (int)$c['inquilino1_id'];
+        $precio = (float)$c['precio_convenido'];
+        $fecha_inicio = trim((string)$c['fecha_inicio']);
+        $incr_meses = max(1, min(6, (int)$c['incremento_alquiler_meses']));
+        $nombre_prop_raw = strtoupper(omitir_ciudad_provincia(trim((string)$c['nombre_propiedad'])));
+        $nombre_prop = mysqli_real_escape_string($conexion, $nombre_prop_raw);
+        $concepto_base = 'ALQUILER - ' . $nombre_prop;
+        $concepto_act = 'ALQUILER ACTUALIZADO - ' . $nombre_prop;
+
+        $ts_inicio = strtotime($fecha_inicio);
+        if ($ts_inicio === false) continue;
+        $primer_mes_contrato = date('Y-m-01', $ts_inicio);
+        if ($primer_dia < $primer_mes_contrato) continue;
+
+        $fi_esc = mysqli_real_escape_string($conexion, $fecha_inicio);
+        $primer_dia_esc = mysqli_real_escape_string($conexion, $primer_dia);
+        $concepto_base_esc = mysqli_real_escape_string($conexion, $concepto_base);
+        $concepto_act_like_esc = mysqli_real_escape_string(
+            $conexion,
+            str_replace(['%', '_'], ['\\%', '\\_'], $concepto_act) . '%'
+        );
+        $nombre_prop_like = mysqli_real_escape_string($conexion, str_replace(['%', '_'], ['\\%', '\\_'], $nombre_prop_raw));
+
+        // Si ya existe alquiler del mes, no hace nada.
+        $existe = mysqli_query($conexion,
+            "SELECT 1 FROM cuentas
+             WHERE usuario_id = $inquilino_id
+               AND comprobante = 'ALQUILER'
+               AND referencia = '$mes_actual'
+               AND (concepto = '$concepto_base_esc' OR concepto LIKE '$concepto_act_like_esc')
+               AND (fecha >= '$fi_esc' OR fecha = '$primer_dia_esc')
+             LIMIT 1"
+        );
+        if ($existe && mysqli_num_rows($existe) > 0) continue;
+
+        // Si ya existe liquidación prorrateada del mes, tampoco inserta ALQUILER mensual.
+        $existe_liq = mysqli_query($conexion,
+            "SELECT 1 FROM cuentas
+             WHERE usuario_id = $inquilino_id
+               AND comprobante = 'LIQ ALQUILER'
+               AND referencia = '$mes_actual'
+               AND concepto LIKE '%$nombre_prop_like%'
+               AND fecha >= '$fi_esc'
+             LIMIT 1"
+        );
+        if ($existe_liq && mysqli_num_rows($existe_liq) > 0) continue;
+
+        $anio_inicio = (int)date('Y', $ts_inicio);
+        $mes_inicio = (int)date('m', $ts_inicio);
+        $meses_desde_inicio = ($anio_actual - $anio_inicio) * 12 + ($mes_num_actual - $mes_inicio);
+        $aplica_actualizacion = ($meses_desde_inicio >= $incr_meses && ($meses_desde_inicio % $incr_meses == 0));
+
+        $detalle_coef = ['coef' => 0, 'formula' => '', 'detalle' => ''];
+        if (function_exists('liquidar_alquiler_detalle_coef_ipc')) {
+            $detalle_coef = liquidar_alquiler_detalle_coef_ipc($conexion, $incr_meses);
+        } elseif (function_exists('liquidar_alquiler_coef_ipc')) {
+            $detalle_coef['coef'] = (float)liquidar_alquiler_coef_ipc($conexion, $incr_meses);
+        }
+        $coef_actualizacion = isset($detalle_coef['coef']) ? (float)$detalle_coef['coef'] : 0;
+
+        $ultimo = mysqli_query($conexion,
+            "SELECT ABS(monto) AS ultimo_monto FROM cuentas
+             WHERE usuario_id = $inquilino_id
+               AND comprobante IN ('ALQUILER', 'LIQ ALQUILER')
+               AND concepto LIKE '%$nombre_prop_like%'
+               AND fecha >= '$fi_esc'
+             ORDER BY fecha DESC, movimiento_id DESC LIMIT 1"
+        );
+        $base = $precio;
+        if ($ultimo && ($row_u = mysqli_fetch_assoc($ultimo)) && (float)$row_u['ultimo_monto'] > 0) {
+            $base = (float)$row_u['ultimo_monto'];
+        }
+
+        if ($aplica_actualizacion && $coef_actualizacion > 0) {
+            $monto_liquidar = round($base * $coef_actualizacion, 2);
+            $monto_origen_txt = number_format($base, 2, '.', '');
+            $coef_txt = number_format($coef_actualizacion, 4, '.', '');
+            $monto_final_txt = number_format($monto_liquidar, 2, '.', '');
+            $formula_coef_txt = isset($detalle_coef['formula']) ? $detalle_coef['formula'] : '';
+            $detalle_meses_txt = isset($detalle_coef['detalle']) ? $detalle_coef['detalle'] : '';
+            $concepto_final = $concepto_act
+                . ' | ORIGEN: $' . $monto_origen_txt
+                . ' | COEF: ' . $coef_txt
+                . ' (de ' . $formula_coef_txt . '; IPC usados: ' . $detalle_meses_txt . ')'
+                . ' | CALCULO: ' . $monto_origen_txt . ' x ' . $coef_txt
+                . ' | FINAL: $' . $monto_final_txt;
+        } else {
+            $monto_liquidar = $base;
+            $concepto_final = $concepto_base;
+        }
+
+        $monto_retiro = -$monto_liquidar;
+        $concepto_final_esc = mysqli_real_escape_string($conexion, $concepto_final);
+        $mes_actual_esc = mysqli_real_escape_string($conexion, $mes_actual);
+        mysqli_query($conexion,
+            "INSERT INTO cuentas (usuario_id, fecha, concepto, comprobante, referencia, monto)
+             VALUES ($inquilino_id, '$primer_dia_esc', '$concepto_final_esc', 'ALQUILER', '$mes_actual_esc', $monto_retiro)"
+        );
+    }
+}
+
+// Solo en carga principal del detalle (no al paginar) para evitar costo extra.
+if ($before_fecha === '' && $after_fecha === '') {
+    asegurar_alquiler_mes_usuario($conexion, $id);
+}
 
 // Si es consorcio: obtener fecha de la última LIQ EXPENSAS (para no mostrar X en movimientos anteriores)
 $ultima_liq_fecha = null;
