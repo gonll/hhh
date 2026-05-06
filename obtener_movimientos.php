@@ -90,13 +90,12 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
     if ($uid <= 0) return;
 
     $primer_dia_sql = mysqli_real_escape_string($conexion, $primer_dia);
-    $sql_contratos = "SELECT a.inquilino1_id, a.inquilino2_id, a.precio_convenido, a.fecha_inicio, a.fecha_fin,
+    $sql_contratos = "SELECT a.inquilino1_id, a.inquilino2_id, a.precio_convenido, a.fecha_inicio, a.fecha_fin, a.estado,
                              COALESCE(a.incremento_alquiler_meses, 2) AS incremento_alquiler_meses,
                              p.propiedad AS nombre_propiedad
                       FROM alquileres a
                       INNER JOIN propiedades p ON a.propiedad_id = p.propiedad_id
-                      WHERE (a.estado = 'VIGENTE' OR (a.fecha_fin IS NOT NULL AND a.fecha_fin >= '$primer_dia_sql'))
-                        AND (a.inquilino1_id = $uid OR a.inquilino2_id = $uid)";
+                      WHERE (a.inquilino1_id = $uid OR a.inquilino2_id = $uid)";
     $contratos = mysqli_query($conexion, $sql_contratos);
     if (!$contratos) return;
 
@@ -108,6 +107,7 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
         if ($inquilino_id <= 0) {
             $inquilino_id = $uid;
         }
+        $estado_contrato = strtoupper(trim((string)($c['estado'] ?? '')));
         $precio = (float)$c['precio_convenido'];
         $fecha_inicio = trim((string)$c['fecha_inicio']);
         $fecha_fin = trim((string)($c['fecha_fin'] ?? ''));
@@ -116,14 +116,42 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
         $nombre_prop = mysqli_real_escape_string($conexion, $nombre_prop_raw);
         $concepto_base = 'ALQUILER - ' . $nombre_prop;
         $concepto_act = 'ALQUILER ACTUALIZADO - ' . $nombre_prop;
+        $nombre_prop_like = mysqli_real_escape_string($conexion, str_replace(['%', '_'], ['\\%', '\\_'], $nombre_prop_raw));
 
         $ts_inicio = strtotime($fecha_inicio);
         if ($ts_inicio === false) continue;
         $primer_mes_contrato = date('Y-m-01', $ts_inicio);
         if ($primer_dia < $primer_mes_contrato) continue;
 
+        // Elegibilidad para autoliquidar al mostrar cuenta:
+        // - contrato vigente, o
+        // - contrato que cubre el período actual por fecha_fin, o
+        // - contrato con actividad reciente de alquiler/liquidación (evita perder mayo por estado desactualizado).
+        $es_elegible = ($estado_contrato === 'VIGENTE');
+        if (!$es_elegible && $fecha_fin !== '') {
+            $ts_fin = strtotime($fecha_fin);
+            if ($ts_fin !== false) {
+                $es_elegible = ($ts_fin >= strtotime($primer_dia));
+            }
+        }
+        if (!$es_elegible) {
+            $dos_meses_atras = date('Y-m-01', strtotime('-2 month', strtotime($primer_dia)));
+            $dos_meses_atras_esc = mysqli_real_escape_string($conexion, $dos_meses_atras);
+            $r_reciente = mysqli_query($conexion,
+                "SELECT 1 FROM cuentas
+                 WHERE usuario_id = $inquilino_id
+                   AND comprobante IN ('ALQUILER', 'LIQ ALQUILER')
+                   AND concepto LIKE '%$nombre_prop_like%'
+                   AND fecha >= '$dos_meses_atras_esc'
+                 LIMIT 1"
+            );
+            $es_elegible = ($r_reciente && mysqli_num_rows($r_reciente) > 0);
+        }
+        if (!$es_elegible) {
+            continue;
+        }
+
         $fi_esc = mysqli_real_escape_string($conexion, $fecha_inicio);
-        $nombre_prop_like = mysqli_real_escape_string($conexion, str_replace(['%', '_'], ['\\%', '\\_'], $nombre_prop_raw));
         $anio_inicio = (int)date('Y', $ts_inicio);
         $mes_inicio = (int)date('m', $ts_inicio);
 
