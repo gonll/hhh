@@ -214,27 +214,12 @@ function asegurar_alquiler_mes_usuario($conexion, $usuario_id) {
     return $insertados_total;
 }
 
- $accion = isset($_GET['accion']) ? trim((string)$_GET['accion']) : '';
 // Solo en carga principal del detalle (no al paginar) para evitar costo extra.
 if ($before_fecha === '' && $after_fecha === '') {
     try {
-        $insertados = asegurar_alquiler_mes_usuario($conexion, $id);
-        if ($accion === 'liquidar_faltantes') {
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode([
-                'ok' => true,
-                'insertados' => (int)$insertados,
-                'msg' => ((int)$insertados > 0)
-                    ? ('Se liquidaron ' . (int)$insertados . ' alquiler(es) faltante(s).')
-                    : 'No había alquileres faltantes para liquidar.'
-            ]);
-            exit;
-        }
+        asegurar_alquiler_mes_usuario($conexion, $id);
     } catch (Throwable $e) {
         error_log('asegurar_alquiler_mes_usuario: ' . $e->getMessage());
-        if ($accion === 'liquidar_faltantes') {
-            mov_json_error('No se pudo liquidar faltantes en este momento');
-        }
     }
 }
 
