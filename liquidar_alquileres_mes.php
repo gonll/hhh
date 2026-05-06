@@ -13,6 +13,12 @@
 if (!isset($conexion)) return;
 include_once __DIR__ . '/helpers_propiedad.php';
 
+// Modo seguro para deploys parciales: si faltan helpers, no bloquear index.php
+if (!function_exists('alquileres_asegurar_columna_incremento')
+    || !function_exists('omitir_ciudad_provincia')) {
+    return;
+}
+
 alquileres_asegurar_columna_incremento($conexion);
 
 $dia = (int)date('j');
