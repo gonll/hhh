@@ -244,15 +244,17 @@ ob_start();
 </xml>
 <![endif]-->
 <style>
-@page { size: 21cm 29.7cm; margin: 2cm; }
+@page Section1 { size: 21cm 29.7cm; margin: 2cm; mso-footer:f1; }
 body, p, div { font-family: Arial, sans-serif; font-size: 10pt; text-align: justify; line-height: 1.5; margin: 0; }
 p { margin: 0 0 12pt; line-height: 1.5; }
 .clausula { font-weight: bold; text-transform: uppercase; line-height: 1.5; }
 .titulo-contrato { text-align: center; font-weight: bold; font-size: 9pt; margin-bottom: 12pt; line-height: 1.5; }
 .subtitulo-contrato { text-align: center; font-weight: bold; font-size: 9pt; margin-bottom: 24pt; line-height: 1.5; }
+div.Section1 { page: Section1; }
 </style>
 </head>
 <body>
+<div class="Section1">
 
 <p class="titulo-contrato">CONTRATO DE ALQUILER : <?= htmlspecialchars($dom_propiedad) ?></p>
 <p class="subtitulo-contrato"><?= htmlspecialchars($locatario_txt) ?></p>
@@ -291,6 +293,12 @@ p { margin: 0 0 12pt; line-height: 1.5; }
 
 <p><span class="clausula">DECIMO SEXTA, gastos y sellados:</span> Los gastos de legalización y sellados del presente contrato serán soportados por la Parte Locataria. Los gastos de comunicaciones e intimaciones por pagos no efectuados en los vencimientos correspondientes serán sumados al precio del alquiler correspondiente y formarán parte del mismo. Los gastos judiciales y honorarios que pudieran originarse por incumplimiento de la parte Locataria, serán a cargo de la misma, aunque no haya condenación judicial de costas. En la ciudad de San Miguel de Tucumán, a los <?= $dia_firma ?> de <?= $mes_firma ?> de <?= $anio_firma ?>, se firman dos ejemplares de Ley de un mismo tenor y a un solo efecto.</p>
 
+<div style='mso-element:footer' id='f1'>
+    <p class='MsoFooter' style='text-align:center; font-size:9pt; margin:0;'>
+        <span style='mso-field-code:" PAGE "'>1</span>
+    </p>
+</div>
+</div>
 </body>
 </html>
 <?php

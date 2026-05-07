@@ -25,16 +25,18 @@ if ($padron_txt === null || $padron_txt === '') {
 <meta name="ProgId" content="Word.Document">
 <title>Contrato de Locacion BGH1050</title>
 <style>
-@page { size: 21cm 29.7cm; margin: 2cm; }
+@page Section1 { size: 21cm 29.7cm; margin: 2cm; mso-footer:f1; }
 body, p, div { font-family: Arial, sans-serif; font-size: 10pt; text-align: justify; line-height: 1.45; margin: 0; }
 p { margin: 0 0 10pt; }
 .clausula { font-weight: bold; text-transform: uppercase; }
 .titulo { text-align: center; font-weight: bold; font-size: 11pt; margin-bottom: 8pt; }
 .subtit { text-align: center; font-weight: bold; font-size: 10pt; margin-bottom: 6pt; }
 .modelo-ref { text-align: center; font-size: 9pt; margin-bottom: 16pt; color: #333; }
+div.Section1 { page: Section1; }
 </style>
 </head>
 <body>
+<div class="Section1">
 
 <p class="titulo">CONTRATO DE LOCACION</p>
 <p class="subtit">TIPOLOGIA: OFICINAS Y LOCALES COMERCIALES</p>
@@ -90,5 +92,11 @@ p { margin: 0 0 10pt; }
 
 <p style="margin-top: 24pt;">En la ciudad de San Miguel de Tucum&aacute;n, a los <?= (int) $dia_firma ?> de <?= htmlspecialchars($mes_firma) ?> de <?= htmlspecialchars($anio_firma) ?>.</p>
 
+<div style='mso-element:footer' id='f1'>
+    <p class='MsoFooter' style='text-align:center; font-size:9pt; margin:0;'>
+        <span style='mso-field-code:" PAGE "'>1</span>
+    </p>
+</div>
+</div>
 </body>
 </html>
