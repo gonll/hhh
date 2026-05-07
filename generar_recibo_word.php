@@ -6,6 +6,23 @@ require_once __DIR__ . '/helpers_tenant_inmobiliaria.php';
 tenant_inmob_asegurar_esquema($conexion);
 include 'helpers_contrato.php';
 
+if (!function_exists('extraer_contraparte_caja')) {
+    function extraer_contraparte_caja($concepto) {
+        $c = trim((string)$concepto);
+        if ($c === '') return '';
+        // Casos típicos en Caja: "APELLIDO NOMBRE - CONCEPTO..."
+        if (strpos($c, ' - ') !== false) {
+            $p = trim(substr($c, 0, strpos($c, ' - ')));
+            if ($p !== '') return strtoupper($p);
+        }
+        // Fallback simple: "PAGO A X", "ENTREGA A X", etc.
+        if (preg_match('/\b(?:A|DE)\s+([A-ZÁÉÍÓÚÑ0-9 .-]+)/iu', strtoupper($c), $m)) {
+            return trim((string)$m[1]);
+        }
+        return '';
+    }
+}
+
 if (!isset($_GET['id'])) {
     die("ID no recibido");
 }
@@ -421,6 +438,30 @@ if (empty($propietario_nombre)) {
     $propietario_nombre = 'HERRERA Y LLOBETA S. R. L.';
 }
 
+// Regla específica para cuenta Caja: en retiro e ingreso van invertidos.
+$id_caja = tenant_inmob_id_usuario_caja_central($conexion);
+$es_caja = ($usuario_id === (int)$id_caja);
+if ($es_caja) {
+    $contraparte_caja = extraer_contraparte_caja($mov['concepto'] ?? '');
+    $hyl = 'HERRERA Y LLOBETA S. R. L.';
+    if ($es_retiro) {
+        // Retiro de Caja: quien recibe firma; "Recibí de" debe ser HYL.
+        $recibi_de = $hyl;
+        $propietario_nombre = ($contraparte_caja !== '') ? $contraparte_caja : '';
+    } else {
+        // Ingreso a Caja: al revés del retiro.
+        $recibi_de = ($contraparte_caja !== '') ? $contraparte_caja : ' ';
+        $propietario_nombre = $hyl;
+        // En ingreso de Caja, dejar "Recibí de ...." en blanco para completar manualmente.
+        $recibi_de_texto = '..............................................................';
+    }
+}
+$recibi_de_texto = $recibi_de;
+if ($es_caja && !$es_retiro) {
+    // En ingreso de Caja, dejar "Recibí de ...." en blanco para completar manualmente.
+    $recibi_de_texto = '..............................................................';
+}
+
 // Formatear fecha: "a los [día] de [mes] de [año]"
 $ts = strtotime($fecha);
 $dia = (int)date('j', $ts);
@@ -497,7 +538,7 @@ header("Content-Disposition: attachment; filename=\"Recibo_$nro_recibo.doc\"");
     <div class="titulo">R&nbsp;E&nbsp;C&nbsp;I&nbsp;B&nbsp;O&nbsp;&nbsp;&nbsp;Nº&nbsp;<?= $nro_recibo ?></div>
     <p>&nbsp;</p>
     <div class="fecha"><?= $fecha_formateada ?></div>
-    <div class="texto">Recibí de <?= $recibi_de ?> la cantidad de pesos <?= $monto_letras ?> . ($<?= $monto_numero ?>-) en concepto de <?= $concepto ?><?= $referencia !== '' ? ' — Período cobrado: ' . htmlspecialchars($referencia) : '' ?>.</div>
+    <div class="texto">Recibí de <?= $recibi_de_texto ?> la cantidad de pesos <?= $monto_letras ?> . ($<?= $monto_numero ?>-) en concepto de <?= $concepto ?><?= $referencia !== '' ? ' — Período cobrado: ' . htmlspecialchars($referencia) : '' ?>.</div>
     <div class="son"><strong>Son:$<?= $monto_numero ?>-</strong></div>
     <div class="firma-container">
         <table style="width: 100%; border-collapse: collapse; border: 0;">
