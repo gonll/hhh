@@ -286,6 +286,11 @@ if ($nivelAcceso === 3) {
         .fila-libro-transfer { background: #f0f9ff; border-left: 3px solid #17a2b8; }
         .fila-libro-transfer.fila-seleccionada { background-color: #d1ecf1 !important; border-left-color: #117a8b; }
         .fila-mov-seleccionada { background-color: #fff9c4 !important; outline: 1px solid #fbc02d; }
+        .saldo-ultimo-mov {
+            background: #fff2a8 !important;
+            box-shadow: inset 0 0 0 1px #f1c40f;
+            font-weight: 800 !important;
+        }
 
         .btn-caja { flex: 1 1 180px; min-width: 180px; padding: 12px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; opacity: 0.3; pointer-events: none; text-transform: uppercase; text-align: center; box-sizing: border-box; }
         .btn-activo { opacity: 1 !important; pointer-events: auto !important; }
@@ -1448,6 +1453,7 @@ function cargarMovimientos(fila, id) {
         .then(r => r.json())
         .then(function(data) {
             document.getElementById("tablaMovimientos").innerHTML = data.html;
+            resaltarSaldoUltimoMovimiento();
             esArrendadorUsuario = !!data.es_arrendador;
             movScrollData.first_fecha = data.first_fecha || '';
             movScrollData.first_id = data.first_id || 0;
@@ -1550,6 +1556,7 @@ function cargarLibroTransferencias(fila) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             document.getElementById("tablaMovimientos").innerHTML = data.html;
+            resaltarSaldoUltimoMovimiento();
             movScrollData.first_fecha = data.first_fecha || '';
             movScrollData.first_id = data.first_id || 0;
             movScrollData.last_fecha = data.last_fecha || '';
@@ -1617,6 +1624,7 @@ function cargarMasAnteriores() {
             var tbody = document.getElementById("tablaMovimientos");
             var oldHeight = div.scrollHeight;
             tbody.innerHTML = data.html + tbody.innerHTML;
+            resaltarSaldoUltimoMovimiento();
             movScrollData.first_fecha = data.first_fecha || movScrollData.first_fecha;
             movScrollData.first_id = data.first_id || movScrollData.first_id;
             movScrollData.has_more_older = !!data.has_more_older;
@@ -1646,6 +1654,7 @@ function onScrollMovimientos() {
                 var tbody = document.getElementById("tablaMovimientos");
                 var oldHeight = div.scrollHeight;
                 tbody.innerHTML = data.html + tbody.innerHTML;
+                resaltarSaldoUltimoMovimiento();
                 movScrollData.first_fecha = data.first_fecha || movScrollData.first_fecha;
                 movScrollData.first_id = data.first_id || movScrollData.first_id;
                 movScrollData.has_more_older = !!data.has_more_older;
@@ -1667,6 +1676,7 @@ function onScrollMovimientos() {
             if (data.html && data.html.indexOf('fila-mov') >= 0) {
                 var tbody = document.getElementById("tablaMovimientos");
                 tbody.innerHTML = tbody.innerHTML + data.html;
+                resaltarSaldoUltimoMovimiento();
                 movScrollData.last_fecha = data.last_fecha || movScrollData.last_fecha;
                 movScrollData.last_id = data.last_id || movScrollData.last_id;
                 movScrollData.has_more_newer = !!data.has_more_newer;
@@ -1679,6 +1689,20 @@ function onScrollMovimientos() {
             movScrollData.loading = false;
             actualizarBtnCargarAnteriores();
         }).catch(function() { movScrollData.loading = false; actualizarBtnCargarAnteriores(); });
+    }
+}
+
+function resaltarSaldoUltimoMovimiento() {
+    var tbody = document.getElementById("tablaMovimientos");
+    if (!tbody) return;
+    tbody.querySelectorAll("td.saldo-ultimo-mov").forEach(function(td) {
+        td.classList.remove("saldo-ultimo-mov");
+    });
+    var ultimaFila = tbody.querySelector("tr.fila-mov:last-child");
+    if (!ultimaFila) return;
+    var celdas = ultimaFila.querySelectorAll("td");
+    if (celdas.length >= 6) {
+        celdas[5].classList.add("saldo-ultimo-mov");
     }
 }
 
