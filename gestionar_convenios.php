@@ -3,7 +3,7 @@ include 'db.php';
 include 'verificar_sesion.php';
 require_once __DIR__ . '/config_clave_borrado.php';
 
-if (!isset($_SESSION['acceso_nivel']) || $_SESSION['acceso_nivel'] < 3) {
+if (!isset($_SESSION['acceso_nivel']) || $_SESSION['acceso_nivel'] < 2) {
     header('Location: index.php?msg=sin_permiso');
     exit;
 }

@@ -1,6 +1,10 @@
 <?php
 include 'db.php';
 include 'verificar_sesion.php';
+/** Valor del select "Horas Comunes / Tractor": cuenta como hora común; columna tractor guarda esta etiqueta. */
+if (!defined('PDT_HC_SIN_TRACTOR')) {
+    define('PDT_HC_SIN_TRACTOR', 'Horas comunes Sin Tractor');
+}
 
 // Debug: activar en servidor con ?debug=1 para ver errores PHP (desactivar en producción)
 if (!empty($_GET['debug']) && $_GET['debug'] === '1') {
@@ -148,8 +152,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mensaje = 'Falta dato o corregir.';
             } else {
         $tractor_post = trim($_POST['tractor'] ?? '');
-        $tipo_horas = ($tractor_post !== '' && $tractor_post !== 'Horas Comunes') ? 'Horas tractos' : 'Horas Comunes';
-        $tractor = ($tipo_horas === 'Horas tractos') ? mysqli_real_escape_string($conexion, $tractor_post) : NULL;
+        $es_hc_sin_tractor = ($tractor_post === PDT_HC_SIN_TRACTOR);
+        $es_seleccion_horas_comunes = ($tractor_post === '' || $tractor_post === 'Horas Comunes' || $es_hc_sin_tractor);
+        $tipo_horas = $es_seleccion_horas_comunes ? 'Horas Comunes' : 'Horas tractos';
+        if ($tipo_horas === 'Horas tractos') {
+            $tractor = mysqli_real_escape_string($conexion, $tractor_post);
+        } elseif ($es_hc_sin_tractor) {
+            $tractor = mysqli_real_escape_string($conexion, PDT_HC_SIN_TRACTOR);
+        } else {
+            $tractor = NULL;
+        }
         $fecha = trim($_POST['fecha'] ?? '');
         $horas = isset($_POST['horas']) && $_POST['horas'] !== '' ? (int)$_POST['horas'] : null;
         $cant_gasoil = ($tipo_horas === 'Horas tractos' && isset($_POST['cant_gasoil']) && $_POST['cant_gasoil'] !== '')
@@ -213,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $mensaje = 'Parte guardado.';
                 $preseleccionar_usuario_id = $usuario_id;
-                $_SESSION['pdt_ultimo_tractor'] = $tipo_horas === 'Horas tractos' ? $tractor_post : 'Horas Comunes';
+                $_SESSION['pdt_ultimo_tractor'] = $tipo_horas === 'Horas tractos' ? $tractor_post : ($es_hc_sin_tractor ? PDT_HC_SIN_TRACTOR : 'Horas Comunes');
                 if ($finca_esc !== '') {
                     $_SESSION['pdt_ultima_finca'] = $finca_raw;
                 }
@@ -235,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $mensaje = 'Parte guardado.';
                 $preseleccionar_usuario_id = $usuario_id;
-                $_SESSION['pdt_ultimo_tractor'] = $tipo_horas === 'Horas tractos' ? $tractor_post : 'Horas Comunes';
+                $_SESSION['pdt_ultimo_tractor'] = $tipo_horas === 'Horas tractos' ? $tractor_post : ($es_hc_sin_tractor ? PDT_HC_SIN_TRACTOR : 'Horas Comunes');
                 if ($finca_esc !== '') {
                     $_SESSION['pdt_ultima_finca'] = $finca_raw;
                 }
@@ -294,7 +306,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!mysqli_query($conexion, $sql_up)) {
                     $mensaje = 'Error al actualizar PDT.';
                 } else {
-                    $tipo_trabajo = $es_tractor ? ('Horas tractos' . ($tractor ? ' ' . $tractor : '')) : 'Horas Comunes';
+                    if ($es_tractor) {
+                        $tipo_trabajo = 'Horas tractos' . ($tractor ? ' ' . $tractor : '');
+                    } elseif ($tractor === PDT_HC_SIN_TRACTOR) {
+                        $tipo_trabajo = PDT_HC_SIN_TRACTOR;
+                    } else {
+                        $tipo_trabajo = 'Horas Comunes';
+                    }
                     $cantidad_str = number_format($horas, 2, ',', '.');
                     $precio_str = number_format($precio, 2, ',', '.');
                     $mes_anio = date('m/Y', strtotime($fecha_pdt));
@@ -338,7 +356,7 @@ if (!empty($_SESSION['pdt_ultimo_tractor'])) {
     if ($tr === 'New Holland TM150') {
         $tr = 'T7.195/4CPAT';
     }
-    if ($tr === 'Horas Comunes' || in_array($tr, ['John Deere 200 hp', 'John Deere 110 hp', 'T7.195/4CPAT', 'New Holland 7630', 'Massey Ferguson 1165'], true)) {
+    if ($tr === 'Horas Comunes' || $tr === PDT_HC_SIN_TRACTOR || in_array($tr, ['John Deere 200 hp', 'John Deere 110 hp', 'T7.195/4CPAT', 'New Holland 7630', 'Massey Ferguson 1165'], true)) {
         $tractor_default = $tr;
     }
 }
@@ -682,7 +700,7 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <span id="valoresSalarialesFinca" style="font-size: 11px; color: #333; padding: 4px 8px; background: #e8f4e8; border-radius: 4px; border: 1px solid #c8e6c9;">
                     Hora común: $ <?= number_format($ultima_tabla_salarial['valor_hora_comun'], 2, ',', '.') ?> | Hora tractor: $ <?= number_format($ultima_tabla_salarial['valor_hora_tractor'], 2, ',', '.') ?>
                 </span>
-                <?php if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 3): ?>
+                <?php if (isset($_SESSION['acceso_nivel']) && $_SESSION['acceso_nivel'] >= 2): ?>
                 <a href="gestionar_convenios.php" class="btn btn-secondary" style="font-size: 11px; padding: 5px 10px;">Convenios</a>
                 <?php endif; ?>
                 <?php endif; ?>
@@ -901,7 +919,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                     <label>Horas Comunes / Tractor *</label>
                     <select name="tractor" id="tractor" tabindex="-1" required>
                         <optgroup label="Horas Comunes">
-                            <option value="Horas Comunes" <?= (($pdt_edit && ($pdt_edit['tipo_horas'] ?? '') === 'Horas Comunes') || (!$pdt_edit && $tractor_default === 'Horas Comunes')) ? 'selected' : '' ?>>Horas Comunes</option>
+                            <option value="Horas Comunes" <?= (($pdt_edit && ($pdt_edit['tipo_horas'] ?? '') === 'Horas Comunes' && trim((string)($pdt_edit['tractor'] ?? '')) === '') || (!$pdt_edit && $tractor_default === 'Horas Comunes')) ? 'selected' : '' ?>>Horas Comunes</option>
+                            <option value="<?= htmlspecialchars(PDT_HC_SIN_TRACTOR) ?>" <?= (($pdt_edit && ($pdt_edit['tipo_horas'] ?? '') === 'Horas Comunes' && trim((string)($pdt_edit['tractor'] ?? '')) === PDT_HC_SIN_TRACTOR) || (!$pdt_edit && $tractor_default === PDT_HC_SIN_TRACTOR)) ? 'selected' : '' ?>><?= htmlspecialchars(PDT_HC_SIN_TRACTOR) ?></option>
                         </optgroup>
                         <optgroup label="John Deere">
                             <option class="tractor-jd" value="John Deere 200 hp" <?= (($pdt_edit && ($pdt_edit['tractor'] ?? '') === 'John Deere 200 hp') || (!$pdt_edit && $tractor_default === 'John Deere 200 hp')) ? 'selected' : '' ?>>
@@ -1249,7 +1268,8 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 const tractorGroup = document.getElementById('tractorGroup');
                 const tractorSelect = document.getElementById('tractor');
                 const selFinca = document.getElementById('selFinca');
-                function esHorasTractor() { return tractorSelect && tractorSelect.value !== '' && tractorSelect.value !== 'Horas Comunes'; }
+                var PDT_HC_SIN_TRACTOR = <?= json_encode(PDT_HC_SIN_TRACTOR, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+                function esHorasTractor() { return tractorSelect && tractorSelect.value !== '' && tractorSelect.value !== 'Horas Comunes' && tractorSelect.value !== PDT_HC_SIN_TRACTOR; }
                 
                 // Verificar que los elementos críticos existan (no retornar, solo registrar error)
                 if (!buscador || !resultados || !usuarioIdInput) {
