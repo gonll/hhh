@@ -276,7 +276,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             padding: 6px 4px;
             border-bottom: 1px solid #e2e8f0;
             white-space: nowrap;
-            overflow: hidden;
+            overflow: visible;
             min-height: 1.35em;
         }
         .movil-mov-fila:last-child {
@@ -339,6 +339,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             font-family: inherit;
             flex-shrink: 0;
             -webkit-tap-highlight-color: transparent;
+            transform: translateX(50%);
         }
         .movil-mov-fila .btn-borrar-mov-cel:active {
             background: transparent;
