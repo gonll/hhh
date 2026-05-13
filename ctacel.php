@@ -270,7 +270,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
         }
         .movil-mov-fila {
             display: grid;
-            grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content);
+            grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content) 1.85em;
             gap: 4px 6px;
             align-items: center;
             padding: 6px 4px;
@@ -320,9 +320,31 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             color: #8b1010;
             text-shadow: 0 0 0.06em rgba(200, 35, 51, 0.45);
         }
+        .movil-mov-fila .btn-borrar-mov-cel {
+            justify-self: end;
+            width: 1.75em;
+            height: 1.75em;
+            min-width: 36px;
+            min-height: 36px;
+            padding: 0;
+            margin: 0;
+            border: none;
+            border-radius: 6px;
+            background: #fee2e2;
+            color: #b91c1c;
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1;
+            cursor: pointer;
+            font-family: inherit;
+            flex-shrink: 0;
+        }
+        .movil-mov-fila .btn-borrar-mov-cel:active {
+            background: #fecaca;
+        }
         .movil-mov-encab {
             display: grid;
-            grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content);
+            grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content) 1.85em;
             gap: 4px 6px;
             padding: 0 4px 4px;
             font-weight: 700;
@@ -337,7 +359,8 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
             text-overflow: ellipsis;
         }
         .movil-mov-encab span:nth-child(3),
-        .movil-mov-encab span:nth-child(4) {
+        .movil-mov-encab span:nth-child(4),
+        .movil-mov-encab span:nth-child(5) {
             overflow: visible;
             text-overflow: clip;
             text-align: right;
@@ -800,17 +823,22 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                         return;
                     }
                     el.classList.remove('parte2-vacia');
-                    var h = '<div class="movil-mov-encab"><span>Fecha</span><span>Concepto</span><span>Monto</span><span>Saldo</span></div>';
+                    var h = '<div class="movil-mov-encab"><span>Fecha</span><span>Concepto</span><span>Monto</span><span>Saldo</span><span aria-hidden="true"> </span></div>';
                     movs.forEach(function(m, idx) {
                         var clsM = (m.monto >= 0) ? 'm-monto-pos' : 'm-monto-neg';
                         var clsS = (m.saldo >= 0) ? 'm-saldo-pos' : 'm-saldo-neg';
                         var ultimo = idx === movs.length - 1;
                         var clsSaldo = 'm-saldo ' + clsS + (ultimo ? ' m-saldo-ultimo' : '');
+                        var mid = parseInt(m.movimiento_id, 10) || 0;
+                        var btnBorrar = mid > 0
+                            ? '<button type="button" class="btn-borrar-mov-cel" data-mid="' + mid + '" aria-label="Eliminar movimiento">×</button>'
+                            : '<span></span>';
                         h += '<div class="movil-mov-fila">' +
                             '<span class="m-fecha">' + escHtml(m.fecha) + '</span>' +
                             '<span class="m-concepto">' + escHtml(m.concepto) + '</span>' +
                             '<span class="m-monto ' + clsM + '">$ ' + escHtml(fmtMontoCtaCel(m.monto)) + '</span>' +
                             '<span class="' + clsSaldo + '">$ ' + escHtml(fmtMontoCtaCel(m.saldo)) + '</span>' +
+                            btnBorrar +
                             '</div>';
                     });
                     el.innerHTML = h;
@@ -822,6 +850,45 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                     el.classList.add('parte2-vacia');
                     var det = (err && err.message) ? String(err.message) : '';
                     el.innerHTML = '<p style="margin:0;">Error al cargar movimientos.' + (det ? ' (' + escHtml(det) + ')' : '') + '</p>';
+                });
+        }
+
+        function borrarMovimientoCtacel(movimientoId) {
+            var mid = parseInt(movimientoId, 10);
+            if (!mid || !idPersonaSeleccionadaMovil) {
+                return;
+            }
+            var clave = window.prompt('CLAVE DE SEGURIDAD PARA ELIMINAR:');
+            if (clave === null) {
+                return;
+            }
+            if (!window.confirm('¿Eliminar este movimiento permanentemente?')) {
+                return;
+            }
+            var fd = new FormData();
+            fd.append('mid', String(mid));
+            fd.append('clave', String(clave));
+            fetch('eliminar_movimiento.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function(r) { return r.text(); })
+                .then(function(text) {
+                    var t = String(text || '').trim();
+                    if (t === 'OK') {
+                        cargarMovimientosParte2(idPersonaSeleccionadaMovil);
+                        return;
+                    }
+                    if (t.charAt(0) === '{') {
+                        try {
+                            var j = JSON.parse(t);
+                            if (j && j.msg) {
+                                window.alert(String(j.msg));
+                                return;
+                            }
+                        } catch (eJ) {}
+                    }
+                    window.alert('No se pudo eliminar (clave incorrecta o sin permiso).');
+                })
+                .catch(function() {
+                    window.alert('Error de red al eliminar.');
                 });
         }
 
@@ -889,6 +956,18 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
                     el.setAttribute('tabindex', '-1');
                 }
             }
+        }
+
+        var parte2MovEl = document.getElementById('parte2Movimientos');
+        if (parte2MovEl) {
+            parte2MovEl.addEventListener('click', function(ev) {
+                var btn = ev.target && ev.target.closest ? ev.target.closest('.btn-borrar-mov-cel') : null;
+                if (!btn || !parte2MovEl.contains(btn)) {
+                    return;
+                }
+                ev.preventDefault();
+                borrarMovimientoCtacel(btn.getAttribute('data-mid'));
+            });
         }
 
         var busc = document.getElementById('buscPersonasMovil');

@@ -2613,23 +2613,18 @@ function eliminarMovSeguro(movId) {
     }
     var claveIngresada = prompt("CLAVE DE SEGURIDAD PARA ELIMINAR:");
     if (claveIngresada === null) return;
+    if (!confirm("¿Eliminar este movimiento permanentemente?")) return;
     var fd = new FormData();
+    fd.append('mid', movId);
     fd.append('clave', claveIngresada);
-    fetch('verificar_clave_borrado.php', { method: 'POST', body: fd })
+    fetch('eliminar_movimiento.php', { method: 'POST', body: fd })
         .then(r => r.text())
         .then(function(res) {
-            if (res.trim() !== "OK") {
-                alert("Clave incorrecta.");
-                return;
+            if (res.trim() === "OK") {
+                recargarVistaCuentaSeleccionada();
+            } else {
+                alert("No se pudo eliminar (clave incorrecta o sin permiso).");
             }
-            if (!confirm("¿Eliminar este movimiento permanentemente?")) return;
-            fetch('eliminar_movimiento.php?mid=' + movId)
-                .then(r2 => r2.text())
-                .then(function(res2) {
-                    if (res2.trim() === "OK") {
-                        recargarVistaCuentaSeleccionada();
-                    }
-                });
         });
 }
 

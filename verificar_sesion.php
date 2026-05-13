@@ -9,6 +9,7 @@ $esApiJson = in_array($scriptApiJson, [
     'fotos_propiedad_json.php',
     'obtener_movimientos_ctacel.php',
     'obtener_vencimiento_inquilino_ctacel.php',
+    'eliminar_movimiento.php',
 ], true);
 
 if (empty($_SESSION['acceso_id']) || !isset($_SESSION['acceso_nivel'])) {
@@ -27,9 +28,9 @@ if ((int)($_SESSION['acceso_nivel'] ?? -1) === 0) {
     $es_usuario_zafra = (stripos($usuario, 'zafra') !== false);
     $es_silvana = strcasecmp(trim($usuario), 'silvana') === 0;
     if ($es_usuario_zafra) {
-        $permitidos_nivel0 = array('cosecha.php', 'ctacel.php', 'obtener_movimientos_ctacel.php', 'obtener_vencimiento_inquilino_ctacel.php', 'resumen_cuentas.php', 'descargar_resumen_cuentas.php', 'logout.php');
+        $permitidos_nivel0 = array('cosecha.php', 'ctacel.php', 'obtener_movimientos_ctacel.php', 'obtener_vencimiento_inquilino_ctacel.php', 'resumen_cuentas.php', 'descargar_resumen_cuentas.php', 'eliminar_movimiento.php', 'logout.php');
     } else {
-        $permitidos_nivel0 = array('partes_desde_cel.php', 'ctacel.php', 'obtener_movimientos_ctacel.php', 'obtener_vencimiento_inquilino_ctacel.php', 'resumen_cuentas.php', 'descargar_resumen_cuentas.php', 'logout.php');
+        $permitidos_nivel0 = array('partes_desde_cel.php', 'ctacel.php', 'obtener_movimientos_ctacel.php', 'obtener_vencimiento_inquilino_ctacel.php', 'resumen_cuentas.php', 'descargar_resumen_cuentas.php', 'eliminar_movimiento.php', 'logout.php');
         if ($es_silvana) {
             $permitidos_nivel0[] = 'index.php';
         }

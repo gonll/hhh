@@ -135,6 +135,7 @@ foreach ($filas as $m) {
         $concepto = substr($concepto, 0, 40) . '...';
     }
     $out[] = [
+        'movimiento_id' => (int) ($m['movimiento_id'] ?? 0),
         'fecha' => date('d/m/Y', strtotime($m['fecha'])),
         'concepto' => $concepto,
         'monto' => (float) ($m['monto'] ?? 0),
