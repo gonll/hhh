@@ -270,7 +270,7 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
         }
         .movil-mov-fila {
             display: grid;
-            grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content) 1.85em;
+            grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content) 1.2em;
             gap: 4px 6px;
             align-items: center;
             padding: 6px 4px;
@@ -322,29 +322,31 @@ $json_personas_movil = json_encode($lista_personas_movil, JSON_UNESCAPED_UNICODE
         }
         .movil-mov-fila .btn-borrar-mov-cel {
             justify-self: end;
-            width: 1.75em;
-            height: 1.75em;
-            min-width: 36px;
-            min-height: 36px;
+            width: 1.1em;
+            height: 1.1em;
+            min-width: 22px;
+            min-height: 22px;
             padding: 0;
             margin: 0;
             border: none;
-            border-radius: 6px;
-            background: #fee2e2;
-            color: #b91c1c;
-            font-size: 1rem;
-            font-weight: 800;
+            border-radius: 0;
+            background: transparent;
+            color: #991b1b;
+            font-size: 0.78rem;
+            font-weight: 700;
             line-height: 1;
             cursor: pointer;
             font-family: inherit;
             flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
         }
         .movil-mov-fila .btn-borrar-mov-cel:active {
-            background: #fecaca;
+            background: transparent;
+            opacity: 0.65;
         }
         .movil-mov-encab {
             display: grid;
-            grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content) 1.85em;
+            grid-template-columns: 4.5em minmax(0, 1fr) minmax(5.2rem, max-content) minmax(5.2rem, max-content) 1.2em;
             gap: 4px 6px;
             padding: 0 4px 4px;
             font-weight: 700;
