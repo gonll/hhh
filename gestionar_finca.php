@@ -456,6 +456,19 @@ if ($r_g && $f_g = mysqli_fetch_assoc($r_g)) {
     $gasoil_en_sisterna = (float)$f_g['total'];
 }
 
+// Últimas 4 descargas en tractores (consumo cisterna, cantidad < 0)
+$ultimas_descargas_tractores = [];
+$r_descargas = mysqli_query($conexion, "SELECT fecha, cantidad, concepto FROM gasoil WHERE cantidad < 0 ORDER BY fecha DESC, id DESC LIMIT 4");
+if ($r_descargas) {
+    while ($d = mysqli_fetch_assoc($r_descargas)) {
+        $ultimas_descargas_tractores[] = [
+            'fecha' => $d['fecha'],
+            'cantidad' => abs((float)$d['cantidad']),
+            'concepto' => trim((string)($d['concepto'] ?? '')),
+        ];
+    }
+}
+
 // Últimas 2 cargas en cisterna (solo cantidad > 0, no tractores)
 $ultimas_cargas_gasoil = [];
 $r_cargas = mysqli_query($conexion, "SELECT fecha, cantidad FROM gasoil WHERE cantidad > 0 ORDER BY fecha DESC, id DESC LIMIT 2");
@@ -716,12 +729,24 @@ if ($res_ult && $row_ult = mysqli_fetch_assoc($res_ult)) {
                 <div style="font-size: 13px;">
                     <strong>Gestión de gasoil</strong><br>
                     Gasoil en cisterna: <span id="gasoilEnSisternaVal"><?= number_format($gasoil_en_sisterna, 2, ',', '') ?></span> L
-                    <?php if (!empty($ultimas_cargas_gasoil)): ?>
-                    <div style="margin-top: 6px; font-size: 11px; color: #555;">
-                        Últimas 2 cargas:<br>
-                        <?php foreach ($ultimas_cargas_gasoil as $c): ?>
-                        <?= date('d/m/Y', strtotime($c['fecha'])) ?>: <?= number_format($c['cantidad'], 2, ',', '') ?> L<br>
-                        <?php endforeach; ?>
+                    <?php if (!empty($ultimas_descargas_tractores) || !empty($ultimas_cargas_gasoil)): ?>
+                    <div style="margin-top: 6px; font-size: 11px; color: #555; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start;">
+                        <?php if (!empty($ultimas_descargas_tractores)): ?>
+                        <div>
+                            Últimas 4 descargas en tractores:<br>
+                            <?php foreach ($ultimas_descargas_tractores as $d): ?>
+                            <?= date('d/m/Y', strtotime($d['fecha'])) ?><?= $d['concepto'] !== '' ? ' (' . htmlspecialchars($d['concepto']) . ')' : '' ?>: <?= number_format($d['cantidad'], 2, ',', '') ?> L<br>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($ultimas_cargas_gasoil)): ?>
+                        <div>
+                            Últimas 2 cargas:<br>
+                            <?php foreach ($ultimas_cargas_gasoil as $c): ?>
+                            <?= date('d/m/Y', strtotime($c['fecha'])) ?>: <?= number_format($c['cantidad'], 2, ',', '') ?> L<br>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
                 </div>
